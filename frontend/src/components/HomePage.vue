@@ -56,7 +56,7 @@
               </div>
               <h4 class="text-sm font-bold text-slate-200 mb-1">La Sélection</h4>
               <p class="text-xs text-slate-400 leading-relaxed">
-                Trouvez et proposez secrètement la meilleure musique YouTube en rapport avec le thème de la manche.
+                Trouvez et proposez secrètement la meilleure musique en rapport avec le thème de la manche.
               </p>
             </div>
 
