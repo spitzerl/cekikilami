@@ -37,7 +37,17 @@
     <header class="flex justify-between items-center mb-8 pb-4 border-b border-slate-800">
       <div>
         <h1 class="text-3xl font-extrabold text-white">Salon de Jeu</h1>
-        <p class="text-slate-400 text-sm">Code d'invitation : <span class="font-mono text-cyan-400 font-bold text-lg select-all bg-slate-900 px-2 py-0.5 rounded border border-slate-800">{{ route.params.code }}</span></p>
+        <p class="text-slate-400 text-sm flex items-center gap-2 flex-wrap mt-1">
+          <span>Code d'invitation :</span>
+          <span @click="copyCode" class="font-mono text-cyan-400 font-bold text-lg bg-slate-900 px-2.5 py-0.5 rounded border border-slate-800 cursor-pointer hover:bg-slate-800 hover:border-cyan-500/50 transition-all inline-flex items-center gap-1.5 active:scale-95" title="Cliquez pour copier">
+            {{ route.params.code }}
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3.5 h-3.5 opacity-60 hover:opacity-100">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H5.25m11.9-3.664A2.251 2.251 0 0 0 15 2.25h-3a2.251 2.251 0 0 0-2.15 1.586m5.8 0c.065.21.1.433.1.664v.75h-6V4.5c0-.231.035-.454.1-.664M6.75 7.5h.75m-.75 3h.75m-.75 3h.75m-.75 3h.75M19.5 7.5h-12c-.621 0-1.125.504-1.125 1.125v10.5c0 .621.504 1.125 1.125 1.125h12c.621 0 1.125-.504 1.125-1.125V8.625c0-.621-.504-1.125-1.125-1.125Z" />
+            </svg>
+          </span>
+          <span v-if="copied" class="text-emerald-400 text-xs font-bold bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded animate-fade-in">Copié !</span>
+          <span v-else class="text-[11px] text-slate-500 italic">(cliquez pour copier)</span>
+        </p>
       </div>
       <div class="flex items-center gap-2 bg-slate-900/60 border border-slate-800 px-4 py-2 rounded-xl">
         <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
@@ -309,6 +319,19 @@ const showConfigOnMobile = ref(false);
 const toggleConfigMobile = () => {
   if (typeof window !== 'undefined' && window.innerWidth < 768) {
     showConfigOnMobile.value = !showConfigOnMobile.value;
+  }
+};
+
+const copied = ref(false);
+const copyCode = async () => {
+  try {
+    await navigator.clipboard.writeText(route.params.code);
+    copied.value = true;
+    setTimeout(() => {
+      copied.value = false;
+    }, 2000);
+  } catch (err) {
+    console.error("Failed to copy code:", err);
   }
 };
 
