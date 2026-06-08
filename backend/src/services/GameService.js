@@ -209,6 +209,7 @@ export default class GameService {
         const track = shuffledTracks[i % shuffledTracks.length];
         
         let freshFilePath = track.file_path;
+        let coverUrl = null;
         try {
           const searchUrl = `https://api.deezer.com/search?q=${encodeURIComponent(`${track.title} ${track.artist}`)}&limit=1`;
           const response = await fetch(searchUrl);
@@ -216,6 +217,9 @@ export default class GameService {
             const payload = await response.json();
             if (payload?.data?.[0]?.preview) {
               freshFilePath = payload.data[0].preview;
+            }
+            if (payload?.data?.[0]?.album?.cover_medium) {
+              coverUrl = payload.data[0].album.cover_medium;
             }
           }
         } catch (err) {
@@ -227,7 +231,8 @@ export default class GameService {
           playerId: bot.id,
           title: track.title,
           artist: track.artist,
-          filePath: freshFilePath
+          filePath: freshFilePath,
+          coverUrl
         });
       }
     }
@@ -315,7 +320,7 @@ export default class GameService {
     } else if (status === 'voting') {
       duration = session.voting_duration;
     } else if (status === 'revelation') {
-      duration = 10; // Default revelation duration
+      duration = session.auto_advance ? 10 : 0;
     }
 
     this.clearTimer(code);
@@ -399,7 +404,16 @@ export default class GameService {
       throw new Error('Impossible d\'avancer depuis ce statut (révélation attendue)');
     }
     this.clearTimer(code);
-    await this.nextRound(code, session.current_music_index);
+    
+    const musics = await Music.findBySession(session.id);
+    const activeMusics = musics.filter(m => m.play_order >= 0);
+    const nextIndex = session.current_music_index + 1;
+
+    if (nextIndex < activeMusics.length) {
+      await this.enterVotingSubphase(code, nextIndex, 'listening');
+    } else {
+      await this.finishSession(code);
+    }
     return this.getState(code);
   }
 

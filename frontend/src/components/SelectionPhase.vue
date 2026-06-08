@@ -137,9 +137,12 @@
             class="space-y-3"
           >
             <div v-for="music in store.musics" :key="music.id" class="glass-card p-4 rounded-xl flex items-center justify-between border border-slate-800 hover:border-slate-700 transition-all hover:scale-[1.01]">
-              <div>
-                <p class="font-bold text-white text-sm">{{ music.title }}</p>
-                <p class="text-xs text-slate-400">{{ music.artist }}</p>
+              <div class="flex items-center gap-3 min-w-0">
+                <img v-if="music.cover_url" :src="music.cover_url" class="w-10 h-10 rounded-lg object-cover flex-shrink-0 border border-slate-800" />
+                <div class="min-w-0">
+                  <p class="font-bold text-white text-sm truncate">{{ music.title }}</p>
+                  <p class="text-xs text-slate-400 truncate">{{ music.artist }}</p>
+                </div>
               </div>
               <button @click="deleteSubmittedMusic(music.id)" class="bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 p-2 rounded-lg border border-rose-500/20 transition-all">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
@@ -336,6 +339,7 @@ const chooseTrack = async (track) => {
       title: track.title,
       artist: track.artist,
       deezerPreviewUrl: track.preview,
+      coverUrl: track.cover,
     });
 
     await store.loadSession(route.params.code);

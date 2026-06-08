@@ -98,7 +98,8 @@
         <div class="grid sm:grid-cols-2 gap-4">
           <div v-for="music in store.musics" :key="music.id" class="glass-card p-4 rounded-xl border border-slate-850 flex items-center justify-between">
             <div class="flex items-center gap-3 min-w-0">
-              <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-cyan-500/20 to-purple-500/20 border border-slate-800 flex items-center justify-center text-slate-400">
+              <img v-if="music.cover_url" :src="music.cover_url" class="w-10 h-10 rounded-lg object-cover shadow border border-slate-800/80 flex-shrink-0" />
+              <div v-else class="w-10 h-10 rounded-lg bg-gradient-to-br from-cyan-500/20 to-purple-500/20 border border-slate-800 flex items-center justify-center text-slate-400 flex-shrink-0">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
                   <path fill-rule="evenodd" d="M19.952 1.651a.75.75 0 0 1 .298.599V16.303a3 3 0 0 1-2.176 2.884l-1.32.377a3 3 0 0 1-3.176-1.424l-3.32-5.32a3 3 0 0 1-.397-1.503V4.282A3 3 0 0 1 12.64 1.398l6.3-1.651a.75.75 0 0 1 1.012.904ZM12.64 2.898a1.5 1.5 0 0 0-.89 1.384v5.334a1.5 1.5 0 0 0 .198.752l3.32 5.32a1.5 1.5 0 0 0 1.588.712l1.32-.377a1.5 1.5 0 0 0 1.088-1.442V3.402l-5.3 1.388a.75.75 0 0 1-.298.058Z" clip-rule="evenodd" />
                 </svg>

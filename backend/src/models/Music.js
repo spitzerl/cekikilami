@@ -1,12 +1,12 @@
 import { query } from '../config/database.js';
 
 export default class Music {
-  static async create({ sessionId, playerId, title, artist, filePath }) {
+  static async create({ sessionId, playerId, title, artist, filePath, coverUrl }) {
     const result = await query(
-      `INSERT INTO musics (session_id, player_id, title, artist, file_path)
-       VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO musics (session_id, player_id, title, artist, file_path, cover_url)
+       VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING *`,
-      [sessionId, playerId, title, artist, filePath]
+      [sessionId, playerId, title, artist, filePath, coverUrl]
     );
     return result.rows[0];
   }

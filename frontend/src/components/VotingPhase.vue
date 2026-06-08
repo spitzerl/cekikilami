@@ -84,7 +84,8 @@
           
           <!-- Track details revealed -->
           <div class="bg-slate-900/80 border border-slate-800 p-5 rounded-2xl max-w-md mx-auto flex items-center gap-4 text-left shadow-lg">
-            <div class="w-14 h-14 rounded-xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center text-white shadow-md">
+            <img v-if="store.currentMusic?.cover_url" :src="store.currentMusic.cover_url" class="w-14 h-14 rounded-xl object-cover shadow-md border border-slate-800/80 flex-shrink-0" />
+            <div v-else class="w-14 h-14 rounded-xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center text-white shadow-md flex-shrink-0">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-7 h-7">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 9l10.5-3m0 0L21 8.25M19.5 6C19 6 13 12 13 12v6.75m0 0a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
               </svg>
@@ -108,9 +109,17 @@
             <p class="text-4xl font-extrabold text-yellow-400 tracking-tight">{{ proposerName }}</p>
           </div>
 
-          <div class="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl max-w-sm mx-auto">
-            <p class="text-sm font-semibold text-white truncate">{{ store.currentMusic?.title }}</p>
-            <p class="text-xs text-slate-400 truncate">{{ store.currentMusic?.artist }}</p>
+          <div class="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl max-w-sm mx-auto flex items-center gap-3 text-left">
+            <img v-if="store.currentMusic?.cover_url" :src="store.currentMusic.cover_url" class="w-12 h-12 rounded-xl object-cover shadow border border-slate-800/80 flex-shrink-0" />
+            <div v-else class="w-12 h-12 rounded-xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center text-white shadow flex-shrink-0">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 9l10.5-3m0 0L21 8.25M19.5 6C19 6 13 12 13 12v6.75m0 0a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+              </svg>
+            </div>
+            <div class="min-w-0">
+              <p class="text-sm font-semibold text-white truncate">{{ store.currentMusic?.title }}</p>
+              <p class="text-xs text-slate-400 truncate">{{ store.currentMusic?.artist }}</p>
+            </div>
           </div>
 
           <!-- Host: advance to next round -->

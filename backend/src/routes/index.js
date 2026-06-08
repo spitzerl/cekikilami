@@ -175,11 +175,14 @@ export default function buildRoutes(gameService, ioNamespace) {
         throw error;
       }
 
+      const coverUrl = req.body?.coverUrl ? requireHttpUrl(req.body.coverUrl, 'coverUrl') : null;
+
       const music = await gameService.addMusic(code, {
         playerId,
         title,
         artist,
         filePath,
+        coverUrl,
       });
 
       await gameService.broadcastState(code);

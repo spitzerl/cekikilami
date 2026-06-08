@@ -41,6 +41,7 @@ async function initSchema() {
       title VARCHAR(255) NOT NULL,
       artist VARCHAR(255) NOT NULL,
       file_path TEXT NOT NULL,
+      cover_url TEXT,
       created_at TIMESTAMP NOT NULL DEFAULT NOW()
     )
   `);
@@ -81,7 +82,8 @@ async function initSchema() {
 
   await pool.query(`
     ALTER TABLE musics
-    ADD COLUMN IF NOT EXISTS play_order INTEGER DEFAULT -1;
+    ADD COLUMN IF NOT EXISTS play_order INTEGER DEFAULT -1,
+    ADD COLUMN IF NOT EXISTS cover_url TEXT;
   `);
 }
 
