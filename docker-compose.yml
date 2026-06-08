@@ -73,4 +73,4 @@ networks:
     driver: bridge
   traefik-network:
     external: true
-    name: traefik-network # /!\ À remplacer par le vrai nom de votre réseau Traefik
+    name: proxy
