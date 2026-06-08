@@ -97,7 +97,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .animate-grow-y {
-  animation: grow-y 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: grow-y 1s cubic-bezier(0.16, 1, 0.3, 1) both;
   transform-origin: bottom;
 }
 
