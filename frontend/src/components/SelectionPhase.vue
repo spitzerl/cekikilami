@@ -79,32 +79,12 @@
                       </svg>
                     </button>
                     <!-- Choose Button -->
-                    <button type="button" class="rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white px-3 py-1.5 text-xs font-bold transition-all" @click="selectedTrack = track">
+                    <button type="button" class="rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white px-3 py-1.5 text-xs font-bold transition-all" @click="chooseTrack(track)">
                       Choisir
                     </button>
                   </div>
                 </li>
               </ul>
-
-              <!-- Selected Track Indicator -->
-              <div v-if="selectedTrack" class="bg-cyan-500/10 border border-cyan-500/20 p-4 rounded-xl flex items-center justify-between">
-                <div class="flex items-center gap-3">
-                  <img v-if="selectedTrack.cover" :src="selectedTrack.cover" class="w-10 h-10 rounded object-cover" />
-                  <div>
-                    <p class="text-sm font-semibold text-white">Sélectionné : {{ selectedTrack.title }}</p>
-                    <p class="text-xs text-slate-400">{{ selectedTrack.artist }}</p>
-                  </div>
-                </div>
-                <button type="button" @click="selectedTrack = null" class="text-slate-400 hover:text-white">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-
-              <button class="w-full glow-btn bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold py-2.5 rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed" :disabled="!selectedTrack">
-                Valider et Envoyer
-              </button>
             </form>
           </div>
 
@@ -195,7 +175,6 @@ const store = useGameStore();
 
 const searchQuery = ref('');
 const tracks = ref([]);
-const selectedTrack = ref(null);
 const isSearching = ref(false);
 const searchError = ref('');
 
@@ -259,7 +238,6 @@ watch(() => store.session?.phase, (newPhase) => {
 const searchTracks = async () => {
   if (!searchQuery.value.trim()) {
     tracks.value = [];
-    selectedTrack.value = null;
     return;
   }
 
@@ -305,11 +283,8 @@ const togglePreview = (track) => {
   }
 };
 
-const submit = async () => {
-  if (!selectedTrack.value || !store.player?.id) {
-    return;
-  }
-
+const chooseTrack = async (track) => {
+  if (!store.player?.id) return;
   try {
     if (audioObject) {
       audioObject.pause();
@@ -318,13 +293,12 @@ const submit = async () => {
     
     await apiService.addMusic(route.params.code, {
       playerId: String(store.player.id),
-      title: selectedTrack.value.title,
-      artist: selectedTrack.value.artist,
-      deezerPreviewUrl: selectedTrack.value.preview,
+      title: track.title,
+      artist: track.artist,
+      deezerPreviewUrl: track.preview,
     });
 
     await store.loadSession(route.params.code);
-    selectedTrack.value = null;
     tracks.value = [];
     searchQuery.value = '';
   } catch (err) {
