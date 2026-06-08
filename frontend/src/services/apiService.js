@@ -65,4 +65,7 @@ export default {
   kickPlayer(code, requesterId, targetPlayerId) {
     return api.post(`/sessions/${code}/players/${targetPlayerId}/kick`, { requesterId });
   },
+  advanceRound(code) {
+    return api.post(`/sessions/${code}/advance-round`);
+  },
 };

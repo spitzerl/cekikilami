@@ -224,6 +224,16 @@ export default function buildRoutes(gameService, ioNamespace) {
     }
   });
 
+  router.post('/sessions/:code/advance-round', async (req, res, next) => {
+    try {
+      const code = requireNonEmptyString(req.params.code, 'code').toUpperCase();
+      const state = await gameService.advanceRound(code);
+      res.json(state);
+    } catch (error) {
+      next(error);
+    }
+  });
+
   router.post('/sessions/:code/votes', async (req, res, next) => {
     try {
       const code = requireNonEmptyString(req.params.code, 'code').toUpperCase();

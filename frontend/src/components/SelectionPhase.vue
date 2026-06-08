@@ -8,11 +8,25 @@
       </div>
 
       <!-- Timer Indicator -->
-      <div :class="['flex items-center gap-3 px-5 py-2.5 rounded-xl border font-bold text-lg transition-all duration-300', remainingTime < 20 ? 'bg-rose-500/10 border-rose-500 text-rose-400 animate-pulse' : 'bg-slate-900 border-slate-800 text-cyan-400']">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-6 h-6">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-        </svg>
-        <span class="font-mono">{{ formatTime(remainingTime) }}</span>
+      <div class="flex items-center gap-3">
+        <div :class="['flex items-center gap-3 px-5 py-2.5 rounded-xl border font-bold text-lg transition-all duration-300', remainingTime < 20 ? 'bg-rose-500/10 border-rose-500 text-rose-400 animate-pulse' : 'bg-slate-900 border-slate-800 text-cyan-400']">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-6 h-6">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+          </svg>
+          <span class="font-mono">{{ formatTime(remainingTime) }}</span>
+        </div>
+        <!-- Host skip button: visible only when all non-bot players are ready -->
+        <button
+          v-if="isHost && allPlayersReady"
+          @click="forceStartVoting"
+          class="glow-btn bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-4 py-2.5 rounded-xl transition-all flex items-center gap-2 text-sm"
+          title="Tous les joueurs ont choisi — passer au vote maintenant"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 8.689c0-.864.933-1.406 1.683-.977l7.108 4.061a1.125 1.125 0 0 1 0 1.954l-7.108 4.061A1.125 1.125 0 0 1 3 16.811V8.69ZM12.75 8.689c0-.864.933-1.406 1.683-.977l7.108 4.061a1.125 1.125 0 0 1 0 1.954l-7.108 4.061a1.125 1.125 0 0 1-1.683-.977V8.69Z" />
+          </svg>
+          Passer au vote
+        </button>
       </div>
     </header>
 
@@ -317,6 +331,23 @@ const deleteSubmittedMusic = async (musicId) => {
 const isHost = computed(() => {
   return store.player && store.session && store.player.name === store.session.host_name;
 });
+
+// True when every connected, non-observer player has submitted the required number of musics
+const allPlayersReady = computed(() => {
+  if (!store.players || !store.musicCounts || !store.session) return false;
+  const maxMusics = store.session.max_musics_per_player || 2;
+  const activePlayers = store.players.filter(p => p.is_connected && !p.is_observer);
+  return activePlayers.length > 0 && activePlayers.every(p => (store.musicCounts[p.id] || 0) >= maxMusics);
+});
+
+const forceStartVoting = async () => {
+  if (!isHost.value) return;
+  try {
+    await store.startVoting();
+  } catch (err) {
+    console.error('Failed to force start voting:', err);
+  }
+};
 
 const promotePlayer = async (targetId) => {
   if (!isHost.value) return;

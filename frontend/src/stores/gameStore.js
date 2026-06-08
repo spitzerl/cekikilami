@@ -136,6 +136,13 @@ export const useGameStore = defineStore('game', {
       this.players = data.players;
       return data;
     },
+    async advanceRound() {
+      if (!this.session) return;
+      const { data } = await apiService.advanceRound(this.session.code);
+      this.session = data.session;
+      this.players = data.players;
+      return data;
+    },
     connectSocket(code) {
       const playerId = this.player?.id || null;
       socketService.join(code, playerId);

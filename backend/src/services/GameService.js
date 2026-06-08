@@ -390,6 +390,19 @@ export default class GameService {
     return this.getState(code);
   }
 
+  async advanceRound(code) {
+    const session = await Session.findByCode(code);
+    if (!session) {
+      throw new Error('Session introuvable');
+    }
+    if (session.phase !== 'voting' || session.voting_status !== 'revelation') {
+      throw new Error('Impossible d\'avancer depuis ce statut (révélation attendue)');
+    }
+    this.clearTimer(code);
+    await this.nextRound(code, session.current_music_index);
+    return this.getState(code);
+  }
+
   async triggerBotVotes(code, musicIndex) {
     const session = await Session.findByCode(code);
     if (!session) return;
