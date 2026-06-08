@@ -13,6 +13,7 @@ export const useGameStore = defineStore('game', {
     musicCounts: null,
     ranking: [],
     error: null,
+    notifications: [],
   }),
   actions: {
     async createSession(hostName) {
@@ -143,8 +144,28 @@ export const useGameStore = defineStore('game', {
       this.players = data.players;
       return data;
     },
+    addNotification(message, type = 'info') {
+      const id = Date.now() + Math.random().toString(36).substring(2, 9);
+      if (this.notifications.length >= 3) {
+        this.notifications.shift();
+      }
+      this.notifications.push({ id, message, type });
+      setTimeout(() => {
+        this.notifications = this.notifications.filter(n => n.id !== id);
+      }, 5000);
+    },
     connectSocket(code) {
       const playerId = this.player?.id || null;
+
+      // Clean up previous listeners to prevent duplicate joins & memory leaks
+      socketService.off('state:update');
+      socketService.off('sound:play');
+      socketService.off('player:kicked');
+      socketService.off('session:deleted');
+      socketService.off('player:status');
+      socketService.off('connect');
+      socketService.off('disconnect');
+
       socketService.join(code, playerId);
       
       socketService.on('state:update', (state) => {
@@ -184,6 +205,26 @@ export const useGameStore = defineStore('game', {
         this.votes = null;
         localStorage.removeItem('music_game_player');
         window.location.href = '/';
+      });
+
+      // Show notifications when other players connect or disconnect
+      socketService.on('player:status', ({ playerId: pId, playerName, isConnected }) => {
+        if (pId !== this.player?.id) {
+          const statusText = isConnected ? 'reconnecté' : 'déconnecté';
+          const type = isConnected ? 'success' : 'warning';
+          this.addNotification(`${playerName} s'est ${statusText}`, type);
+        }
+      });
+
+      // Show notifications when local player connects or disconnects
+      socketService.on('connect', () => {
+        this.addNotification("Vous êtes connecté au serveur de jeu", "success");
+      });
+
+      socketService.on('disconnect', (reason) => {
+        if (reason === 'io server disconnect' || reason === 'transport close' || reason === 'ping timeout') {
+          this.addNotification("Connexion perdue. Tentative de reconnexion...", "error");
+        }
       });
     },
     disconnectSocket() {

@@ -14,7 +14,17 @@ export default {
     return socket;
   },
   join(code, playerId = null) {
-    this.connect().emit('join', { code, playerId });
+    const s = this.connect();
+    // Clean up any old connect listener to avoid duplicate joins on reconnect
+    s.off('connect');
+    // When the socket connects or reconnects, emit the join event
+    s.on('connect', () => {
+      s.emit('join', { code, playerId });
+    });
+    // If socket is already connected, emit join immediately
+    if (s.connected) {
+      s.emit('join', { code, playerId });
+    }
   },
   on(event, callback) {
     this.connect().on(event, callback);
@@ -23,4 +33,9 @@ export default {
     if (!socket) return;
     socket.off(event, callback);
   },
+  disconnect() {
+    if (!socket) return;
+    socket.disconnect();
+    socket = null;
+  }
 };

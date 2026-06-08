@@ -20,9 +20,22 @@ export default function registerGameSocket(ioNamespace, gameService) {
           socket.playerId = parsedPlayerId;
           socket.code = sessionCode;
 
+          // Check if there's already another socket for this player in the room
+          const sockets = await ioNamespace.in(sessionCode).fetchSockets();
+          const anotherSocketExists = sockets.some(s => s.playerId === parsedPlayerId && s.id !== socket.id);
+
           // Update connection status to connected
           const player = await Player.updateConnectionStatus(parsedPlayerId, true);
           gameService.log(sessionCode, `Socket connected for player ${parsedPlayerId}`);
+
+          // Notify room of player status change if this is their first/only socket connection
+          if (!anotherSocketExists && player) {
+            ioNamespace.to(sessionCode).emit('player:status', {
+              playerId: parsedPlayerId,
+              playerName: player.name,
+              isConnected: true
+            });
+          }
 
           // Cancel host disconnect deletion timer if this player is the host
           if (player) {
@@ -62,6 +75,14 @@ export default function registerGameSocket(ioNamespace, gameService) {
             // No other socket, player disconnected!
             const player = await Player.updateConnectionStatus(playerId, false);
             gameService.log(code, `Player ${playerId} marked as disconnected`);
+
+            if (player) {
+              ioNamespace.to(code).emit('player:status', {
+                playerId,
+                playerName: player.name,
+                isConnected: false
+              });
+            }
 
             const session = await Session.findByCode(code);
             if (session && player && player.name === session.host_name) {
