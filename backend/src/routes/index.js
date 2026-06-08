@@ -265,8 +265,14 @@ export default function buildRoutes(gameService, ioNamespace) {
   router.post('/sessions/:code/players/:playerId/promote', async (req, res, next) => {
     try {
       const code = requireNonEmptyString(req.params.code, 'code').toUpperCase();
-      const targetPlayerId = Number.parseInt(requireNonEmptyString(req.params.playerId, 'playerId'), 10);
-      const requesterId = Number.parseInt(requireNonEmptyString(req.body?.requesterId, 'requesterId'), 10);
+      const targetPlayerId = Number.parseInt(req.params.playerId, 10);
+      const requesterId = Number.parseInt(req.body?.requesterId, 10);
+
+      if (Number.isNaN(targetPlayerId) || Number.isNaN(requesterId)) {
+        const error = new Error('playerId et requesterId doivent être des entiers valides');
+        error.status = 400;
+        throw error;
+      }
 
       const state = await gameService.promotePlayer(code, requesterId, targetPlayerId);
       res.json(state);
@@ -278,8 +284,14 @@ export default function buildRoutes(gameService, ioNamespace) {
   router.post('/sessions/:code/players/:playerId/kick', async (req, res, next) => {
     try {
       const code = requireNonEmptyString(req.params.code, 'code').toUpperCase();
-      const targetPlayerId = Number.parseInt(requireNonEmptyString(req.params.playerId, 'playerId'), 10);
-      const requesterId = Number.parseInt(requireNonEmptyString(req.body?.requesterId, 'requesterId'), 10);
+      const targetPlayerId = Number.parseInt(req.params.playerId, 10);
+      const requesterId = Number.parseInt(req.body?.requesterId, 10);
+
+      if (Number.isNaN(targetPlayerId) || Number.isNaN(requesterId)) {
+        const error = new Error('playerId et requesterId doivent être des entiers valides');
+        error.status = 400;
+        throw error;
+      }
 
       const state = await gameService.kickPlayer(code, requesterId, targetPlayerId);
       res.json(state);
