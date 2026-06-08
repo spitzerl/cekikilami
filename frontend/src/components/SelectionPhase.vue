@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen p-6 max-w-6xl mx-auto flex flex-col justify-between">
+  <div class="min-h-screen p-6 max-w-6xl mx-auto flex flex-col justify-between opacity-0 animate-fade-in-up">
     <!-- Header -->
     <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 pb-4 border-b border-slate-800">
       <div>
@@ -30,9 +30,25 @@
       </div>
     </header>
 
+    <!-- Mobile Tabs Navigation -->
+    <div class="flex md:hidden bg-slate-900/80 p-1.5 rounded-xl border border-slate-800 mb-6">
+      <button 
+        @click="activeTab = 'selection'" 
+        :class="['flex-1 py-2 px-3 rounded-lg text-sm font-bold transition-all text-center', activeTab === 'selection' ? 'bg-cyan-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white']"
+      >
+        Ma Sélection ({{ store.musics.length }} / {{ store.session?.max_musics_per_player || 2 }})
+      </button>
+      <button 
+        @click="activeTab = 'tracker'" 
+        :class="['flex-1 py-2 px-3 rounded-lg text-sm font-bold transition-all text-center', activeTab === 'tracker' ? 'bg-cyan-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white']"
+      >
+        Suivi des Dépôts
+      </button>
+    </div>
+
     <div class="grid md:grid-cols-3 gap-8 items-start mb-8">
       <!-- Left & Center Columns: Music search and added songs -->
-      <section class="glass-panel p-6 rounded-2xl md:col-span-2 border border-slate-800 space-y-6">
+      <section :class="['glass-panel p-6 rounded-2xl md:col-span-2 border border-slate-800 space-y-6', activeTab === 'selection' ? 'block' : 'hidden md:block']">
         <div>
           <div class="flex justify-between items-center mb-4">
             <h2 class="text-xl font-bold text-white flex items-center gap-2">
@@ -69,7 +85,12 @@
               <!-- Search Results -->
               <p v-if="searchError" class="text-sm text-rose-400 mt-2">{{ searchError }}</p>
               
-              <ul v-if="tracks.length" class="max-h-60 overflow-y-auto space-y-2 rounded-lg border border-slate-800 bg-slate-950/40 p-2">
+              <TransitionGroup
+                name="list"
+                tag="ul"
+                v-if="tracks.length"
+                class="max-h-60 overflow-y-auto space-y-2 rounded-lg border border-slate-800 bg-slate-950/40 p-2"
+              >
                 <li
                   v-for="track in tracks"
                   :key="track.id"
@@ -98,7 +119,7 @@
                     </button>
                   </div>
                 </li>
-              </ul>
+              </TransitionGroup>
             </form>
           </div>
 
@@ -110,8 +131,12 @@
         <!-- Submitted Musics List with Delete option -->
         <div class="border-t border-slate-800 pt-6">
           <h3 class="text-lg font-bold text-white mb-4">Vos musiques soumises</h3>
-          <div class="space-y-3">
-            <div v-for="music in store.musics" :key="music.id" class="glass-card p-4 rounded-xl flex items-center justify-between border border-slate-800">
+          <TransitionGroup
+            name="list"
+            tag="div"
+            class="space-y-3"
+          >
+            <div v-for="music in store.musics" :key="music.id" class="glass-card p-4 rounded-xl flex items-center justify-between border border-slate-800 hover:border-slate-700 transition-all hover:scale-[1.01]">
               <div>
                 <p class="font-bold text-white text-sm">{{ music.title }}</p>
                 <p class="text-xs text-slate-400">{{ music.artist }}</p>
@@ -122,13 +147,13 @@
                 </svg>
               </button>
             </div>
-            <p v-if="!store.musics.length" class="text-xs text-slate-500 italic">Aucune musique ajoutée pour le moment.</p>
-          </div>
+          </TransitionGroup>
+          <p v-if="!store.musics.length" class="text-xs text-slate-500 italic">Aucune musique ajoutée pour le moment.</p>
         </div>
       </section>
 
       <!-- Right Column: Submission Tracker -->
-      <section class="glass-panel p-6 rounded-2xl md:col-span-1 border border-slate-800">
+      <section :class="['glass-panel p-6 rounded-2xl md:col-span-1 border border-slate-800', activeTab === 'tracker' ? 'block' : 'hidden md:block']">
         <h2 class="text-xl font-bold text-white mb-6 flex items-center gap-2">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 text-purple-400">
             <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.109A3.318 3.318 0 0 1 11.682 22H8.318A3.318 3.318 0 0 1 5 19.237v-.109c0-1.113.285-2.16.786-3.07M15 19.128v-.109a3.318 3.318 0 0 0-3.318-3.318H8.318a3.318 3.318 0 0 0-3.318 3.318v.109M15 19.128v.109c0 .248-.027.493-.08.73M5 19.128v.109c.053.237.08.482.08.73m0 0A3.318 3.318 0 0 1 8.318 22h3.364a3.318 3.318 0 0 0 3.238-2.673M5 19.128v-.109c0-.218.02-.435.06-.645m10.28 0a3.3 3.3 0 0 0-.06-.645M19.5 8.25a3 3 0 1 1-6 0 3 3 0 0 1 6 0ZM6.75 6a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm13.5 9a2.25 2.25 0 0 0-4.5 0 2.25 2.25 0 0 0 4.5 0Z" />
@@ -191,6 +216,7 @@ const searchQuery = ref('');
 const tracks = ref([]);
 const isSearching = ref(false);
 const searchError = ref('');
+const activeTab = ref('selection');
 
 // Timer Management
 const remainingTime = ref(0);
