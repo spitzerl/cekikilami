@@ -70,3 +70,89 @@ h1, h2, h3, h4, h5, h6 {
 .animate-pulse-glow {
   animation: pulse-glow 2s ease-in-out infinite;
 }
+
+/* Animations for UI overhaul */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes grow-y {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+.animate-grow-y {
+  animation: grow-y 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transform-origin: bottom;
+}
+
+/* Equalizer Bars Animations */
+@keyframes eq-bar-1 {
+  0%, 100% { height: 20%; }
+  50% { height: 75%; }
+}
+@keyframes eq-bar-2 {
+  0%, 100% { height: 40%; }
+  50% { height: 90%; }
+}
+@keyframes eq-bar-3 {
+  0%, 100% { height: 15%; }
+  50% { height: 100%; }
+}
+@keyframes eq-bar-4 {
+  0%, 100% { height: 35%; }
+  50% { height: 80%; }
+}
+@keyframes eq-bar-5 {
+  0%, 100% { height: 25%; }
+  50% { height: 85%; }
+}
+
+.animate-eq-1 { animation: eq-bar-1 0.8s ease-in-out infinite; }
+.animate-eq-2 { animation: eq-bar-2 0.65s ease-in-out infinite; }
+.animate-eq-3 { animation: eq-bar-3 0.9s ease-in-out infinite; }
+.animate-eq-4 { animation: eq-bar-4 0.75s ease-in-out infinite; }
+.animate-eq-5 { animation: eq-bar-5 0.85s ease-in-out infinite; }
+
+/* Vue List Transitions */
+.list-enter-active,
+.list-leave-active {
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.list-enter-from {
+  opacity: 0;
+  transform: translateY(12px);
+}
+.list-leave-to {
+  opacity: 0;
+  transform: translateY(-12px);
+}
+.list-move {
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Vue Fade Transitions */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
