@@ -67,7 +67,8 @@ async function initSchema() {
     ADD COLUMN IF NOT EXISTS max_players INTEGER DEFAULT 12,
     ADD COLUMN IF NOT EXISTS current_music_index INTEGER DEFAULT -1,
     ADD COLUMN IF NOT EXISTS voting_status VARCHAR(20) DEFAULT 'idle',
-    ADD COLUMN IF NOT EXISTS timer_ends_at TIMESTAMP;
+    ADD COLUMN IF NOT EXISTS timer_ends_at TIMESTAMP,
+    ADD COLUMN IF NOT EXISTS auto_advance BOOLEAN DEFAULT FALSE;
   `);
 
   await pool.query(`

@@ -144,9 +144,11 @@
 
         <div class="space-y-4">
           <div v-for="player in store.players" :key="player.id" class="flex items-center justify-between border-b border-slate-800 pb-3 last:border-0 last:pb-0">
-            <div class="flex items-center gap-2">
-              <span :class="['w-2 h-2 rounded-full', player.is_connected ? 'bg-emerald-500' : 'bg-rose-500']"></span>
-              <span class="font-bold text-sm text-slate-300">{{ player.name }}</span>
+            <div class="flex items-center gap-2 min-w-0">
+              <span :class="['w-2 h-2 rounded-full flex-shrink-0', player.is_connected ? 'bg-emerald-500' : 'bg-rose-500']"></span>
+              <span class="font-bold text-sm text-slate-300 truncate">{{ player.name }}</span>
+              <span v-if="player.is_bot" class="text-[9px] bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 px-1 py-0.5 rounded font-extrabold uppercase tracking-wider flex-shrink-0">Bot</span>
+              <span v-if="player.name === store.session?.host_name" class="text-[9px] bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 px-1 py-0.5 rounded font-extrabold uppercase tracking-wider flex-shrink-0">Hôte</span>
             </div>
             
             <div class="flex items-center gap-2">
@@ -157,6 +159,22 @@
               <!-- Ready Badge -->
               <span v-if="getPlayerMusicCount(player.id) >= (store.session?.max_musics_per_player || 2)" class="text-[10px] bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/20 font-bold uppercase">Prêt</span>
               <span v-else class="text-[10px] bg-slate-900 text-slate-500 px-1.5 py-0.5 rounded border border-slate-800 font-bold uppercase">En cours</span>
+              
+              <!-- Host Actions -->
+              <div v-if="isHost && player.id !== store.player?.id" class="flex gap-1 border-l border-slate-800 pl-2 ml-1">
+                <!-- Promote to Host -->
+                <button v-if="!player.is_bot" @click="promotePlayer(player.id)" title="Promouvoir Hôte" class="p-1 rounded bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/20 text-yellow-400 transition-all">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3 h-3">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 11.25l-3-3m0 0l-3 3m3-3v11.25M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </button>
+                <!-- Kick Player -->
+                <button @click="kickPlayer(player.id)" title="Kick du salon" class="p-1 rounded bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-400 transition-all">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3 h-3">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -166,7 +184,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, watch } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import apiService from '../services/apiService';
 import { useGameStore } from '../stores/gameStore';
@@ -319,6 +337,32 @@ const deleteSubmittedMusic = async (musicId) => {
     await store.deleteMusic(musicId);
   } catch (err) {
     console.error("Failed to delete music:", err);
+  }
+};
+
+const isHost = computed(() => {
+  return store.player && store.session && store.player.name === store.session.host_name;
+});
+
+const promotePlayer = async (targetId) => {
+  if (!isHost.value) return;
+  if (confirm("Voulez-vous vraiment désigner ce joueur comme Hôte ? Vous perdrez vos droits d'administration.")) {
+    try {
+      await store.promotePlayer(targetId);
+    } catch (err) {
+      console.error("Failed to promote player:", err);
+    }
+  }
+};
+
+const kickPlayer = async (targetId) => {
+  if (!isHost.value) return;
+  if (confirm("Voulez-vous vraiment exclure ce joueur de la partie ?")) {
+    try {
+      await store.kickPlayer(targetId);
+    } catch (err) {
+      console.error("Failed to kick player:", err);
+    }
   }
 };
 </script>

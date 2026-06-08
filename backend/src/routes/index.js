@@ -216,9 +216,15 @@ export default function buildRoutes(gameService, ioNamespace) {
   router.post('/sessions/:code/votes', async (req, res, next) => {
     try {
       const code = requireNonEmptyString(req.params.code, 'code').toUpperCase();
-      const voterId = Number.parseInt(requireNonEmptyString(req.body?.voterId, 'voterId'), 10);
-      const musicId = Number.parseInt(requireNonEmptyString(req.body?.musicId, 'musicId'), 10);
-      const guessedPlayerId = Number.parseInt(requireNonEmptyString(req.body?.guessedPlayerId, 'guessedPlayerId'), 10);
+      const voterId = Number.parseInt(req.body?.voterId, 10);
+      const musicId = Number.parseInt(req.body?.musicId, 10);
+      const guessedPlayerId = Number.parseInt(req.body?.guessedPlayerId, 10);
+
+      if (Number.isNaN(voterId) || Number.isNaN(musicId) || Number.isNaN(guessedPlayerId)) {
+        const error = new Error('Les identifiants voterId, musicId et guessedPlayerId sont requis et doivent être des entiers');
+        error.status = 400;
+        throw error;
+      }
 
       const state = await gameService.submitVote(code, voterId, musicId, guessedPlayerId);
       res.json(state);
@@ -251,6 +257,32 @@ export default function buildRoutes(gameService, ioNamespace) {
     try {
       const code = requireNonEmptyString(req.params.code, 'code').toUpperCase();
       res.json(await gameService.getResults(code));
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post('/sessions/:code/players/:playerId/promote', async (req, res, next) => {
+    try {
+      const code = requireNonEmptyString(req.params.code, 'code').toUpperCase();
+      const targetPlayerId = Number.parseInt(requireNonEmptyString(req.params.playerId, 'playerId'), 10);
+      const requesterId = Number.parseInt(requireNonEmptyString(req.body?.requesterId, 'requesterId'), 10);
+
+      const state = await gameService.promotePlayer(code, requesterId, targetPlayerId);
+      res.json(state);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post('/sessions/:code/players/:playerId/kick', async (req, res, next) => {
+    try {
+      const code = requireNonEmptyString(req.params.code, 'code').toUpperCase();
+      const targetPlayerId = Number.parseInt(requireNonEmptyString(req.params.playerId, 'playerId'), 10);
+      const requesterId = Number.parseInt(requireNonEmptyString(req.body?.requesterId, 'requesterId'), 10);
+
+      const state = await gameService.kickPlayer(code, requesterId, targetPlayerId);
+      res.json(state);
     } catch (error) {
       next(error);
     }

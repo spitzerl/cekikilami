@@ -62,6 +62,14 @@ export const useGameStore = defineStore('game', {
       this.musics = data.musics || [];
       return data;
     },
+    async startRound() {
+      if (!this.session) return;
+      const { data } = await apiService.startRound(this.session.code);
+      this.session = data.session;
+      this.players = data.players;
+      this.musics = data.musics || [];
+      return data;
+    },
     async deleteMusic(musicId) {
       if (!this.session || !this.player) return;
       const { data } = await apiService.deleteMusic(this.session.code, musicId, this.player.id);
@@ -109,6 +117,20 @@ export const useGameStore = defineStore('game', {
       this.votes = null;
       return data;
     },
+    async promotePlayer(targetPlayerId) {
+      if (!this.session || !this.player) return;
+      const { data } = await apiService.promotePlayer(this.session.code, this.player.id, targetPlayerId);
+      this.session = data.session;
+      this.players = data.players;
+      return data;
+    },
+    async kickPlayer(targetPlayerId) {
+      if (!this.session || !this.player) return;
+      const { data } = await apiService.kickPlayer(this.session.code, this.player.id, targetPlayerId);
+      this.session = data.session;
+      this.players = data.players;
+      return data;
+    },
     connectSocket(code) {
       const playerId = this.player?.id || null;
       socketService.join(code, playerId);
@@ -126,6 +148,18 @@ export const useGameStore = defineStore('game', {
         import('../services/soundService.js').then((module) => {
           module.default.play(type);
         });
+      });
+
+      socketService.on('player:kicked', () => {
+        alert("Vous avez été exclu (kicked) de la partie par l'hôte.");
+        this.session = null;
+        this.player = null;
+        this.players = [];
+        this.musics = [];
+        this.currentMusic = null;
+        this.votes = null;
+        localStorage.removeItem('music_game_player');
+        window.location.href = '/';
       });
 
       socketService.on('session:deleted', () => {

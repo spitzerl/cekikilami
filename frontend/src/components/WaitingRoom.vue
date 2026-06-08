@@ -64,6 +64,8 @@
           <div>
             <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Durée de sélection</label>
             <select v-model="config.selectionDuration" :disabled="!isHost" @change="saveConfig" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-cyan-500 disabled:opacity-60 disabled:cursor-not-allowed">
+              <option :value="15">15 secondes</option>
+              <option :value="30">30 secondes</option>
               <option :value="60">60 secondes (1 min)</option>
               <option :value="120">120 secondes (2 min)</option>
               <option :value="180">180 secondes (3 min)</option>
@@ -85,6 +87,8 @@
           <div>
             <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Temps de vote</label>
             <select v-model="config.votingDuration" :disabled="!isHost" @change="saveConfig" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-cyan-500 disabled:opacity-60 disabled:cursor-not-allowed">
+              <option :value="5">5 secondes</option>
+              <option :value="10">10 secondes</option>
               <option :value="15">15 secondes</option>
               <option :value="20">20 secondes</option>
               <option :value="30">30 secondes</option>
@@ -96,6 +100,12 @@
           <div class="flex items-center justify-between py-2 border-y border-slate-800">
             <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Révéler les réponses</span>
             <input type="checkbox" v-model="config.showAnswers" :disabled="!isHost" @change="saveConfig" class="w-5 h-5 rounded border-slate-700 bg-slate-900 text-cyan-500 focus:ring-cyan-500 disabled:opacity-60 disabled:cursor-not-allowed" />
+          </div>
+
+          <!-- Auto Advance -->
+          <div class="flex items-center justify-between py-2 border-b border-slate-800">
+            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Enchaîner les manches</span>
+            <input type="checkbox" v-model="config.autoAdvance" :disabled="!isHost" @change="saveConfig" class="w-5 h-5 rounded border-slate-700 bg-slate-900 text-cyan-500 focus:ring-cyan-500 disabled:opacity-60 disabled:cursor-not-allowed" />
           </div>
 
           <!-- Max Players -->
@@ -133,16 +143,33 @@
           <!-- Players Grid -->
           <div class="grid sm:grid-cols-2 gap-4">
             <div v-for="player in store.players" :key="player.id" :class="['glass-card p-4 rounded-xl flex items-center justify-between border border-slate-800 transition-all duration-300', !player.is_connected ? 'opacity-40 border-slate-900 bg-slate-950/40' : '']">
-              <div class="flex items-center gap-3">
+              <div class="flex items-center gap-3 min-w-0">
                 <!-- Status circle indicator -->
-                <span :class="['w-2.5 h-2.5 rounded-full', player.is_connected ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500']"></span>
-                <span class="font-bold text-white">{{ player.name }}</span>
-                <span v-if="player.is_bot" class="text-[10px] bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider">Bot</span>
-                <span v-if="player.name === store.session?.host_name" class="text-[10px] bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider">Hôte</span>
+                <span :class="['w-2.5 h-2.5 rounded-full flex-shrink-0', player.is_connected ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500']"></span>
+                <span class="font-bold text-white truncate">{{ player.name }}</span>
+                <span v-if="player.is_bot" class="text-[10px] bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider flex-shrink-0">Bot</span>
+                <span v-if="player.name === store.session?.host_name" class="text-[10px] bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider flex-shrink-0">Hôte</span>
               </div>
-              <div class="text-xs font-semibold text-slate-500">
-                <span v-if="!player.is_connected">Déconnecté</span>
-                <span v-else class="text-emerald-400">Prêt</span>
+              <div class="flex items-center gap-3">
+                <div class="text-xs font-semibold text-slate-500">
+                  <span v-if="!player.is_connected">Déconnecté</span>
+                  <span v-else class="text-emerald-400">Prêt</span>
+                </div>
+                <!-- Host Actions -->
+                <div v-if="isHost && player.id !== store.player?.id" class="flex gap-1.5 border-l border-slate-800 pl-3">
+                  <!-- Promote to Host -->
+                  <button v-if="!player.is_bot" @click="promotePlayer(player.id)" title="Promouvoir Hôte" class="p-1 rounded bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/20 text-yellow-400 transition-all">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3.5 h-3.5">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M15 11.25l-3-3m0 0l-3 3m3-3v11.25M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </button>
+                  <!-- Kick Player -->
+                  <button @click="kickPlayer(player.id)" title="Kick du salon" class="p-1 rounded bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-400 transition-all">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3.5 h-3.5">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -195,7 +222,8 @@ const config = reactive({
   extractDuration: 20,
   votingDuration: 30,
   showAnswers: true,
-  maxPlayers: 8
+  maxPlayers: 8,
+  autoAdvance: false
 });
 
 const isHost = computed(() => {
@@ -211,6 +239,7 @@ const loadAndSyncConfig = async () => {
     config.votingDuration = store.session.voting_duration;
     config.showAnswers = store.session.show_answers;
     config.maxPlayers = store.session.max_players;
+    config.autoAdvance = store.session.auto_advance;
   }
 };
 
@@ -230,6 +259,7 @@ watch(() => store.session, (newSession) => {
     config.votingDuration = newSession.voting_duration;
     config.showAnswers = newSession.show_answers;
     config.maxPlayers = newSession.max_players;
+    config.autoAdvance = newSession.auto_advance;
     
     // Redirect if phase is already started
     if (newSession.phase === 'selection') {
@@ -263,7 +293,8 @@ const saveConfig = async () => {
       extractDuration: config.extractDuration,
       votingDuration: config.votingDuration,
       showAnswers: config.showAnswers,
-      maxPlayers: config.maxPlayers
+      maxPlayers: config.maxPlayers,
+      autoAdvance: config.autoAdvance
     });
   } catch (err) {
     console.error("Failed to update config:", err);
@@ -285,6 +316,28 @@ const startSelection = async () => {
     await store.startSelection();
   } catch (err) {
     console.error("Failed to start selection:", err);
+  }
+};
+
+const promotePlayer = async (targetId) => {
+  if (!isHost.value) return;
+  if (confirm("Voulez-vous vraiment désigner ce joueur comme Hôte ? Vous perdrez vos droits d'administration.")) {
+    try {
+      await store.promotePlayer(targetId);
+    } catch (err) {
+      console.error("Failed to promote player:", err);
+    }
+  }
+};
+
+const kickPlayer = async (targetId) => {
+  if (!isHost.value) return;
+  if (confirm("Voulez-vous vraiment exclure ce joueur de la partie ?")) {
+    try {
+      await store.kickPlayer(targetId);
+    } catch (err) {
+      console.error("Failed to kick player:", err);
+    }
   }
 };
 </script>

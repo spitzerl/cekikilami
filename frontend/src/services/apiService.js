@@ -23,6 +23,9 @@ export default {
   startSelection(code) {
     return api.post(`/sessions/${code}/start-selection`);
   },
+  startRound(code) {
+    return api.post(`/sessions/${code}/start-round`);
+  },
   addMusic(code, payload) {
     if (payload.audio instanceof File) {
       const form = new FormData();
@@ -55,5 +58,11 @@ export default {
   },
   resetSession(code) {
     return api.post(`/sessions/${code}/reset`);
+  },
+  promotePlayer(code, requesterId, targetPlayerId) {
+    return api.post(`/sessions/${code}/players/${targetPlayerId}/promote`, { requesterId });
+  },
+  kickPlayer(code, requesterId, targetPlayerId) {
+    return api.post(`/sessions/${code}/players/${targetPlayerId}/kick`, { requesterId });
   },
 };

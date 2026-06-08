@@ -99,8 +99,8 @@ export default class GameService {
     if (!session) {
       throw new Error('Session introuvable');
     }
-    if (session.phase !== 'waiting') {
-      throw new Error('Impossible de modifier les paramètres après le début de la partie');
+    if (session.phase !== 'waiting' && (session.phase !== 'voting' || session.voting_status !== 'idle')) {
+      throw new Error('Impossible de modifier les paramètres en cours de jeu');
     }
     const updated = await Session.updateConfig(code, config);
     this.log(code, `Configuration updated: ${JSON.stringify(config)}`);
@@ -207,12 +207,27 @@ export default class GameService {
       const limit = session.max_musics_per_player;
       for (let i = 0; i < limit; i++) {
         const track = shuffledTracks[i % shuffledTracks.length];
+        
+        let freshFilePath = track.file_path;
+        try {
+          const searchUrl = `https://api.deezer.com/search?q=${encodeURIComponent(`${track.title} ${track.artist}`)}&limit=1`;
+          const response = await fetch(searchUrl);
+          if (response.ok) {
+            const payload = await response.json();
+            if (payload?.data?.[0]?.preview) {
+              freshFilePath = payload.data[0].preview;
+            }
+          }
+        } catch (err) {
+          console.warn(`Failed to fetch fresh preview for bot track: ${track.title}`, err);
+        }
+
         await Music.create({
           sessionId: session.id,
           playerId: bot.id,
           title: track.title,
           artist: track.artist,
-          filePath: track.file_path
+          filePath: freshFilePath
         });
       }
     }
@@ -285,40 +300,47 @@ export default class GameService {
       return this.finishSession(code);
     }
 
-    this.log(code, 'Voting phase started, entering first listening subphase');
-    await this.enterVotingSubphase(code, 0, 'listening');
+    const initialStatus = session.auto_advance ? 'listening' : 'idle';
+    this.log(code, `Voting phase started, entering first subphase: ${initialStatus}`);
+    await this.enterVotingSubphase(code, 0, initialStatus);
   }
 
   async enterVotingSubphase(code, musicIndex, status) {
     const session = await Session.findByCode(code);
     if (!session) return;
 
-    let duration = 10; // Default revelation duration
+    let duration = 0;
     if (status === 'listening') {
       duration = session.extract_duration;
     } else if (status === 'voting') {
       duration = session.voting_duration;
+    } else if (status === 'revelation') {
+      duration = 10; // Default revelation duration
     }
 
-    const callback = async () => {
-      this.log(code, `Subphase timer finished for music index ${musicIndex}, status ${status}`);
-      if (status === 'listening') {
-        // Transition to voting
-        await this.enterVotingSubphase(code, musicIndex, 'voting');
-      } else if (status === 'voting') {
-        // Transition to revelation or next music
-        if (session.show_answers) {
-          await this.enterVotingSubphase(code, musicIndex, 'revelation');
-        } else {
+    this.clearTimer(code);
+
+    let endsAt = null;
+    if (duration > 0) {
+      const callback = async () => {
+        this.log(code, `Subphase timer finished for music index ${musicIndex}, status ${status}`);
+        if (status === 'listening') {
+          // Transition to voting
+          await this.enterVotingSubphase(code, musicIndex, 'voting');
+        } else if (status === 'voting') {
+          // Transition to revelation or next music
+          if (session.show_answers) {
+            await this.enterVotingSubphase(code, musicIndex, 'revelation');
+          } else {
+            await this.nextRound(code, musicIndex);
+          }
+        } else if (status === 'revelation') {
+          // Transition to next music
           await this.nextRound(code, musicIndex);
         }
-      } else if (status === 'revelation') {
-        // Transition to next music
-        await this.nextRound(code, musicIndex);
-      }
-    };
-
-    const endsAt = this.startTimer(code, duration, callback);
+      };
+      endsAt = this.startTimer(code, duration, callback);
+    }
 
     const updatedSession = await Session.updateVotingState(code, {
       currentMusicIndex: musicIndex,
@@ -349,10 +371,23 @@ export default class GameService {
     const nextIndex = currentIndex + 1;
 
     if (nextIndex < activeMusics.length) {
-      await this.enterVotingSubphase(code, nextIndex, 'listening');
+      const nextStatus = session.auto_advance ? 'listening' : 'idle';
+      await this.enterVotingSubphase(code, nextIndex, nextStatus);
     } else {
       await this.finishSession(code);
     }
+  }
+
+  async startRound(code) {
+    const session = await Session.findByCode(code);
+    if (!session) {
+      throw new Error('Session introuvable');
+    }
+    if (session.phase !== 'voting' || session.voting_status !== 'idle') {
+      throw new Error('Impossible de lancer la manche depuis ce statut');
+    }
+    await this.enterVotingSubphase(code, session.current_music_index, 'listening');
+    return this.getState(code);
   }
 
   async triggerBotVotes(code, musicIndex) {
@@ -423,10 +458,6 @@ export default class GameService {
     // Validate vote
     if (voterId === guessedPlayerId) {
       throw new Error('Vous ne pouvez pas voter pour vous-même');
-    }
-
-    if (music.player_id === voterId) {
-      throw new Error('Vous ne pouvez pas voter pour votre propre musique');
     }
 
     await query(
@@ -514,12 +545,18 @@ export default class GameService {
     const musicProposers = new Map(rawMusics.map(m => [m.id, m.player_id]));
 
     for (const vote of votes) {
+      const proposerId = musicProposers.get(vote.music_id);
+      
+      // Skip proposer's vote from scoring as it is just bluff
+      if (vote.voter_id === proposerId) {
+        continue;
+      }
+
       const guessed = playerMap.get(vote.guessed_player_id);
       if (guessed) {
         guessed.votesReceived += 1;
       }
 
-      const proposerId = musicProposers.get(vote.music_id);
       if (proposerId && vote.guessed_player_id === proposerId) {
         const voter = playerMap.get(vote.voter_id);
         if (voter) {
@@ -625,6 +662,81 @@ export default class GameService {
       ...state,
       ranking: state.players
     };
+  }
+
+  async promotePlayer(code, requesterId, targetPlayerId) {
+    const session = await Session.findByCode(code);
+    if (!session) throw new Error('Session introuvable');
+
+    const players = await Player.findBySession(session.id);
+    const requester = players.find(p => p.id === requesterId);
+    if (!requester || requester.name !== session.host_name) {
+      throw new Error('Seul l\'hôte actuel peut promouvoir un autre joueur');
+    }
+
+    const targetPlayer = players.find(p => p.id === targetPlayerId);
+    if (!targetPlayer) throw new Error('Joueur cible introuvable');
+    if (targetPlayer.is_bot) throw new Error('Impossible de promouvoir un bot');
+
+    await query(
+      'UPDATE sessions SET host_name = $1, updated_at = NOW() WHERE code = $2',
+      [targetPlayer.name, code]
+    );
+
+    this.log(code, `Host promoted: ${targetPlayer.name}`);
+    await this.broadcastState(code);
+    return this.getState(code, requesterId);
+  }
+
+  async kickPlayer(code, requesterId, targetPlayerId) {
+    const session = await Session.findByCode(code);
+    if (!session) throw new Error('Session introuvable');
+
+    const players = await Player.findBySession(session.id);
+    const requester = players.find(p => p.id === requesterId);
+    if (!requester || requester.name !== session.host_name) {
+      throw new Error('Seul l\'hôte actuel peut kick un joueur');
+    }
+
+    const targetPlayer = players.find(p => p.id === targetPlayerId);
+    if (!targetPlayer) throw new Error('Joueur cible introuvable');
+
+    if (targetPlayer.name === session.host_name) {
+      throw new Error('L\'hôte ne peut pas se kick lui-même. Transférez d\'abord le rôle d\'hôte.');
+    }
+
+    // Disconnect socket for the kicked player
+    if (this.ioNamespace) {
+      const sockets = await this.ioNamespace.in(code).fetchSockets();
+      const targetSockets = sockets.filter(s => s.playerId === targetPlayerId);
+      for (const s of targetSockets) {
+        s.emit('player:kicked');
+        s.disconnect(true);
+      }
+    }
+
+    // Delete player (ON DELETE CASCADE will clean up musics/votes)
+    await Player.deletePlayer(targetPlayerId);
+
+    this.log(code, `Player kicked: ${targetPlayer.name}`);
+
+    // If the game is in selection or voting, adjust music play orders
+    const remainingMusics = await Music.findBySession(session.id);
+    if (session.phase === 'voting' && remainingMusics.length > 0) {
+      remainingMusics.sort((a, b) => a.play_order - b.play_order);
+      for (let index = 0; index < remainingMusics.length; index++) {
+        await query('UPDATE musics SET play_order = $1 WHERE id = $2', [index, remainingMusics[index].id]);
+      }
+      
+      if (session.current_music_index >= remainingMusics.length) {
+        await this.finishSession(code);
+      }
+    } else if (session.phase === 'voting' && remainingMusics.length === 0) {
+      await this.finishSession(code);
+    }
+
+    await this.broadcastState(code);
+    return this.getState(code, requesterId);
   }
 
   async recoverSessions() {
