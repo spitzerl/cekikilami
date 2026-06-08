@@ -10,6 +10,12 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - internal-network
+    # Test pour vérifier que Postgres est pleinement opérationnel
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d music_game"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
 
   redis:
     image: redis:7-alpine
@@ -26,11 +32,13 @@ services:
       REDIS_URL: redis://redis:6379
       CORS_ORIGIN: https://devine-beat.lucasspitzer.fr
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy # Attend que le healthcheck de Postgres passe au vert
+      redis:
+        condition: service_started
     networks:
       - internal-network
-      - traefik-network # Connecté au réseau de Traefik
+      - traefik-network
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.musicgame-backend.rule=Host(`devine-beat.lucasspitzer.fr`) && (PathPrefix(`/api`) || PathPrefix(`/socket.io`))"
@@ -38,6 +46,7 @@ services:
       - "traefik.http.routers.musicgame-backend.tls=true"
       - "traefik.http.routers.musicgame-backend.tls.certresolver=letsencrypt"
       - "traefik.http.services.musicgame-backend.loadbalancer.server.port=3001"
+    restart: on-failure # Redémarre automatiquement en cas de crash imprévu
 
   frontend:
     build:
@@ -49,7 +58,7 @@ services:
       - backend
     networks:
       - internal-network
-      - traefik-network # Connecté au réseau de Traefik
+      - traefik-network
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.musicgame-frontend.rule=Host(`devine-beat.lucasspitzer.fr`)"
@@ -62,10 +71,8 @@ volumes:
   postgres_data:
 
 networks:
-  # Réseau interne isolé pour l'application
   internal-network:
     driver: bridge
-  # Liaison avec votre réseau Traefik existant nommé "proxy"
   traefik-network:
     external: true
     name: proxy
