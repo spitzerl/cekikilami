@@ -1,6 +1,14 @@
 <template>
+  <!-- Loading state -->
+  <div v-if="isLoading" class="min-h-screen flex items-center justify-center p-4">
+    <div class="text-slate-400 font-semibold flex items-center gap-2">
+      <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping"></span>
+      Chargement...
+    </div>
+  </div>
+
   <!-- Join Form if not in session -->
-  <div v-if="!store.player || store.player.session_id !== store.session?.id" class="relative min-h-screen flex items-center justify-center p-4 overflow-hidden">
+  <div v-else-if="!store.player || store.player.session_id !== store.session?.id" class="relative min-h-screen flex items-center justify-center p-4 overflow-hidden">
     <div class="absolute -top-40 -left-40 w-96 h-96 bg-purple-600 rounded-full filter blur-[128px] opacity-20 animate-pulse"></div>
     <div class="absolute -bottom-40 -right-40 w-96 h-96 bg-cyan-600 rounded-full filter blur-[128px] opacity-20 animate-pulse" style="animation-delay: 2s;"></div>
     
@@ -214,6 +222,7 @@ const store = useGameStore();
 
 const directPseudo = ref('');
 const errorMsg = ref(null);
+const isLoading = ref(true);
 
 // Form configuration state reactively mapped to session config
 const config = reactive({
@@ -244,9 +253,15 @@ const loadAndSyncConfig = async () => {
 };
 
 onMounted(async () => {
-  await loadAndSyncConfig();
-  if (store.player && store.player.session_id === store.session?.id) {
-    store.connectSocket(route.params.code);
+  try {
+    await loadAndSyncConfig();
+    if (store.player && store.player.session_id === store.session?.id) {
+      store.connectSocket(route.params.code);
+    }
+  } catch (err) {
+    console.error("Failed to load waiting room session:", err);
+  } finally {
+    isLoading.value = false;
   }
 });
 
