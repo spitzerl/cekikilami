@@ -143,7 +143,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useGameStore } from '../stores/gameStore';
 
@@ -175,6 +175,28 @@ const openMenu = () => {
 const closeMenu = () => {
   isOpen.value = false;
 };
+
+const handleKeyDown = (e) => {
+  if (e.key === 'Escape' && isVisible.value) {
+    if (isOpen.value) {
+      if (currentTab.value === 'players') {
+        currentTab.value = 'main';
+      } else {
+        closeMenu();
+      }
+    } else {
+      openMenu();
+    }
+  }
+};
+
+onMounted(() => {
+  window.addEventListener('keydown', handleKeyDown);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeyDown);
+});
 
 const copyLink = async () => {
   try {
