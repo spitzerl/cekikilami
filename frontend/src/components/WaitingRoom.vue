@@ -32,7 +32,7 @@
   </div>
 
   <!-- Waiting Room Content -->
-  <div v-else class="min-h-screen p-6 max-w-6xl mx-auto flex flex-col justify-between">
+  <div v-else class="min-h-screen p-6 max-w-6xl mx-auto flex flex-col justify-between opacity-0 animate-fade-in-up">
     <!-- Header -->
     <header class="flex justify-between items-center mb-8 pb-4 border-b border-slate-800">
       <div>
@@ -47,16 +47,27 @@
 
     <div class="grid md:grid-cols-3 gap-8 mb-8 items-start">
       <!-- Left Column: Config Panel -->
-      <section class="glass-panel p-6 rounded-2xl md:col-span-1 border border-slate-800">
-        <h2 class="text-xl font-bold text-white mb-6 flex items-center gap-2">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 text-cyan-400">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.43l-1.003.828c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.43l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" />
-            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-          </svg>
-          Paramètres du jeu
-        </h2>
+      <section class="glass-panel p-6 rounded-2xl md:col-span-1 border border-slate-800 transition-all duration-300">
+        <div class="flex justify-between items-center mb-4 md:mb-6 cursor-pointer md:cursor-default" @click="toggleConfigMobile">
+          <h2 class="text-xl font-bold text-white flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 text-cyan-400">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.43l-1.003.828c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.43l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+            </svg>
+            Paramètres du jeu
+          </h2>
+          <!-- Collapse/Expand arrow: only visible on mobile -->
+          <button class="md:hidden text-slate-400 focus:outline-none p-1" aria-label="Toggle Configuration">
+            <svg v-if="showConfigOnMobile" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 15.75 7.5-7.5 7.5 7.5" />
+            </svg>
+            <svg v-else xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+            </svg>
+          </button>
+        </div>
 
-        <div class="space-y-5">
+        <div :class="['transition-all duration-300 md:block space-y-5', showConfigOnMobile ? 'block opacity-100' : 'hidden']">
           <!-- Max Musics per Player -->
           <div>
             <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Musiques par joueur</label>
@@ -132,11 +143,11 @@
               <option :value="16">16 joueurs max</option>
             </select>
           </div>
+          
+          <p v-if="!isHost" class="text-center text-xs text-slate-500 mt-4 italic">
+            Seul l'hôte peut modifier ces règles.
+          </p>
         </div>
-        
-        <p v-if="!isHost" class="text-center text-xs text-slate-500 mt-4 italic">
-          Seul l'hôte peut modifier ces règles.
-        </p>
       </section>
 
       <!-- Right Column: Players List -->
@@ -154,9 +165,13 @@
             </span>
           </div>
 
-          <!-- Players Grid -->
-          <div class="grid sm:grid-cols-2 gap-4">
-            <div v-for="player in store.players" :key="player.id" :class="['glass-card p-4 rounded-xl flex items-center justify-between border border-slate-800 transition-all duration-300', !player.is_connected ? 'opacity-40 border-slate-900 bg-slate-950/40' : '']">
+          <!-- Players Grid with TransitionGroup -->
+          <TransitionGroup
+            name="list"
+            tag="div"
+            class="grid sm:grid-cols-2 gap-4"
+          >
+            <div v-for="player in store.players" :key="player.id" :class="['glass-card p-4 rounded-xl flex items-center justify-between border border-slate-800 transition-all duration-300 hover:border-slate-700 hover:scale-[1.01]', !player.is_connected ? 'opacity-40 border-slate-900 bg-slate-950/40' : '']">
               <div class="flex items-center gap-3 min-w-0">
                 <!-- Status circle indicator -->
                 <span :class="['w-2.5 h-2.5 rounded-full flex-shrink-0', player.is_connected ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500']"></span>
@@ -186,7 +201,7 @@
                 </div>
               </div>
             </div>
-          </div>
+          </TransitionGroup>
         </div>
 
         <!-- Action Area -->
@@ -229,6 +244,13 @@ const store = useGameStore();
 const directPseudo = ref('');
 const errorMsg = ref(null);
 const isLoading = ref(true);
+
+const showConfigOnMobile = ref(false);
+const toggleConfigMobile = () => {
+  if (typeof window !== 'undefined' && window.innerWidth < 768) {
+    showConfigOnMobile.value = !showConfigOnMobile.value;
+  }
+};
 
 // Form configuration state reactively mapped to session config
 const config = reactive({
