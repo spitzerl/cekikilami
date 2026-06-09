@@ -283,7 +283,7 @@ let timerInterval = null;
 
 // Local Player State
 const selectedVoteId = ref(null);
-const volume = ref(localStorage.getItem('devine_beat_volume') ? Number(localStorage.getItem('devine_beat_volume')) : 0.5);
+const volume = ref(localStorage.getItem('cekikilami_volume') ? Number(localStorage.getItem('cekikilami_volume')) : 0.5);
 
 // Audio State
 let audio = null;
@@ -420,7 +420,7 @@ const updateVolume = () => {
   if (audio) {
     audio.volume = volume.value;
   }
-  localStorage.setItem('devine_beat_volume', String(volume.value));
+  localStorage.setItem('cekikilami_volume', String(volume.value));
 };
 
 const startAudio = () => {

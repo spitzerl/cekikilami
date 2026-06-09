@@ -18,7 +18,7 @@
       <div class="text-center mb-2 animate-float">
         <h1 class="text-5xl md:text-6xl font-extrabold tracking-tight mb-3">
           <span class="bg-gradient-to-r from-cyan-400 via-teal-300 to-purple-500 bg-clip-text text-transparent">
-            Devine Beat
+            Cékikilami
           </span>
         </h1>
         <p class="text-sm md:text-base text-slate-400 font-medium max-w-md mx-auto">

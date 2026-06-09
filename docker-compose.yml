@@ -30,7 +30,7 @@ services:
       NODE_ENV: production
       DATABASE_URL: postgresql://postgres@postgres:5432/music_game
       REDIS_URL: redis://redis:6379
-      CORS_ORIGIN: https://devine-beat.lucasspitzer.fr
+      CORS_ORIGIN: https://cekikilami.lucasspitzer.fr
     depends_on:
       postgres:
         condition: service_healthy # Attend que le healthcheck de Postgres passe au vert
@@ -41,7 +41,7 @@ services:
       - traefik-network
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.musicgame-backend.rule=Host(`devine-beat.lucasspitzer.fr`) && (PathPrefix(`/api`) || PathPrefix(`/socket.io`))"
+      - "traefik.http.routers.musicgame-backend.rule=Host(`cekikilami.lucasspitzer.fr`) && (PathPrefix(`/api`) || PathPrefix(`/socket.io`))"
       - "traefik.http.routers.musicgame-backend.entrypoints=websecure"
       - "traefik.http.routers.musicgame-backend.tls=true"
       - "traefik.http.routers.musicgame-backend.tls.certresolver=letsencrypt"
@@ -52,8 +52,8 @@ services:
     build:
       context: ./frontend
       args:
-        VITE_API_URL: https://devine-beat.lucasspitzer.fr/api
-        VITE_SOCKET_URL: https://devine-beat.lucasspitzer.fr
+        VITE_API_URL: https://cekikilami.lucasspitzer.fr/api
+        VITE_SOCKET_URL: https://cekikilami.lucasspitzer.fr
     depends_on:
       - backend
     networks:
@@ -61,7 +61,7 @@ services:
       - traefik-network
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.musicgame-frontend.rule=Host(`devine-beat.lucasspitzer.fr`)"
+      - "traefik.http.routers.musicgame-frontend.rule=Host(`cekikilami.lucasspitzer.fr`)"
       - "traefik.http.routers.musicgame-frontend.entrypoints=websecure"
       - "traefik.http.routers.musicgame-frontend.tls=true"
       - "traefik.http.routers.musicgame-frontend.tls.certresolver=letsencrypt"

@@ -406,7 +406,7 @@ const exportImageUrl = ref('');
 
 const exportImageFilename = computed(() => {
   const code = store.session?.code || 'game';
-  return `devine_beat_scores_${code}.png`;
+  return `cekikilami_scores_${code}.png`;
 });
 
 const truncateText = (text, maxLength) => {
@@ -513,14 +513,14 @@ const exportImage = () => {
   drawVinyl(ctx, 740, 740, 150);
 
   // 3. Header title and info
-  // Title "DEVINE BEAT" with gradient
+  // Title "CÉKIKILAMI" with gradient
   const titleGrad = ctx.createLinearGradient(50, 0, 320, 0);
   titleGrad.addColorStop(0, '#06b6d4'); // cyan-500
   titleGrad.addColorStop(0.5, '#8b5cf6'); // purple-500
   titleGrad.addColorStop(1, '#ec4899'); // pink-500
   ctx.fillStyle = titleGrad;
   ctx.font = '900 38px Outfit, system-ui, -apple-system, sans-serif';
-  ctx.fillText('DEVINE BEAT', 50, 75);
+  ctx.fillText('CÉKIKILAMI', 50, 75);
 
   // Subtitle
   ctx.fillStyle = '#94a3b8'; // slate-400
@@ -838,12 +838,12 @@ const exportImage = () => {
 
   ctx.fillStyle = '#64748b';
   ctx.font = '600 13px "Plus Jakarta Sans", system-ui, sans-serif';
-  ctx.fillText('DEVINE BEAT • JEU DE MUSIQUE EN LIGNE', 50, 755);
+  ctx.fillText('CÉKIKILAMI • JEU DE MUSIQUE EN LIGNE', 50, 755);
 
   ctx.textAlign = 'right';
   ctx.fillStyle = '#475569';
   ctx.font = '500 12px monospace';
-  ctx.fillText('devine-beat.fr', 750, 755);
+  ctx.fillText('cekikilami.lucasspitzer.fr', 750, 755);
   ctx.textAlign = 'left';
 
   exportImageUrl.value = canvas.toDataURL('image/png');
