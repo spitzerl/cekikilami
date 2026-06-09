@@ -74,7 +74,7 @@
         <!-- Listening Phase -->
         <div v-else-if="status === 'listening'" class="space-y-6">
           <!-- Animated soundwave (Equalizer) -->
-          <div class="flex items-end justify-center gap-2 h-16 mb-4 w-40 mx-auto px-4 py-2 bg-slate-900/60 rounded-2xl border border-slate-800/40">
+          <div class="flex items-end justify-center gap-2 h-16 mb-4 w-40 mx-auto px-4 py-2">
             <span class="w-2 bg-cyan-400 rounded-full animate-eq-1" style="height: 20%;"></span>
             <span class="w-2 bg-cyan-500 rounded-full animate-eq-2" style="height: 40%;"></span>
             <span class="w-2 bg-purple-500 rounded-full animate-eq-3" style="height: 15%;"></span>
