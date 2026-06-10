@@ -125,9 +125,10 @@
                 <div :class="['absolute inset-0 bg-slate-950 rounded-full border-2 border-slate-800 flex items-center justify-center shadow-lg transition-transform duration-300', mockPlaying ? 'animate-spin-slow' : '']">
                   <!-- Grooves -->
                   <div class="w-16 h-16 rounded-full border border-slate-800/40 flex items-center justify-center">
-                    <div class="w-10 h-10 rounded-full border border-slate-800/60 flex items-center justify-center">
+                    <div class="w-10 h-10 rounded-full border border-slate-800/60 flex items-center justify-center overflow-hidden relative">
+                      <img v-if="mockTrack?.cover" :src="mockTrack.cover" class="absolute inset-0 w-full h-full object-cover opacity-60 animate-spin-slow" />
                       <!-- Center Label -->
-                      <div class="w-5 h-5 rounded-full bg-cyan-500 flex items-center justify-center">
+                      <div class="w-5 h-5 rounded-full bg-cyan-500 flex items-center justify-center z-10 relative">
                         <div class="w-1.5 h-1.5 rounded-full bg-slate-950"></div>
                       </div>
                     </div>
@@ -184,7 +185,7 @@
                     <span>Bingo ! +100 points !</span>
                   </div>
                   <p class="text-xs text-emerald-300/80 leading-relaxed">
-                    C'est bien Alice qui a proposé cette musique. Vous marquez 100 points et Alice ne marque aucun point de camouflage !
+                    C'est bien Alice qui a proposé cette musique<span v-if="mockTrack" class="font-bold text-emerald-200"> ("{{ mockTrack.title }}" par {{ mockTrack.artist }})</span>. Vous marquez 100 points et Alice ne marque aucun point de camouflage !
                   </p>
                   <button @click="resetMockGame" class="mt-2 self-start px-4 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-lg transition-all active:scale-95">Recommencer</button>
                 </div>
@@ -309,9 +310,10 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted, onUnmounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useGameStore } from '../stores/gameStore';
+import api from '../services/apiService';
 
 const store = useGameStore();
 const router = useRouter();
@@ -325,13 +327,60 @@ const error = ref(null);
 // Mini-game Simulator state
 const mockGuessed = ref(null);
 const mockSuspect = ref('');
-const mockPlaying = ref(true);
+const mockPlaying = ref(false);
+const mockTrack = ref(null);
+const mockAudio = ref(null);
 
 const resetMockGame = () => {
   mockGuessed.value = null;
   mockSuspect.value = '';
   mockPlaying.value = true;
+  if (mockAudio.value) {
+    mockAudio.value.currentTime = 0;
+    mockAudio.value.play().catch(() => { mockPlaying.value = false; });
+  }
 };
+
+onMounted(async () => {
+  try {
+    const res = await api.get('/deezer/search');
+    const tracks = res.data.tracks;
+    if (tracks && tracks.length > 0) {
+      mockTrack.value = tracks[Math.floor(Math.random() * tracks.length)];
+      if (mockTrack.value.preview) {
+        mockAudio.value = new Audio(mockTrack.value.preview);
+        mockAudio.value.loop = true;
+        mockAudio.value.volume = 0.5;
+        // Start playing automatically
+        mockPlaying.value = true;
+        mockAudio.value.play().catch((e) => {
+          console.log("Autoplay blocked:", e);
+          mockPlaying.value = false;
+        });
+      }
+    }
+  } catch (err) {
+    console.error("Failed to load mock track:", err);
+  }
+});
+
+onUnmounted(() => {
+  if (mockAudio.value) {
+    mockAudio.value.pause();
+    mockAudio.value.src = '';
+    mockAudio.value = null;
+  }
+});
+
+watch(mockPlaying, (playing) => {
+  if (mockAudio.value) {
+    if (playing) {
+      mockAudio.value.play().catch(() => { mockPlaying.value = false; });
+    } else {
+      mockAudio.value.pause();
+    }
+  }
+});
 
 const guessSuspect = (name) => {
   mockSuspect.value = name;
