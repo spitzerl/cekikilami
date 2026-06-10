@@ -41,9 +41,9 @@
     </header>
 
     <!-- Main Board -->
-    <main class="grid md:grid-cols-2 gap-6 mb-8 items-start">
+    <main class="grid md:grid-cols-2 gap-6 mb-8 items-stretch">
       <!-- Status Box -->
-      <section class="glass-panel p-8 rounded-3xl border border-slate-800 text-center relative overflow-hidden flex flex-col items-center justify-center h-[500px]">
+      <section class="glass-panel p-6 md:p-8 rounded-3xl border border-slate-800 text-center relative overflow-hidden flex flex-col items-center justify-center min-h-[500px] lg:min-h-[600px]">
         <!-- Idle Phase (Configuration / Ready to start) -->
         <div v-if="status === 'idle'" class="space-y-6 w-full max-w-xl text-center py-6">
           <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 text-xs font-bold uppercase tracking-wider mb-2">
@@ -169,7 +169,7 @@
       </section>
 
       <!-- Interactive Zone (Voting List or Revelation Details) -->
-      <section class="glass-panel p-6 rounded-2xl border border-slate-800 h-[500px] md:h-[550px] flex flex-col overflow-hidden">
+      <section class="glass-panel p-6 rounded-2xl border border-slate-800 min-h-[500px] lg:min-h-[600px] h-full flex flex-col overflow-hidden">
         <!-- Idle Zone Info -->
         <div v-if="status === 'idle'" class="h-full flex items-center justify-center text-center text-slate-500 italic text-sm">
           En attente du lancement de la manche par l'hôte...
