@@ -13,7 +13,7 @@
     <div class="absolute -top-40 -left-40 w-96 h-96 bg-purple-600 rounded-full filter blur-[128px] opacity-25 animate-pulse z-0"></div>
     <div class="absolute -bottom-40 -right-40 w-96 h-96 bg-cyan-600 rounded-full filter blur-[128px] opacity-25 animate-pulse z-0" style="animation-delay: 2s;"></div>
 
-    <div class="relative z-10 w-full max-w-6xl flex flex-col gap-6 md:gap-8">
+    <div class="relative z-10 w-full max-w-7xl flex flex-col gap-6 md:gap-8">
       <!-- Title & Branding -->
       <div class="text-center mb-2 animate-float">
         <h1 class="text-5xl md:text-6xl font-extrabold tracking-tight mb-3">
