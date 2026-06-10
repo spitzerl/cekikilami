@@ -41,7 +41,7 @@
     </header>
 
     <!-- Main Board -->
-    <main class="grid gap-6 mb-8 items-start">
+    <main class="grid md:grid-cols-2 gap-6 mb-8 items-start">
       <!-- Status Box -->
       <section class="glass-panel p-8 rounded-3xl border border-slate-800 text-center relative overflow-hidden flex flex-col items-center justify-center min-h-[300px]">
         <!-- Idle Phase (Configuration / Ready to start) -->
@@ -181,7 +181,8 @@
                 v-for="target in eligiblePlayers"
                 :key="target.id"
                 @click="castVote(target.id)"
-                :class="['p-5 rounded-2xl border text-left font-bold transition-all flex justify-between items-center active:scale-[0.98] hover:scale-[1.01] text-base md:text-lg min-h-[64px]', selectedVoteId === target.id ? 'bg-cyan-500/10 border-cyan-500 text-white shadow-md shadow-cyan-500/10' : 'bg-slate-900/60 border-slate-800 text-slate-300 hover:border-slate-700 hover:text-white']"
+                :disabled="target.id === store.player?.id"
+                :class="['p-5 rounded-2xl border text-left font-bold transition-all flex justify-between items-center text-base md:text-lg min-h-[64px]', selectedVoteId === target.id ? 'bg-cyan-500/10 border-cyan-500 text-white shadow-md shadow-cyan-500/10' : 'bg-slate-900/60 border-slate-800 text-slate-300 hover:border-slate-700 hover:text-white', target.id === store.player?.id ? 'opacity-50 cursor-not-allowed hover:border-slate-800 hover:text-slate-300 hover:scale-100 active:scale-100' : 'active:scale-[0.98] hover:scale-[1.01]']"
               >
                 <span class="truncate pr-2">{{ target.name }}</span>
                 <!-- Vote Counter -->
@@ -383,9 +384,9 @@ const isProposer = computed(() => {
 
 const eligiblePlayers = computed(() => {
   if (!store.players) return [];
-  // Return all active players except themselves, sorted alphabetically
+  // Return all active players, sorted alphabetically
   return store.players
-    .filter(p => !p.is_observer && p.id !== store.player?.id)
+    .filter(p => !p.is_observer)
     .sort((a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' }));
 });
 

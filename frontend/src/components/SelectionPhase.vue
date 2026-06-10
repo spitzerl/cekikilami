@@ -48,93 +48,98 @@
 
     <div class="grid md:grid-cols-3 gap-8 items-start mb-8">
       <!-- Left & Center Columns: Music search and added songs -->
-      <section :class="['glass-panel p-6 rounded-2xl md:col-span-2 border border-slate-800 space-y-6', activeTab === 'selection' ? 'block' : 'hidden md:block']">
-        <div>
+      <div :class="['md:col-span-2 grid lg:grid-cols-2 gap-8', activeTab === 'selection' ? 'block' : 'hidden md:grid']">
+        <!-- Left Column: Music search -->
+        <section class="glass-panel p-6 rounded-2xl border border-slate-800 flex flex-col h-full">
+          <div class="flex-1">
+            <div class="flex justify-between items-center mb-4">
+              <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 text-cyan-400">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                </svg>
+                Ajouter vos musiques
+              </h2>
+            </div>
+
+            <!-- Add music form (hidden if limit reached) -->
+            <div v-if="store.musics.length < (store.session?.max_musics_per_player || 2)">
+              <form class="space-y-4" @submit.prevent="submit">
+                <div class="flex gap-2">
+                  <input
+                    v-model="searchQuery"
+                    class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition-all"
+                    placeholder="Rechercher un artiste, titre..."
+                    @keyup.enter.prevent="searchTracks"
+                  />
+                  <button
+                    type="button"
+                    class="rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 px-6 py-2.5 font-bold text-white transition-colors"
+                    :disabled="isSearching"
+                    @click="searchTracks"
+                  >
+                    {{ isSearching ? 'Recherche...' : 'Chercher' }}
+                  </button>
+                </div>
+
+                <!-- Search Results -->
+                <p v-if="searchError" class="text-sm text-rose-400 mt-2">{{ searchError }}</p>
+                
+                <TransitionGroup
+                  name="list"
+                  tag="ul"
+                  v-if="tracks.length"
+                  class="max-h-60 overflow-y-auto space-y-1 rounded-lg bg-slate-950/20 p-2"
+                >
+                  <li
+                    v-for="track in tracks"
+                    :key="track.id"
+                    class="flex items-center justify-between gap-3 py-2.5 border-b border-slate-800/40 last:border-0 hover:bg-slate-900/10 px-2 rounded-lg transition-all"
+                  >
+                    <div class="flex items-center gap-3 min-w-0">
+                      <img v-if="track.cover" :src="track.cover" class="w-10 h-10 rounded object-cover" />
+                      <div class="min-w-0">
+                        <p class="truncate font-semibold text-sm text-white">{{ track.title }}</p>
+                        <p class="truncate text-xs text-slate-400">{{ track.artist }}</p>
+                      </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <!-- Audio Preview Toggle -->
+                      <button type="button" @click="togglePreview(track)" class="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-300">
+                        <svg v-if="previewUrl === track.preview && isPlaying" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4">
+                          <path fill-rule="evenodd" d="M6.75 5.25a.75.75 0 0 1 .75-.75H9a.75.75 0 0 1 .75.75v13.5a.75.75 0 0 1-.75.75H7.5a.75.75 0 0 1-.75-.75V5.25Zm7.5 0A.75.75 0 0 1 15 4.5h1.5a.75.75 0 0 1 .75.75v13.5a.75.75 0 0 1-.75.75H15a.75.75 0 0 1-.75-.75V5.25Z" clip-rule="evenodd" />
+                        </svg>
+                        <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4">
+                          <path fill-rule="evenodd" d="M4.5 5.653c0-1.427 1.529-2.33 2.779-1.643l11.54 6.347c1.295.712 1.295 2.573 0 3.286L7.28 19.99c-1.25.687-2.779-.217-2.779-1.643V5.653Z" clip-rule="evenodd" />
+                        </svg>
+                      </button>
+                      <!-- Choose Button -->
+                      <button type="button" class="rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white px-3 py-1.5 text-xs font-bold transition-all" @click="chooseTrack(track)">
+                        Choisir
+                      </button>
+                    </div>
+                  </li>
+                </TransitionGroup>
+              </form>
+            </div>
+   
+            <div v-else class="bg-slate-900/60 border border-slate-800 p-6 rounded-xl text-center text-slate-400 italic">
+              Vous avez proposé le nombre maximum de musiques ({{ store.session?.max_musics_per_player || 2 }}). Attendez la fin du chrono !
+            </div>
+          </div>
+        </section>
+ 
+        <!-- Right Column: Submitted Musics List with Delete option -->
+        <section class="glass-panel p-6 rounded-2xl border border-slate-800 flex flex-col h-full">
           <div class="flex justify-between items-center mb-4">
-            <h2 class="text-xl font-bold text-white flex items-center gap-2">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 text-cyan-400">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-              </svg>
-              Ajouter vos musiques
-            </h2>
+            <h3 class="text-xl font-bold text-white">Vos musiques soumises</h3>
             <span class="text-xs bg-slate-900 px-3 py-1 rounded-full text-slate-300 font-bold border border-slate-800">
               Soumis : {{ store.musics.length }} / {{ store.session?.max_musics_per_player || 2 }}
             </span>
           </div>
-
-          <!-- Add music form (hidden if limit reached) -->
-          <div v-if="store.musics.length < (store.session?.max_musics_per_player || 2)">
-            <form class="space-y-4" @submit.prevent="submit">
-              <div class="flex gap-2">
-                <input
-                  v-model="searchQuery"
-                  class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition-all"
-                  placeholder="Rechercher un artiste, titre..."
-                  @keyup.enter.prevent="searchTracks"
-                />
-                <button
-                  type="button"
-                  class="rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 px-6 py-2.5 font-bold text-white transition-colors"
-                  :disabled="isSearching"
-                  @click="searchTracks"
-                >
-                  {{ isSearching ? 'Recherche...' : 'Chercher' }}
-                </button>
-              </div>
-
-              <!-- Search Results -->
-              <p v-if="searchError" class="text-sm text-rose-400 mt-2">{{ searchError }}</p>
-              
-              <TransitionGroup
-                name="list"
-                tag="ul"
-                v-if="tracks.length"
-                class="max-h-60 overflow-y-auto space-y-1 rounded-lg bg-slate-950/20 p-2"
-              >
-                <li
-                  v-for="track in tracks"
-                  :key="track.id"
-                  class="flex items-center justify-between gap-3 py-2.5 border-b border-slate-800/40 last:border-0 hover:bg-slate-900/10 px-2 rounded-lg transition-all"
-                >
-                  <div class="flex items-center gap-3 min-w-0">
-                    <img v-if="track.cover" :src="track.cover" class="w-10 h-10 rounded object-cover" />
-                    <div class="min-w-0">
-                      <p class="truncate font-semibold text-sm text-white">{{ track.title }}</p>
-                      <p class="truncate text-xs text-slate-400">{{ track.artist }}</p>
-                    </div>
-                  </div>
-                  <div class="flex items-center gap-2">
-                    <!-- Audio Preview Toggle -->
-                    <button type="button" @click="togglePreview(track)" class="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-300">
-                      <svg v-if="previewUrl === track.preview && isPlaying" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4">
-                        <path fill-rule="evenodd" d="M6.75 5.25a.75.75 0 0 1 .75-.75H9a.75.75 0 0 1 .75.75v13.5a.75.75 0 0 1-.75.75H7.5a.75.75 0 0 1-.75-.75V5.25Zm7.5 0A.75.75 0 0 1 15 4.5h1.5a.75.75 0 0 1 .75.75v13.5a.75.75 0 0 1-.75.75H15a.75.75 0 0 1-.75-.75V5.25Z" clip-rule="evenodd" />
-                      </svg>
-                      <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4">
-                        <path fill-rule="evenodd" d="M4.5 5.653c0-1.427 1.529-2.33 2.779-1.643l11.54 6.347c1.295.712 1.295 2.573 0 3.286L7.28 19.99c-1.25.687-2.779-.217-2.779-1.643V5.653Z" clip-rule="evenodd" />
-                      </svg>
-                    </button>
-                    <!-- Choose Button -->
-                    <button type="button" class="rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white px-3 py-1.5 text-xs font-bold transition-all" @click="chooseTrack(track)">
-                      Choisir
-                    </button>
-                  </div>
-                </li>
-              </TransitionGroup>
-            </form>
-          </div>
- 
-          <div v-else class="bg-slate-900/60 border border-slate-800 p-6 rounded-xl text-center text-slate-400 italic">
-            Vous avez proposé le nombre maximum de musiques ({{ store.session?.max_musics_per_player || 2 }}). Attendez la fin du chrono !
-          </div>
-        </div>
- 
-        <!-- Submitted Musics List with Delete option -->
-        <div class="border-t border-slate-800 pt-6">
-          <h3 class="text-lg font-bold text-white mb-4">Vos musiques soumises</h3>
           <TransitionGroup
             name="list"
             tag="div"
-            class="space-y-2"
+            class="space-y-2 flex-1"
           >
             <div v-for="music in store.musics" :key="music.id" class="py-3 flex items-center justify-between border-b border-slate-800/50 last:border-0 hover:bg-slate-900/10 transition-all px-2 rounded-xl">
               <div class="flex items-center gap-3 min-w-0">
@@ -151,9 +156,9 @@
               </button>
             </div>
           </TransitionGroup>
-          <p v-if="!store.musics.length" class="text-xs text-slate-500 italic">Aucune musique ajoutée pour le moment.</p>
-        </div>
-      </section>
+          <p v-if="!store.musics.length" class="text-xs text-slate-500 italic mt-4">Aucune musique ajoutée pour le moment.</p>
+        </section>
+      </div>
 
       <!-- Right Column: Submission Tracker -->
       <section :class="['glass-panel p-6 rounded-2xl md:col-span-1 border border-slate-800', activeTab === 'tracker' ? 'block' : 'hidden md:block']">
