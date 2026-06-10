@@ -747,6 +747,9 @@ export default class GameService {
       if (currentTrack) {
         currentMusic = { ...currentTrack };
         
+        const parsedPlayerId = playerId ? Number.parseInt(playerId, 10) : null;
+        currentMusic.is_proposer = parsedPlayerId === currentTrack.player_id;
+        
         // Hide proposer (player_id) unless we are in the revelation subphase AND show_answers is true
         const isReveal = session.voting_status === 'revelation' && session.show_answers;
         if (!isReveal) {

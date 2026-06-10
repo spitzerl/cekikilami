@@ -254,18 +254,18 @@
           <div v-if="!store.session?.enable_blind_test" class="text-center text-slate-500 italic text-sm">
             Les options de vote apparaîtront dès la fin de l'écoute.
           </div>
-          <div v-else-if="isProposer" class="text-center py-4 bg-purple-500/10 border border-purple-500/20 p-4 rounded-xl text-purple-400 font-medium text-sm">
-            📢 C'est votre morceau ! Vous ne participez pas au Blind Test.
-          </div>
           <div v-else-if="!isObserver" class="flex flex-col h-full space-y-4 pt-4">
-            <p class="text-xs font-semibold text-cyan-400 uppercase tracking-wider mb-2 text-center flex-shrink-0">Blind Test : Quel est ce morceau ?</p>
+            <div v-if="isProposer" class="text-center py-2.5 bg-purple-500/10 border border-purple-500/20 px-4 rounded-xl text-purple-400 font-medium text-xs mb-2">
+              📢 C'est votre morceau ! Vous ne participez pas au Blind Test.
+            </div>
+            <p v-else class="text-xs font-semibold text-cyan-400 uppercase tracking-wider mb-2 text-center flex-shrink-0">Blind Test : Quel est ce morceau ?</p>
             <TransitionGroup name="list" tag="div" class="grid sm:grid-cols-2 gap-4 overflow-y-auto p-3 -mx-3">
               <button
                 v-for="(option, index) in blindTestOptions"
                 :key="index"
                 @click="submitBlindTestAnswer(option)"
-                :disabled="hasAnsweredBlindTest"
-                :class="['p-4 rounded-2xl border text-left transition-all flex flex-col justify-center items-center text-center min-h-[80px]', blindTestSelectedAnswer?.title === option.title && blindTestSelectedAnswer?.artist === option.artist ? 'bg-cyan-500/20 border-cyan-500 text-white shadow-md shadow-cyan-500/20 scale-105' : 'bg-slate-900/60 border-slate-800 text-slate-300 hover:border-slate-700 hover:text-white hover:scale-[1.02]', hasAnsweredBlindTest && (blindTestSelectedAnswer?.title !== option.title || blindTestSelectedAnswer?.artist !== option.artist) ? 'opacity-50 cursor-not-allowed hover:border-slate-800 hover:text-slate-300 hover:scale-[1.0]' : '']"
+                :disabled="hasAnsweredBlindTest || isProposer"
+                :class="['p-4 rounded-2xl border text-left transition-all flex flex-col justify-center items-center text-center min-h-[80px]', isProposer ? 'opacity-50 cursor-not-allowed bg-slate-900/40 border-slate-800 text-slate-500' : (blindTestSelectedAnswer?.title === option.title && blindTestSelectedAnswer?.artist === option.artist ? 'bg-cyan-500/20 border-cyan-500 text-white shadow-md shadow-cyan-500/20 scale-105' : 'bg-slate-900/60 border-slate-800 text-slate-300 hover:border-slate-700 hover:text-white hover:scale-[1.02]'), !isProposer && hasAnsweredBlindTest && (blindTestSelectedAnswer?.title !== option.title || blindTestSelectedAnswer?.artist !== option.artist) ? 'opacity-50 cursor-not-allowed hover:border-slate-800 hover:text-slate-300 hover:scale-[1.0]' : '']"
               >
                 <span class="font-extrabold text-sm md:text-base line-clamp-1 w-full">{{ option.title }}</span>
                 <span class="text-xs text-slate-400 line-clamp-1 w-full mt-1">{{ option.artist }}</span>
@@ -446,22 +446,13 @@ const isObserver = computed(() => {
 });
 
 const isProposer = computed(() => {
-  // If show answers is false or not in revelation, we don't return player_id in currentMusic.
-  // But wait! If this music was proposed by the player, the player knows it.
-  // Wait, does the player's own local state store their submitted musics?
-  // No, but we can verify if the voter is the proposer by matching the voter ID with the music's proposer ID.
-  // Wait, since currentMusic has no player_id during voting to prevent cheating, how does the client know if the local player is the proposer?
-  // Ah! In `GameService.js` we delete `currentMusic.player_id` to prevent cheating.
-  // But wait! In the DB, does the music belong to the voter?
-  // Yes! The player knows their own music. But how does the Vue code know?
-  // Wait! In `GameService.js`, when returning the state:
-  // "un joueur ne peut PAS voter s'il a proposé la musique."
-  // If the voter tries to submit a vote for their own music, the API will return a 400 error!
-  // To avoid displaying voter options if they proposed it, how can the client detect it?
-  // Ah! If `store.musics` (which contains the player's own uploaded musics) has a music with the same preview URL or title/artist as the `currentMusic`, then they proposed it!
-  // Oh, that is extremely clever! Since `store.musics` contains the list of all musics uploaded by the current player, we can just check if any of them matches!
   if (!store.currentMusic) return false;
-  return store.musics.some(m => m.file_path === store.currentMusic.file_path || (m.title === store.currentMusic.title && m.artist === store.currentMusic.artist));
+  if (store.currentMusic.is_proposer !== undefined) return store.currentMusic.is_proposer;
+  // Fallback for older states
+  if (store.musics && store.musics.length > 0) {
+    return store.musics.some(m => m.file_path === store.currentMusic.file_path || (m.title === store.currentMusic.title && m.artist === store.currentMusic.artist));
+  }
+  return false;
 });
 
 const eligiblePlayers = computed(() => {
