@@ -217,25 +217,24 @@
         <div v-else-if="status === 'revelation'" class="flex flex-col h-full space-y-4">
           <h3 class="text-lg font-bold text-white mb-4 flex-shrink-0">Détail des votes</h3>
           <div class="space-y-2 flex-1 overflow-y-auto pr-2 pb-2">
-            <div v-for="vote in store.votes" :key="vote.id" class="flex items-center justify-between py-3.5 border-b border-slate-800/50 last:border-0 hover:bg-slate-900/10 transition-all px-2 rounded-xl">
+            <div v-for="result in voteResults" :key="result.player.id" class="flex items-center justify-between py-3.5 border-b border-slate-800/50 last:border-0 hover:bg-slate-900/10 transition-all px-2 rounded-xl">
               <div class="flex items-center gap-2">
-                <span class="font-bold text-slate-200 text-sm">{{ getPlayerName(vote.voter_id) }}</span>
-                <span class="text-xs text-slate-500">pense que c'est</span>
-                <span class="font-bold text-slate-200 text-sm">{{ getPlayerName(vote.guessed_player_id) }}</span>
+                <span class="font-bold text-slate-200 text-sm">{{ result.player.name }}</span>
+                <template v-if="result.vote">
+                  <span class="text-xs text-slate-500">pense que c'est</span>
+                  <span class="font-bold text-slate-200 text-sm">{{ getPlayerName(result.vote.guessed_player_id) }}</span>
+                </template>
+                <template v-else>
+                  <span class="text-xs text-slate-500 italic">n'a pas pu se décider</span>
+                </template>
               </div>
               
-              <!-- Success / Failure Badge -->
-              <span v-if="vote.voter_id === store.currentMusic?.player_id" class="text-[10px] bg-purple-500/15 text-purple-400 px-2 py-0.5 rounded border border-purple-500/25 font-bold uppercase">
-                Bluff
-              </span>
-              <span v-else-if="vote.guessed_player_id === store.currentMusic?.player_id" class="text-[10px] bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/20 font-bold uppercase">
-                ✓ Correct +1
-              </span>
-              <span v-else class="text-[10px] bg-rose-500/10 text-rose-400 px-2 py-0.5 rounded border border-rose-500/20 font-bold uppercase">
-                ✗ Incorrect
+              <!-- Success / Failure / Bluff / Missing Badge -->
+              <span :class="['text-[10px] px-2 py-0.5 rounded border font-bold uppercase', result.statusClass]">
+                {{ result.statusLabel }}
               </span>
             </div>
-            <p v-if="!store.votes?.length" class="text-xs text-slate-500 italic text-center py-4">Aucun joueur n'a voté sur ce morceau.</p>
+            <p v-if="!voteResults?.length" class="text-xs text-slate-500 italic text-center py-4">Aucun joueur pour cette manche.</p>
           </div>
         </div>
 
@@ -461,6 +460,38 @@ const eligiblePlayers = computed(() => {
   return store.players
     .filter(p => !p.is_observer)
     .sort((a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' }));
+});
+
+const voteResults = computed(() => {
+  if (!eligiblePlayers.value) return [];
+  return eligiblePlayers.value.map(player => {
+    const vote = store.votes?.find(v => v.voter_id === player.id);
+    const isProposer = player.id === store.currentMusic?.player_id;
+    let statusLabel = '';
+    let statusClass = '';
+    
+    if (isProposer) {
+      statusLabel = 'BLUFF';
+      statusClass = 'bg-slate-500/20 text-slate-400 border-slate-500/30';
+    } else if (!vote) {
+      statusLabel = "N'a pas voté";
+      statusClass = 'bg-rose-500/10 text-rose-400 border-rose-500/20';
+    } else if (vote.guessed_player_id === store.currentMusic?.player_id) {
+      statusLabel = '✓ Correct +1';
+      statusClass = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+    } else {
+      statusLabel = '✗ Incorrect';
+      statusClass = 'bg-rose-500/10 text-rose-400 border-rose-500/20';
+    }
+
+    return {
+      player,
+      vote,
+      isProposer,
+      statusLabel,
+      statusClass
+    };
+  });
 });
 
 const proposerName = computed(() => {
