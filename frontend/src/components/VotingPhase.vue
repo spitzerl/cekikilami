@@ -40,39 +40,46 @@
       </div>
     </header>
 
-    <!-- Main Board -->
-    <main class="grid md:grid-cols-2 gap-6 mb-8 items-stretch">
-      <!-- Status Box -->
-      <section class="glass-panel p-6 md:p-8 rounded-3xl border border-slate-800 text-center relative overflow-hidden flex flex-col items-center justify-center min-h-[500px] lg:min-h-[600px]">
-        <!-- Idle Phase (Configuration / Ready to start) -->
-        <div v-if="status === 'idle'" class="space-y-6 w-full max-w-xl text-center py-6">
-          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 text-xs font-bold uppercase tracking-wider mb-2">
-            Préparation de la manche
-          </div>
-          <h2 class="text-3xl font-extrabold text-white">Préparez-vous pour la manche {{ (store.session?.current_music_index || 0) + 1 }} !</h2>
-          
-          <div v-if="isHost" class="py-4">
-            <!-- Start Round Button -->
-            <button @click="launchRound" class="glow-btn-purple bg-purple-600 hover:bg-purple-500 text-white font-extrabold py-4 px-8 rounded-2xl transition-all flex items-center justify-center gap-3 mx-auto text-lg">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-6 h-6">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
-              </svg>
-              Manche suivante
-            </button>
-          </div>
+    <!-- First Round Start Screen -->
+    <main v-if="status === 'idle'" class="flex flex-col items-center justify-center min-h-[500px] lg:min-h-[600px] w-full relative z-10 mb-8">
+      <div class="glass-panel p-8 md:p-12 text-center rounded-3xl border border-slate-800 shadow-2xl max-w-3xl w-full mx-auto relative overflow-hidden flex flex-col justify-center items-center">
+        <!-- Background Glow -->
+        <div class="absolute inset-0 bg-gradient-to-br from-cyan-500/10 via-transparent to-purple-500/10 pointer-events-none"></div>
 
-          <div v-else class="space-y-4 py-4">
-            <p class="text-sm font-semibold text-slate-400 italic">En attente du lancement de la manche par l'hôte...</p>
-            <div class="flex items-center justify-center h-4">
-              <span class="w-2 h-2 bg-cyan-400 rounded-full animate-ping mx-1"></span>
-              <span class="w-2 h-2 bg-cyan-400 rounded-full animate-ping mx-1" style="animation-delay: 0.2s;"></span>
-              <span class="w-2 h-2 bg-cyan-400 rounded-full animate-ping mx-1" style="animation-delay: 0.4s;"></span>
-            </div>
-          </div>
+        <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 text-xs font-bold uppercase tracking-wider mb-6 relative z-10">
+          Préparation de la manche 1
         </div>
 
+        <h2 class="text-4xl md:text-5xl font-black text-white mb-6 tracking-tight drop-shadow-lg relative z-10">La partie va commencer !</h2>
+        <p class="text-lg md:text-xl text-slate-300 font-medium mb-12 relative z-10 max-w-xl mx-auto">
+          La phase de sélection est terminée.<br/>
+          Écoutez attentivement chaque morceau et devinez quel joueur l'a proposé.
+        </p>
+        
+        <div v-if="isHost" class="relative z-10 w-full">
+          <button @click="launchRound" class="glow-btn-cyan bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black py-4 px-10 md:py-5 md:px-12 rounded-2xl transition-all flex items-center justify-center gap-3 mx-auto text-xl md:text-2xl shadow-[0_0_40px_rgba(6,182,212,0.6)] hover:scale-105 active:scale-95">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" class="w-8 h-8">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
+            </svg>
+            Commencer la partie
+          </button>
+        </div>
+        <div v-else class="space-y-4 relative z-10">
+          <div class="inline-flex items-center justify-center gap-3 px-6 py-4 rounded-xl bg-slate-900/50 border border-slate-800 text-slate-400 w-full max-w-md mx-auto">
+            <span class="w-2.5 h-2.5 bg-cyan-400 rounded-full animate-ping"></span>
+            <span class="font-bold text-base md:text-lg">En attente de l'hôte pour commencer...</span>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Main Board (Subsequent phases) -->
+    <main v-else class="grid md:grid-cols-2 gap-6 mb-8 items-stretch">
+      <!-- Status Box -->
+      <section class="glass-panel p-6 md:p-8 rounded-3xl border border-slate-800 text-center relative overflow-hidden flex flex-col items-center justify-center min-h-[500px] lg:min-h-[600px]">
+
         <!-- Listening Phase -->
-        <div v-else-if="status === 'listening'" class="space-y-6">
+        <div v-if="status === 'listening'" class="space-y-6">
           <!-- Animated soundwave (Equalizer) -->
           <div class="flex items-end justify-center gap-2 h-16 mb-4 w-40 mx-auto px-4 py-2">
             <span class="w-2 bg-cyan-400 rounded-full animate-eq-1" style="height: 20%;"></span>
@@ -170,13 +177,8 @@
 
       <!-- Interactive Zone (Voting List or Revelation Details) -->
       <section class="glass-panel p-6 rounded-2xl border border-slate-800 min-h-[500px] lg:min-h-[600px] h-full flex flex-col overflow-hidden">
-        <!-- Idle Zone Info -->
-        <div v-if="status === 'idle'" class="h-full flex items-center justify-center text-center text-slate-500 italic text-sm">
-          En attente du lancement de la manche par l'hôte...
-        </div>
-
         <!-- Voting Active -->
-        <div v-else-if="status === 'voting'" class="flex flex-col h-full space-y-4">
+        <div v-if="status === 'voting'" class="flex flex-col h-full space-y-4">
           <!-- Proposer Message -->
           <div v-if="isProposer" class="text-center py-4 bg-purple-500/10 border border-purple-500/20 p-4 rounded-xl text-purple-400 font-medium text-sm">
             📢 Vous avez proposé ce morceau. Votre vote sert uniquement à bluffer les autres joueurs !
