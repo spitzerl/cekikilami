@@ -233,21 +233,23 @@
         <div v-else-if="status === 'revelation'" class="flex flex-col h-full space-y-4">
           <h3 class="text-lg font-bold text-white mb-4 flex-shrink-0">Détail des votes</h3>
           <div class="space-y-2 flex-1 overflow-y-auto pr-2 pb-2">
-            <div v-for="result in voteResults" :key="result.player.id" class="flex items-center justify-between py-3.5 border-b border-slate-800/50 last:border-0 hover:bg-slate-900/10 transition-all px-2 rounded-xl">
-              <div class="flex items-center gap-2">
-                <img v-if="result.player.avatar_seed" :src="`https://api.dicebear.com/9.x/notionists-neutral/svg?seed=${result.player.avatar_seed}&backgroundColor=06b6d4,9333ea,f59e0b,f43f5e,10b981,3b82f6,6366f1`" class="w-6 h-6 rounded-full border border-slate-700/50 bg-slate-800 flex-shrink-0" alt="Avatar" />
-                <span class="font-bold text-slate-200 text-sm">{{ result.player.name }}</span>
-                <template v-if="result.vote">
-                  <span class="text-xs text-slate-500">pense que c'est</span>
-                  <span class="font-bold text-slate-200 text-sm">{{ getPlayerName(result.vote.guessed_player_id) }}</span>
-                </template>
-                <template v-else>
-                  <span class="text-xs text-slate-500 italic">n'a pas pu se décider</span>
-                </template>
+            <div v-for="result in voteResults" :key="result.player.id" class="flex items-center justify-between gap-3 py-3 border-b border-slate-800/50 last:border-0 hover:bg-slate-900/10 transition-all px-2 rounded-xl min-w-0">
+              <div class="flex items-center gap-2 min-w-0 flex-1">
+                <img v-if="result.player.avatar_seed" :src="`https://api.dicebear.com/9.x/notionists-neutral/svg?seed=${result.player.avatar_seed}&backgroundColor=06b6d4,9333ea,f59e0b,f43f5e,10b981,3b82f6,6366f1`" class="w-7 h-7 rounded-full border border-slate-700/50 bg-slate-800 flex-shrink-0" alt="Avatar" />
+                <div class="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 min-w-0">
+                  <span class="font-bold text-slate-200 text-sm truncate max-w-[100px] sm:max-w-none">{{ result.player.name }}</span>
+                  <template v-if="result.vote">
+                    <span class="text-xs text-slate-500 whitespace-nowrap">pense que c'est</span>
+                    <span class="font-bold text-slate-200 text-sm truncate max-w-[100px] sm:max-w-none">{{ getPlayerName(result.vote.guessed_player_id) }}</span>
+                  </template>
+                  <template v-else>
+                    <span class="text-xs text-slate-500 italic whitespace-nowrap">n'a pas pu se décider</span>
+                  </template>
+                </div>
               </div>
               
               <!-- Success / Failure / Bluff / Missing Badge -->
-              <span :class="['text-[10px] px-2 py-0.5 rounded border font-bold uppercase', result.statusClass]">
+              <span :class="['text-[10px] px-2 py-0.5 rounded border font-bold uppercase whitespace-nowrap flex-shrink-0', result.statusClass]">
                 {{ result.statusLabel }}
               </span>
             </div>
