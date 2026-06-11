@@ -39,20 +39,20 @@
       </button>
     </div>
 
-    <div class="flex flex-col gap-6">
+    <div class="flex flex-col gap-6 min-w-0 w-full">
 
       <!-- Search + Submitted (hidden on mobile when tracker tab active) -->
       <div id="panel-sel" role="tabpanel" aria-labelledby="tab-sel"
-        :class="['grid lg:grid-cols-2 gap-6', activeTab==='tracker' ? 'hidden md:grid' : 'grid']">
+        :class="['grid lg:grid-cols-2 gap-6 min-w-0 w-full', activeTab==='tracker' ? 'hidden md:grid' : 'grid']">
 
         <!-- Music search -->
-        <section class="glass-panel p-5 rounded-2xl border border-[var(--border-strong)] flex flex-col gap-4" aria-labelledby="search-heading">
+        <section class="glass-panel p-4 sm:p-5 rounded-2xl border border-[var(--border-strong)] flex flex-col gap-4 min-w-0" aria-labelledby="search-heading">
           <h2 id="search-heading" class="section-header">
             <i class="fa-solid fa-magnifying-glass text-[18px] icon"></i>
             Rechercher une musique
           </h2>
 
-          <div v-if="store.musics.length < (store.session?.max_musics_per_player || 2)">
+          <div v-if="store.musics.length < (store.session?.max_musics_per_player || 2)" class="min-w-0">
             <!-- Search input -->
             <div class="relative mb-4">
               <label for="music-search" class="sr-only">Rechercher un artiste ou un titre</label>
@@ -69,18 +69,18 @@
 
             <!-- Results list -->
             <TransitionGroup name="list" tag="ul" v-if="tracks.length"
-              class="max-h-64 overflow-y-auto space-y-1 rounded-xl p-1" style="background:rgba(15,23,42,.5)"
+              class="max-h-64 overflow-y-auto space-y-1 rounded-xl p-1 min-w-0" style="background:rgba(15,23,42,.5)"
               aria-label="Résultats de recherche">
               <li v-for="track in tracks" :key="track.id"
-                class="flex items-center justify-between gap-3 p-2.5 rounded-lg hover:bg-white/5 transition-colors border border-transparent hover:border-[var(--border)]">
-                <div class="flex items-center gap-3 min-w-0">
-                  <img v-if="track.cover" :src="track.cover" class="w-10 h-10 rounded-lg object-cover flex-shrink-0" :alt="`Pochette ${track.title}`" loading="lazy" />
+                class="flex items-center justify-between gap-2 sm:gap-3 p-2 sm:p-2.5 rounded-lg hover:bg-white/5 transition-colors border border-transparent hover:border-[var(--border)] min-w-0">
+                <div class="flex items-center gap-2 sm:gap-3 min-w-0">
+                  <img v-if="track.cover" :src="track.cover" class="w-9 h-9 sm:w-10 sm:h-10 rounded-lg object-cover flex-shrink-0" :alt="`Pochette ${track.title}`" loading="lazy" />
                   <div class="min-w-0">
-                    <p class="truncate font-semibold text-sm text-white">{{ track.title }}</p>
-                    <p class="truncate text-xs text-[var(--text-secondary)]">{{ track.artist }}</p>
+                    <p class="truncate font-semibold text-xs sm:text-sm text-white">{{ track.title }}</p>
+                    <p class="truncate text-[10px] sm:text-xs text-[var(--text-secondary)]">{{ track.artist }}</p>
                   </div>
                 </div>
-                <div class="flex items-center gap-2 flex-shrink-0">
+                <div class="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
                   <button type="button" @click="togglePreview(track)"
                     :aria-label="previewUrl===track.preview && isPlaying ? 'Mettre en pause' : `Écouter ${track.title}`"
                     class="btn btn-ghost btn-icon" style="width:36px;height:36px">
@@ -89,7 +89,7 @@
                   </button>
                   <button type="button" @click="chooseTrack(track)"
                     :aria-label="`Choisir ${track.title}`"
-                    class="btn btn-primary text-xs px-3" style="min-height:36px">
+                    class="btn btn-primary text-xs px-2.5 sm:px-3" style="min-height:36px">
                     Choisir
                   </button>
                 </div>
@@ -105,7 +105,7 @@
         </section>
 
         <!-- Submitted musics -->
-        <section class="glass-panel p-5 rounded-2xl border border-[var(--border-strong)] flex flex-col" aria-labelledby="submitted-heading">
+        <section class="glass-panel p-4 sm:p-5 rounded-2xl border border-[var(--border-strong)] flex flex-col min-w-0" aria-labelledby="submitted-heading">
           <div class="flex justify-between items-center mb-4">
             <h2 id="submitted-heading" class="section-header">
               <i class="fa-solid fa-music text-[18px] icon"></i>
@@ -124,18 +124,18 @@
             </div>
           </div>
 
-          <TransitionGroup name="list" tag="div" class="flex-1 space-y-1">
-            <div v-for="music in store.musics" :key="music.id" class="player-row">
-              <div class="flex items-center gap-3 min-w-0">
-                <img v-if="music.cover_url" :src="music.cover_url" class="w-10 h-10 rounded-lg object-cover flex-shrink-0 border border-[var(--border)]" :alt="`Pochette ${music.title}`" loading="lazy" />
+          <TransitionGroup name="list" tag="div" class="flex-1 space-y-1 min-w-0">
+            <div v-for="music in store.musics" :key="music.id" class="player-row min-w-0">
+              <div class="flex items-center gap-2 sm:gap-3 min-w-0">
+                <img v-if="music.cover_url" :src="music.cover_url" class="w-9 h-9 sm:w-10 sm:h-10 rounded-lg object-cover flex-shrink-0 border border-[var(--border)]" :alt="`Pochette ${music.title}`" loading="lazy" />
                 <div class="min-w-0">
-                  <p class="font-bold text-white text-sm truncate">{{ music.title }}</p>
-                  <p class="text-xs text-[var(--text-secondary)] truncate">{{ music.artist }}</p>
+                  <p class="font-bold text-white text-xs sm:text-sm truncate">{{ music.title }}</p>
+                  <p class="text-[10px] sm:text-xs text-[var(--text-secondary)] truncate">{{ music.artist }}</p>
                 </div>
               </div>
               <button @click="deleteSubmittedMusic(music.id)"
                 :aria-label="`Supprimer ${music.title}`"
-                class="btn btn-icon" style="width:36px;height:36px;background:var(--clr-danger-dim);border:1px solid rgba(244,63,94,.25);color:#fda4af;border-radius:var(--r-md)">
+                class="btn btn-icon flex-shrink-0" style="width:36px;height:36px;background:var(--clr-danger-dim);border:1px solid rgba(244,63,94,.25);color:#fda4af;border-radius:var(--r-md)">
                 <i class="fa-solid fa-trash-can text-[14px]"></i>
               </button>
             </div>
