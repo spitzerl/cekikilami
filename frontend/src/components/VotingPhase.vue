@@ -101,6 +101,22 @@
           <p class="text-slate-400 text-sm max-w-md mx-auto">
             Écoutez attentivement l'extrait audio. Les votes ouvriront dès que la lecture sera terminée.
           </p>
+          
+          <!-- Audio helper info -->
+          <div class="flex flex-col items-center gap-2 mt-4">
+            <div v-if="audioError" class="px-4 py-2 bg-rose-500/20 border border-rose-500/30 rounded-xl text-rose-300 text-xs font-bold flex items-center gap-2 animate-pulse max-w-sm mx-auto">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4 flex-shrink-0">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+              </svg>
+              Impossible de charger ou lire le son (bloqué ou expiré).
+            </div>
+            <button @click="retryAudio" class="px-4 py-2 bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/50 rounded-xl text-slate-300 hover:text-white text-xs font-extrabold flex items-center gap-1.5 active:scale-95 transition-all shadow-md">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3.5 h-3.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
+              </svg>
+              Relancer l'extrait audio
+            </button>
+          </div>
         </div>
 
         <!-- Voting Phase -->
@@ -122,6 +138,22 @@
               <p class="font-extrabold text-white text-lg truncate">{{ store.currentMusic?.title }}</p>
               <p class="text-slate-400 text-sm truncate mt-0.5">{{ store.currentMusic?.artist }}</p>
             </div>
+          </div>
+
+          <!-- Audio helper info -->
+          <div class="flex flex-col items-center gap-2 mt-4">
+            <div v-if="audioError" class="px-4 py-2 bg-rose-500/20 border border-rose-500/30 rounded-xl text-rose-300 text-xs font-bold flex items-center gap-2 animate-pulse max-w-sm mx-auto">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4 flex-shrink-0">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+              </svg>
+              Impossible de charger ou lire le son (bloqué ou expiré).
+            </div>
+            <button @click="retryAudio" class="px-4 py-2 bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/50 rounded-xl text-slate-300 hover:text-white text-xs font-extrabold flex items-center gap-1.5 active:scale-95 transition-all shadow-md">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3.5 h-3.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
+              </svg>
+              Relancer l'extrait audio
+            </button>
           </div>
         </div>
 
@@ -335,6 +367,7 @@ let timerInterval = null;
 
 // Local Player State
 const selectedVoteId = ref(null);
+const audioError = ref(false);
 const volume = ref(localStorage.getItem('cekikilami_volume') ? Number(localStorage.getItem('cekikilami_volume')) : 0.5);
 
 // Blind Test State
@@ -574,7 +607,10 @@ const getVoteCountForPlayer = (playerId) => {
 
 const formatAudioUrl = (path) => {
   if (!path) return '';
-  if (path.startsWith('http')) return path;
+  if (path.startsWith('http://')) {
+    return path.replace('http://', 'https://');
+  }
+  if (path.startsWith('https://')) return path;
   const apiBase = import.meta.env.VITE_API_URL || '';
   return `${apiBase}${path}`;
 };
@@ -587,6 +623,7 @@ const updateVolume = () => {
 };
 
 const startAudio = () => {
+  audioError.value = false;
   if (audio) {
     audio.pause();
   }
@@ -596,11 +633,31 @@ const startAudio = () => {
     audio = new Audio(url);
     audio.volume = volume.value;
     
+    audio.onerror = (e) => {
+      console.error("Audio playback error:", e);
+      audioError.value = true;
+    };
+    
     if (status.value === 'listening') {
       audio.play().catch(err => {
         console.warn("Autoplay was blocked or audio failed:", err);
+        if (err.name !== 'NotAllowedError') {
+          audioError.value = true;
+        }
       });
     }
+  }
+};
+
+const retryAudio = () => {
+  audioError.value = false;
+  if (audio) {
+    audio.play().catch(err => {
+      console.error("Manual replay failed:", err);
+      audioError.value = true;
+    });
+  } else {
+    startAudio();
   }
 };
 

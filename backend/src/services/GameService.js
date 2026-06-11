@@ -293,8 +293,8 @@ export default class GameService {
                 playerId: bot.id,
                 title: randomTrack.title,
                 artist: randomTrack.artist.name,
-                filePath: randomTrack.preview,
-                coverUrl: randomTrack.album?.cover_medium || null
+                filePath: randomTrack.preview ? randomTrack.preview.replace('http://', 'https://') : '',
+                coverUrl: randomTrack.album?.cover_medium ? randomTrack.album.cover_medium.replace('http://', 'https://') : null
               });
               
               submittedCount++;
@@ -312,7 +312,7 @@ export default class GameService {
         for (let i = submittedCount; i < limit; i++) {
           const track = shuffledTracks[i % shuffledTracks.length];
           
-          let freshFilePath = track.file_path;
+          let freshFilePath = null;
           let coverUrl = null;
           try {
             const searchUrl = `https://api.deezer.com/search?q=${encodeURIComponent(`${track.title} ${track.artist}`)}&limit=1`;
@@ -320,14 +320,34 @@ export default class GameService {
             if (response.ok) {
               const payload = await response.json();
               if (payload?.data?.[0]?.preview) {
-                freshFilePath = payload.data[0].preview;
-              }
-              if (payload?.data?.[0]?.album?.cover_medium) {
-                coverUrl = payload.data[0].album.cover_medium;
+                freshFilePath = payload.data[0].preview.replace('http://', 'https://');
+                coverUrl = payload.data[0].album?.cover_medium ? payload.data[0].album.cover_medium.replace('http://', 'https://') : null;
               }
             }
           } catch (err) {
             console.warn(`Failed to fetch fresh preview for bot fallback track: ${track.title}`, err);
+          }
+
+          // If the primary search failed, try to query for a known popular track to get a fresh working preview URL
+          if (!freshFilePath) {
+            try {
+              const fallbackSearchUrl = `https://api.deezer.com/search?q=artist:"The Weeknd" track:"Blinding Lights"&limit=1`;
+              const response = await fetch(fallbackSearchUrl);
+              if (response.ok) {
+                const payload = await response.json();
+                if (payload?.data?.[0]?.preview) {
+                  freshFilePath = payload.data[0].preview.replace('http://', 'https://');
+                  coverUrl = payload.data[0].album?.cover_medium ? payload.data[0].album.cover_medium.replace('http://', 'https://') : null;
+                }
+              }
+            } catch (err) {
+              console.warn("Failed to fetch absolute fallback track:", err);
+            }
+          }
+
+          // Absolute last resort (using the hardcoded file_path)
+          if (!freshFilePath) {
+            freshFilePath = track.file_path.replace('http://', 'https://');
           }
 
           await Music.create({
@@ -999,9 +1019,10 @@ export default class GameService {
     // If the game is in selection or voting, adjust music play orders
     const remainingMusics = await Music.findBySession(session.id);
     if (session.phase === 'voting' && remainingMusics.length > 0) {
-      remainingMusics.sort((a, b) => a.play_order - b.play_order);
-      for (let index = 0; index < remainingMusics.length; index++) {
-        await query('UPDATE musics SET play_order = $1 WHERE id = $2', [index, remainingMusics[index].id]);
+      const activeRemaining = remainingMusics.filter(m => m.play_order >= 0);
+      activeRemaining.sort((a, b) => a.play_order - b.play_order);
+      for (let index = 0; index < activeRemaining.length; index++) {
+        await query('UPDATE musics SET play_order = $1 WHERE id = $2', [index, activeRemaining[index].id]);
       }
       
       if (session.current_music_index >= remainingMusics.length) {

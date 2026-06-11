@@ -75,9 +75,9 @@ export default function buildRoutes(gameService, ioNamespace) {
               id: track.id,
               title: track.title,
               artist: track.artist?.name || 'Inconnu',
-              preview: track.preview,
+              preview: track.preview ? track.preview.replace('http://', 'https://') : '',
               link: track.link || null,
-              cover: track.album?.cover_medium || null,
+              cover: track.album?.cover_medium ? track.album.cover_medium.replace('http://', 'https://') : null,
             }))
         : [];
 
