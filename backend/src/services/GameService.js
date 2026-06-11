@@ -5,6 +5,17 @@ import Music from '../models/Music.js';
 
 const VALID_PHASES = ['waiting', 'selection', 'voting', 'results'];
 
+const normalizeTitle = (t) => {
+  if (!t) return '';
+  return t
+    .toLowerCase()
+    .replace(/\s+f(ea)?t(\.?\s+|\s+).*$/gi, '')
+    .replace(/\s*[\(\[-].*$/g, '')
+    .replace(/[^a-z0-9\s]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
 const BOT_TRACKS = [
   { title: "Blinding Lights", artist: "The Weeknd", file_path: "https://cdns-preview-e.dzcdn.net/stream/c-e12ac87d5b1b748f06f7ad86903f262b-6.mp3" },
   { title: "Shape of You", artist: "Ed Sheeran", file_path: "https://cdns-preview-d.dzcdn.net/stream/c-d232fb2ed0b90d8a297bdc07520e5883-6.mp3" },
@@ -298,26 +309,50 @@ export default class GameService {
       if (session.enable_blind_test) {
         try {
           const track = shuffledMusics[i];
-          const searchUrl = `https://api.deezer.com/search?q=artist:"${encodeURIComponent(track.artist)}"&limit=10`;
+          const searchUrl = `https://api.deezer.com/search?q=artist:"${encodeURIComponent(track.artist)}"&limit=15`;
           const response = await fetch(searchUrl);
           let options = [];
+          
+          const normCorrectTitle = normalizeTitle(track.title);
+
           if (response.ok) {
             const payload = await response.json();
             const results = payload?.data || [];
-            // Filter out the exact track
-            const filtered = results.filter(r => r.title.toLowerCase() !== track.title.toLowerCase());
-            // Pick 3 random
-            const randomTracks = filtered.sort(() => Math.random() - 0.5).slice(0, 3);
-            options = randomTracks.map(r => ({ title: r.title, artist: r.artist.name }));
+            
+            // Filter out tracks that have the same normalized title as the correct one
+            const filtered = results.filter(r => {
+              const normOptionTitle = normalizeTitle(r.title);
+              return normOptionTitle !== normCorrectTitle;
+            });
+
+            // Shuffle filtered tracks
+            const shuffledFiltered = filtered.sort(() => Math.random() - 0.5);
+
+            // Add unique normalized titles to options
+            for (const r of shuffledFiltered) {
+              if (options.length >= 3) break;
+              const normOptionTitle = normalizeTitle(r.title);
+              const isDuplicate = options.some(o => normalizeTitle(o.title) === normOptionTitle);
+              if (!isDuplicate) {
+                options.push({ title: r.title, artist: r.artist.name });
+              }
+            }
           }
-          // If we couldn't find 3, just add some dummy data or whatever we have
+
+          // Fallbacks if we don't have 3 unique options
           while (options.length < 3) {
              const fallback = BOT_TRACKS[Math.floor(Math.random() * BOT_TRACKS.length)];
-             if (fallback.title !== track.title && !options.some(o => o.title === fallback.title)) {
-               options.push({ title: fallback.title, artist: fallback.artist });
+             const normFallbackTitle = normalizeTitle(fallback.title);
+             
+             if (normFallbackTitle !== normCorrectTitle) {
+               const isDuplicate = options.some(o => normalizeTitle(o.title) === normFallbackTitle);
+               if (!isDuplicate) {
+                 options.push({ title: fallback.title, artist: fallback.artist });
+               }
              }
           }
-          // Add the correct one
+
+          // Add the correct track
           options.push({ title: track.title, artist: track.artist });
           // Shuffle
           options.sort(() => Math.random() - 0.5);
