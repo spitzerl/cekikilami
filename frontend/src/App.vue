@@ -16,9 +16,7 @@
           </div>
           <!-- Close button -->
           <button @click="removeNotif(notif.id)" class="text-white/60 hover:text-white transition-colors" aria-label="Fermer la notification">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
-            </svg>
+            <i class="fa-solid fa-xmark text-[14px]"></i>
           </button>
         </div>
       </TransitionGroup>
@@ -56,26 +54,16 @@ const getNotifClass = (type) => {
 };
 
 const getNotifIcon = (type) => {
-  const svgProps = { xmlns: 'http://www.w3.org/2000/svg', fill: 'none', viewBox: '0 0 24 24', strokeWidth: '2.5', stroke: 'currentColor' };
-  
   if (type === 'success') {
-    return () => h('svg', svgProps, [
-      h('path', { strokeLinecap: 'round', strokeLinejoin: 'round', d: 'M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0' })
-    ]);
+    return () => h('i', { class: 'fa-solid fa-circle-check text-emerald-400 text-[18px]' });
   }
   if (type === 'warning') {
-    return () => h('svg', svgProps, [
-      h('path', { strokeLinecap: 'round', strokeLinejoin: 'round', d: 'M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z' })
-    ]);
+    return () => h('i', { class: 'fa-solid fa-triangle-exclamation text-amber-400 text-[18px]' });
   }
   if (type === 'error') {
-    return () => h('svg', svgProps, [
-      h('path', { strokeLinecap: 'round', strokeLinejoin: 'round', d: 'M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0zm-9 7.5h.008v.008H12v-.008z' })
-    ]);
+    return () => h('i', { class: 'fa-solid fa-circle-exclamation text-rose-400 text-[18px]' });
   }
-  return () => h('svg', svgProps, [
-    h('path', { strokeLinecap: 'round', strokeLinejoin: 'round', d: 'M11.25 11.25l.041-.02a.75.75 0 111.084.708l-.397 1.396a.75.75 0 001.107.828l.04-.02zM12 8.25a.825.825 0 120-1.65.825.825 0 020 1.65zM21 12a9 9 0 11-18 0 9 9 0 0 1 18 0' })
-  ]);
+  return () => h('i', { class: 'fa-solid fa-circle-info text-cyan-400 text-[18px]' });
 };
 </script>
 

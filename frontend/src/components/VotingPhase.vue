@@ -13,9 +13,7 @@
         </div>
         <!-- Mobile Timer (Compact) -->
         <div v-if="status !== 'idle'" :class="['flex sm:hidden items-center gap-1.5 px-3 py-1.5 rounded-xl border font-bold text-base transition-all duration-300', remainingTime < 10 ? 'bg-rose-500/10 border-rose-500 text-rose-400 animate-pulse' : 'bg-slate-900 border-slate-800 text-cyan-400']">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-          </svg>
+          <i class="fa-regular fa-clock text-[14px]"></i>
           <span class="font-mono text-sm">{{ remainingTime }}s</span>
         </div>
       </div>
@@ -29,16 +27,12 @@
           :class="['flex-1 sm:flex-none px-3.5 py-2 border text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-lg active:scale-95', everyoneHasVoted ? 'bg-emerald-600 hover:bg-emerald-500 border-emerald-500 text-white animate-pulse' : 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-200']"
         >
           <span>Révéler ({{ totalVotesCast }}/{{ totalEligibleVoters }})</span>
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3.5 h-3.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 4.5l7.5 7.5-7.5 7.5m-6-15l7.5 7.5-7.5 7.5" />
-          </svg>
+          <i class="fa-solid fa-angles-right text-[13px]"></i>
         </button>
 
         <!-- Desktop Timer -->
         <div v-if="status !== 'idle'" :class="['hidden sm:flex items-center gap-2 px-4 py-2 rounded-xl border font-bold text-lg transition-all duration-300', remainingTime < 10 ? 'bg-rose-500/10 border-rose-500 text-rose-400 animate-pulse' : 'bg-slate-900 border-slate-800 text-cyan-400']">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-          </svg>
+          <i class="fa-regular fa-clock text-[18px]"></i>
           <span class="font-mono">{{ remainingTime }}s</span>
         </div>
       </div>
@@ -62,9 +56,7 @@
         
         <div v-if="isHost" class="relative z-10 w-full">
           <button @click="launchRound" class="glow-btn-cyan bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black py-4 px-10 md:py-5 md:px-12 rounded-2xl transition-all flex items-center justify-center gap-3 mx-auto text-xl md:text-2xl shadow-[0_0_40px_rgba(6,182,212,0.6)] hover:scale-105 active:scale-95">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" class="w-8 h-8">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
-            </svg>
+            <i class="fa-solid fa-play text-[24px]"></i>
             Commencer la partie
           </button>
         </div>
@@ -100,15 +92,11 @@
           <!-- Audio helper info -->
           <div class="flex flex-col items-center gap-2 mt-4">
             <div v-if="audioError" class="px-4 py-2 bg-rose-500/20 border border-rose-500/30 rounded-xl text-rose-300 text-xs font-bold flex items-center gap-2 animate-pulse max-w-sm mx-auto">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4 flex-shrink-0">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
-              </svg>
+              <i class="fa-solid fa-triangle-exclamation text-[14px] text-rose-300 flex-shrink-0"></i>
               Impossible de charger ou lire le son (bloqué ou expiré).
             </div>
             <button @click="retryAudio" class="px-4 py-2 bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/50 rounded-xl text-slate-300 hover:text-white text-xs font-extrabold flex items-center gap-1.5 active:scale-95 transition-all shadow-md">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3.5 h-3.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
-              </svg>
+              <i class="fa-solid fa-play text-[13px]"></i>
               Relancer l'extrait audio
             </button>
           </div>
@@ -125,9 +113,7 @@
           <div class="max-w-md mx-auto flex items-center gap-4 text-left py-2">
             <img v-if="store.currentMusic?.cover_url" :src="store.currentMusic.cover_url" class="w-16 h-16 rounded-xl object-cover shadow-xl border border-slate-800/60 flex-shrink-0" />
             <div v-else class="w-16 h-16 rounded-xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center text-white shadow-xl flex-shrink-0">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-7 h-7">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9 9l10.5-3m0 0L21 8.25M19.5 6C19 6 13 12 13 12v6.75m0 0a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-              </svg>
+              <i class="fa-solid fa-music text-[28px] opacity-80"></i>
             </div>
             <div class="min-w-0">
               <p class="font-extrabold text-white text-lg truncate">{{ store.currentMusic?.title }}</p>
@@ -138,15 +124,11 @@
           <!-- Audio helper info -->
           <div class="flex flex-col items-center gap-2 mt-4">
             <div v-if="audioError" class="px-4 py-2 bg-rose-500/20 border border-rose-500/30 rounded-xl text-rose-300 text-xs font-bold flex items-center gap-2 animate-pulse max-w-sm mx-auto">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4 flex-shrink-0">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
-              </svg>
+              <i class="fa-solid fa-triangle-exclamation text-[14px] text-rose-300 flex-shrink-0"></i>
               Impossible de charger ou lire le son (bloqué ou expiré).
             </div>
             <button @click="retryAudio" class="px-4 py-2 bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/50 rounded-xl text-slate-300 hover:text-white text-xs font-extrabold flex items-center gap-1.5 active:scale-95 transition-all shadow-md">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3.5 h-3.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
-              </svg>
+              <i class="fa-solid fa-play text-[13px]"></i>
               Relancer l'extrait audio
             </button>
           </div>
@@ -164,9 +146,7 @@
             <div class="relative group mb-3 sm:mb-4 z-10">
               <img v-if="store.currentMusic?.cover_url" :src="store.currentMusic.cover_url" class="w-24 h-24 sm:w-40 sm:h-40 md:w-44 md:h-44 rounded-xl sm:rounded-2xl object-cover shadow-[0_10px_30px_rgba(0,0,0,0.5)] border border-slate-700/80 transition-transform duration-700 group-hover:scale-105 group-hover:-rotate-1" />
               <div v-else class="w-24 h-24 sm:w-40 sm:h-40 md:w-44 md:h-44 rounded-xl sm:rounded-2xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center text-white shadow-[0_10px_30px_rgba(0,0,0,0.5)] border border-slate-700/80">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 sm:w-14 sm:h-14 opacity-80">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 9l10.5-3m0 0L21 8.25M19.5 6C19 6 13 12 13 12v6.75m0 0a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-                </svg>
+                <i class="fa-solid fa-music text-[36px] sm:text-[56px] opacity-80"></i>
               </div>
             </div>
 
@@ -199,9 +179,7 @@
           <!-- Host: advance to next round (Less margin on mobile) -->
           <div v-if="isHost && status === 'revelation'" class="mt-4 sm:mt-6 z-10">
             <button @click="advanceFromRevelation" class="glow-btn-purple bg-purple-600 hover:bg-purple-500 text-white font-extrabold py-3 px-6 sm:py-3.5 sm:px-8 rounded-2xl transition-all flex items-center gap-2 text-sm sm:text-base shadow-[0_0_20px_rgba(147,51,234,0.4)] active:scale-98">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4 sm:w-5 sm:h-5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M3 8.689c0-.864.933-1.406 1.683-.977l7.108 4.061a1.125 1.125 0 0 1 0 1.954l-7.108 4.061A1.125 1.125 0 0 1 3 16.811V8.69ZM12.75 8.689c0-.864.933-1.406 1.683-.977l7.108 4.061a1.125 1.125 0 0 1 0 1.954l-7.108 4.061a1.125 1.125 0 0 1-1.683-.977V8.69Z" />
-              </svg>
+              <i class="fa-solid fa-forward text-[14px] sm:text-[18px]"></i>
               Manche suivante
             </button>
           </div>

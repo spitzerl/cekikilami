@@ -13,15 +13,11 @@
       </div>
       <div class="flex flex-wrap items-center gap-3">
         <button @click="exportImage" class="glow-btn bg-cyan-600 hover:bg-cyan-500 text-white font-bold px-4 py-2.5 rounded-xl transition-all flex items-center gap-2 text-sm shadow-lg shadow-cyan-600/20">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-          </svg>
+          <i class="fa-solid fa-download text-[14px]"></i>
           Partager les scores
         </button>
         <button v-if="isHost" @click="replay" class="glow-btn-purple bg-purple-600 hover:bg-purple-500 text-white font-bold px-6 py-2.5 rounded-xl transition-all flex items-center gap-2 text-sm">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
-          </svg>
+          <i class="fa-solid fa-rotate-right text-[14px]"></i>
           Rejouer
         </button>
       </div>
@@ -65,11 +61,8 @@
           <div class="podium-card podium-card-1 relative w-full p-2.5 sm:p-6 rounded-2xl sm:rounded-3xl flex flex-col items-center justify-between h-42 sm:h-56 bg-gradient-to-b from-yellow-500/15 via-amber-500/5 to-yellow-950/10 border border-yellow-500/40 shadow-[0_0_30px_rgba(234,179,8,0.15)] text-center animate-grow-y transition-all duration-300 hover:translate-y-[-4px] hover:border-yellow-500/60 hover:shadow-[0_0_40px_rgba(234,179,8,0.25)]" style="animation-delay: 0.3s;">
             <!-- Crown & Medal -->
             <div class="absolute -top-10 sm:-top-16 flex flex-col items-center select-none">
-              <!-- Crown SVG -->
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 sm:w-9 sm:h-9 text-yellow-400 drop-shadow-[0_0_6px_rgba(234,179,8,0.6)] animate-float mb-0.5">
-                <path d="M2 4 5 16h14l3-12-6 7-4-7-4 7-6-7Z"/>
-                <path d="M3 20h18"/>
-              </svg>
+              <!-- Crown Icon -->
+              <i class="fa-solid fa-crown text-[20px] sm:text-[28px] text-yellow-400 drop-shadow-[0_0_6px_rgba(234,179,8,0.6)] animate-float mb-0.5"></i>
               <!-- Avatar & Medal -->
               <div class="relative">
                 <img v-if="podium[0].avatar_seed" :src="`https://api.dicebear.com/9.x/notionists-neutral/svg?seed=${podium[0].avatar_seed}&backgroundColor=06b6d4,9333ea,f59e0b,f43f5e,10b981,3b82f6,6366f1`" class="w-12 h-12 sm:w-16 sm:h-16 rounded-full border-2 border-yellow-300 bg-slate-800 shadow-xl transition-transform duration-300 group-hover:scale-110" alt="Avatar" />
@@ -265,9 +258,7 @@
                 <img v-if="music.cover_url" :src="music.cover_url" 
                   class="relative w-14 h-14 rounded-xl object-cover shadow border border-slate-800/80 z-10 transition-transform duration-300 group-hover:scale-95" />
                 <div v-else class="relative w-14 h-14 rounded-xl bg-gradient-to-br from-cyan-500/20 to-purple-500/20 border border-slate-800 flex items-center justify-center text-slate-400 z-10 transition-transform duration-300 group-hover:scale-95">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
-                    <path fill-rule="evenodd" d="M19.952 1.651a.75.75 0 0 1 .298.599V16.303a3 3 0 0 1-2.176 2.884l-1.32.377a3 3 0 0 1-3.176-1.424l-3.32-5.32a3 3 0 0 1-.397-1.503V4.282A3 3 0 0 1 12.64 1.398l6.3-1.651a.75.75 0 0 1 1.012.904ZM12.64 2.898a1.5 1.5 0 0 0-.89 1.384v5.334a1.5 1.5 0 0 0 .198.752l3.32 5.32a1.5 1.5 0 0 0 .1588.712l1.32-.377a1.5 1.5 0 0 0 .1088-1.442V3.402l-5.3 1.388a.75.75 0 0 1-.298.058Z" clip-rule="evenodd" />
-                  </svg>
+                  <i class="fa-solid fa-music text-[24px]"></i>
                 </div>
               </div>
               
@@ -316,9 +307,7 @@
             Fermer
           </button>
           <a :href="exportImageUrl" :download="exportImageFilename" class="flex-1 py-3 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-xl transition-all text-center flex items-center justify-center gap-2 text-sm shadow-lg shadow-cyan-600/20">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-            </svg>
+            <i class="fa-solid fa-download text-[14px]"></i>
             Télécharger
           </a>
         </div>

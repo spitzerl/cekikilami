@@ -62,7 +62,7 @@
               @click="activeAction='create'"
               :class="['seg-btn', activeAction==='create' ? 'active-primary' : '']"
             >
-              <svg class="w-4 h-4 inline-block mr-1.5 -mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+              <i class="fa-solid fa-plus mr-1.5"></i>
               Créer un Salon
             </button>
             <button
@@ -70,7 +70,7 @@
               @click="activeAction='join'"
               :class="['seg-btn', activeAction==='join' ? 'active-primary' : '']"
             >
-              <svg class="w-4 h-4 inline-block mr-1.5 -mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"/></svg>
+              <i class="fa-regular fa-user mr-1.5"></i>
               Rejoindre
             </button>
           </div>
@@ -80,7 +80,7 @@
             <!-- CREATE -->
             <div v-if="activeAction==='create'" key="create" id="panel-create" role="tabpanel" aria-labelledby="tab-create" class="glass-panel p-7 rounded-2xl border border-indigo-500/20 shadow-xl">
               <div class="w-11 h-11 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 mb-5">
-                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+                <i class="fa-solid fa-plus text-[20px]"></i>
               </div>
               <h2 class="text-2xl font-bold text-white mb-1">Créer un Salon</h2>
               <p class="text-sm text-[var(--text-secondary)] mb-6">Devenez l'hôte et invitez vos amis via un code.</p>
@@ -96,7 +96,7 @@
                   />
                 </div>
                 <button type="submit" class="btn btn-primary w-full text-base" :disabled="!createName.trim()">
-                  <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z"/></svg>
+                  <i class="fa-solid fa-play text-[16px] mr-1.5"></i>
                   Lancer le Salon
                 </button>
               </form>
@@ -105,7 +105,7 @@
             <!-- JOIN -->
             <div v-else key="join" id="panel-join" role="tabpanel" aria-labelledby="tab-join" class="glass-panel p-7 rounded-2xl border border-violet-500/20 shadow-xl">
               <div class="w-11 h-11 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-400 mb-5">
-                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"/></svg>
+                <i class="fa-regular fa-user text-[20px]"></i>
               </div>
               <h2 class="text-2xl font-bold text-white mb-1">Rejoindre un Salon</h2>
               <p class="text-sm text-[var(--text-secondary)] mb-6">Entrez le code à 6 caractères communiqué par l'hôte.</p>
@@ -132,7 +132,7 @@
                   </div>
                 </div>
                 <button type="submit" class="btn btn-secondary w-full text-base" :disabled="!joinCode.trim() || !joinName.trim()">
-                  <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9"/></svg>
+                  <i class="fa-solid fa-right-to-bracket text-[16px] mr-1.5"></i>
                   Rejoindre la Partie
                 </button>
               </form>
@@ -142,7 +142,7 @@
           <!-- Error alert -->
           <Transition name="fade">
             <div v-if="error" role="alert" aria-live="assertive" class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold" style="background:var(--clr-danger-dim);border:1px solid rgba(244,63,94,.3);color:#fda4af">
-              <svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0zm-9 3.75h.008v.008H12v-.008z"/></svg>
+              <i class="fa-solid fa-triangle-exclamation text-[18px] text-rose-400 flex-shrink-0"></i>
               {{ error }}
             </div>
           </Transition>
@@ -169,7 +169,7 @@
           <div class="glass-panel p-5 rounded-2xl border border-violet-500/15 hover:border-violet-500/30 transition-all duration-300">
             <div class="flex items-center justify-between mb-4">
               <h2 class="section-header text-base">
-                <svg class="w-5 h-5 icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14.25 9v6m-4.5 0V9M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg>
+                <i class="fa-solid fa-sliders text-[18px] icon"></i>
                 Simuler un Tour
               </h2>
               <button @click="resetMockGame" class="text-xs text-[var(--text-secondary)] hover:text-white underline underline-offset-2 transition-colors">
@@ -196,8 +196,8 @@
                   </div>
                 </div>
                 <div class="absolute inset-0 bg-slate-950/60 rounded-full opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                  <svg v-if="mockPlaying" class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
-                  <svg v-else class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                  <i v-if="mockPlaying" class="fa-solid fa-pause text-[24px] text-white"></i>
+                  <i v-else class="fa-solid fa-play text-[24px] text-white ml-1"></i>
                 </div>
               </button>
 
@@ -235,7 +235,7 @@
             <Transition name="slide-up" mode="out-in">
               <div v-if="mockGuessed==='success'" key="success" class="rounded-xl p-4 flex flex-col gap-1.5" style="background:var(--clr-success-dim);border:1px solid rgba(16,185,129,.3)">
                 <div class="flex items-center gap-2 text-emerald-400 font-bold text-sm">
-                  <svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0"/></svg>
+                  <i class="fa-solid fa-circle-check text-[18px] text-emerald-400 flex-shrink-0"></i>
                   Bingo ! +100 points !
                 </div>
                 <p class="text-xs text-emerald-300/80 leading-relaxed">C'est bien Alice qui a proposé ce morceau. Vous gagnez 100 pts !</p>
@@ -243,7 +243,7 @@
               </div>
               <div v-else-if="mockGuessed==='error'" key="error" class="rounded-xl p-4 flex flex-col gap-1.5" style="background:var(--clr-danger-dim);border:1px solid rgba(244,63,94,.3)">
                 <div class="flex items-center gap-2 text-rose-400 font-bold text-sm">
-                  <svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0"/></svg>
+                  <i class="fa-solid fa-circle-xmark text-[18px] text-rose-400 flex-shrink-0"></i>
                   Faux ! Ce n'est pas {{ mockSuspectName }}.
                 </div>
                 <p class="text-xs text-rose-300/80 leading-relaxed">{{ mockSuspectName }} sourit en coin… Analysez mieux le style !</p>

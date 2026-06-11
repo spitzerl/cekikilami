@@ -50,7 +50,7 @@
             class="font-mono text-indigo-300 font-bold bg-[var(--surface-raised)] px-2.5 py-0.5 rounded-lg border border-[var(--border-strong)] cursor-pointer hover:border-indigo-500/50 hover:bg-[var(--surface-overlay)] transition-all inline-flex items-center gap-1.5 active:scale-95 text-sm touch-target"
             :aria-label="`Copier le lien d'invitation — code ${route.params.code}`">
             {{ route.params.code }}
-            <svg class="w-3.5 h-3.5 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 7.5V6.108c0-1.135.845-2.098 1.976-2.192.373-.03.748-.057 1.123-.08M15.75 18H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08M15.75 18.75v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5A3.375 3.375 0 0 0 6.375 7.5H5.25m11.9-3.664A2.251 2.251 0 0 0 15 2.25h-3a2.251 2.251 0 0 0-2.15 1.586m5.8 0c.065.21.1.433.1.664v.75h-6V4.5c0-.231.035-.454.1-.664"/></svg>
+            <i class="fa-regular fa-copy text-[13px] opacity-60"></i>
           </button>
           <Transition name="fade">
             <span v-if="copied" class="badge badge-success">Lien copié !</span>
@@ -75,10 +75,10 @@
           aria-controls="config-body"
         >
           <h2 id="config-heading" class="section-header">
-            <svg class="w-5 h-5 icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.43l-1.003.828c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.43l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg>
+            <i class="fa-solid fa-sliders text-[18px] icon"></i>
             Paramètres
           </h2>
-          <svg class="w-5 h-5 text-[var(--text-secondary)] md:hidden transition-transform" :class="showConfigOnMobile ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/></svg>
+          <i class="fa-solid fa-chevron-down text-[16px] text-[var(--text-secondary)] md:hidden transition-transform" :class="showConfigOnMobile ? 'rotate-180' : ''"></i>
         </button>
 
         <div id="config-body" :class="['mt-5 space-y-5 transition-all duration-300', showConfigOnMobile ? 'block' : 'hidden md:block']">
@@ -86,9 +86,7 @@
           <fieldset>
             <legend class="form-label">
               <span class="flex items-center gap-1.5">
-                <svg class="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="m9 9 10.5-3m0 6.553v3.75a2.25 2.25 0 0 1-1.632 2.163l-1.32.377a1.803 1.803 0 1 1-.99-3.467l2.31-.66a2.25 2.25 0 0 0 1.632-2.163Zm0 0V2.25L9 5.25v10.303m0 0v3.75a2.25 2.25 0 0 1-1.632 2.163l-1.32.377a1.803 1.803 0 0 1-.99-3.467l2.31-.66A2.25 2.25 0 0 0 9 15.553Z"/>
-                </svg>
+                <i class="fa-solid fa-music text-[13px] text-slate-400"></i>
                 <span>Musiques par joueur</span>
               </span>
             </legend>
@@ -106,9 +104,7 @@
           <fieldset>
             <legend class="form-label">
               <span class="flex items-center gap-1.5">
-                <svg class="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
-                </svg>
+                <i class="fa-regular fa-clock text-[13px] text-slate-400"></i>
                 <span>Durée de sélection</span>
               </span>
             </legend>
@@ -126,9 +122,7 @@
           <fieldset>
             <legend class="form-label">
               <span class="flex items-center gap-1.5">
-                <svg class="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
-                </svg>
+                <i class="fa-regular fa-clock text-[13px] text-slate-400"></i>
                 <span>Durée d'extrait</span>
               </span>
             </legend>
@@ -146,9 +140,7 @@
           <fieldset>
             <legend class="form-label">
               <span class="flex items-center gap-1.5">
-                <svg class="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
-                </svg>
+                <i class="fa-regular fa-clock text-[13px] text-slate-400"></i>
                 <span>Temps de vote</span>
               </span>
             </legend>
@@ -167,19 +159,10 @@
             <div v-for="toggle in toggleOptions" :key="toggle.key" class="flex items-center justify-between py-2.5">
               <div class="flex items-center gap-2.5 min-w-0">
                 <!-- Icons -->
-                <svg v-if="toggle.key === 'showAnswers'" class="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"/>
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>
-                </svg>
-                <svg v-else-if="toggle.key === 'autoAdvance'" class="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644a9 9 0 1 1 18.17 0M5.273 11.25A9 9 0 0 1 15.65 2.57m-4.977 15.549h4.992v-.001" />
-                </svg>
-                <svg v-else-if="toggle.key === 'showVoteCount'" class="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
-                </svg>
-                <svg v-else-if="toggle.key === 'enableBlindTest'" class="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="m9 9 10.5-3m0 6.553v3.75a2.25 2.25 0 0 1-1.632 2.163l-1.32.377a1.803 1.803 0 1 1-.99-3.467l2.31-.66a2.25 2.25 0 0 0 1.632-2.163Zm0 0V2.25L9 5.25v10.303m0 0v3.75a2.25 2.25 0 0 1-1.632 2.163l-1.32.377a1.803 1.803 0 0 1-.99-3.467l2.31-.66A2.25 2.25 0 0 0 9 15.553Z"/>
-                </svg>
+                <i v-if="toggle.key === 'showAnswers'" class="fa-regular fa-eye text-[14px] text-slate-400 flex-shrink-0"></i>
+                <i v-else-if="toggle.key === 'autoAdvance'" class="fa-solid fa-arrows-rotate text-[14px] text-slate-400 flex-shrink-0"></i>
+                <i v-else-if="toggle.key === 'showVoteCount'" class="fa-regular fa-chart-bar text-[14px] text-slate-400 flex-shrink-0"></i>
+                <i v-else-if="toggle.key === 'enableBlindTest'" class="fa-solid fa-music text-[14px] text-slate-400 flex-shrink-0"></i>
                 <label :for="`toggle-${toggle.key}`" class="text-sm text-[var(--text-secondary)] font-semibold pr-4 cursor-pointer truncate">
                   {{ toggle.label }}
                 </label>
@@ -195,9 +178,7 @@
           <fieldset>
             <legend class="form-label">
               <span class="flex items-center gap-1.5">
-                <svg class="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"/>
-                </svg>
+                <i class="fa-solid fa-users text-[13px] text-slate-400"></i>
                 <span>Limite de joueurs</span>
               </span>
             </legend>
@@ -221,7 +202,7 @@
       <section class="glass-panel p-5 rounded-2xl md:col-span-2 border border-[var(--border-strong)] flex flex-col" aria-labelledby="players-heading">
         <div class="flex justify-between items-center mb-5 pb-4 border-b border-[var(--border)]">
           <h2 id="players-heading" class="section-header">
-            <svg class="w-5 h-5 icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z"/></svg>
+            <i class="fa-solid fa-users text-[18px] icon"></i>
             Joueurs connectés
           </h2>
           <span class="badge badge-muted" aria-label="`${store.players.length} joueurs sur ${store.session?.max_players || 8}`">
@@ -241,7 +222,7 @@
               <span class="font-bold text-white truncate text-sm">{{ player.name }}</span>
               <button v-if="player.id === store.player?.id" @click.stop="regenerateAvatar(player.id)"
                 class="btn btn-ghost btn-icon" style="width:32px;height:32px;border-radius:var(--r-sm)" title="Générer un nouvel avatar" aria-label="Générer un nouvel avatar">
-                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
+                <i class="fa-solid fa-arrows-rotate text-[13px]"></i>
               </button>
               <span v-if="player.is_bot" class="badge badge-bot">Bot</span>
               <span v-if="player.name === store.session?.host_name" class="badge badge-host">Hôte</span>
@@ -254,12 +235,12 @@
                 <button v-if="!player.is_bot" @click="promotePlayer(player.id)" title="Promouvoir Hôte"
                   aria-label="`Promouvoir ${player.name} comme hôte`"
                   class="btn btn-icon touch-target" style="width:36px;height:36px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.25);color:#fcd34d;border-radius:var(--r-sm)">
-                  <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15 11.25l-3-3m0 0l-3 3m3-3v11.25M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  <i class="fa-solid fa-crown text-[13px]"></i>
                 </button>
                 <button @click="kickPlayer(player.id)" title="Exclure du salon"
                   :aria-label="`Exclure ${player.name} du salon`"
                   class="btn btn-icon touch-target" style="width:36px;height:36px;background:var(--clr-danger-dim);border:1px solid rgba(244,63,94,.25);color:#fda4af;border-radius:var(--r-sm)">
-                  <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
+                  <i class="fa-solid fa-user-slash text-[13px]"></i>
                 </button>
               </div>
             </div>
@@ -270,11 +251,11 @@
         <div class="mt-6 pt-5 border-t border-[var(--border)] hidden md:flex flex-col sm:flex-row gap-3">
           <template v-if="isHost">
             <button @click="addBot" class="btn btn-ghost flex-1">
-              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+              <i class="fa-solid fa-robot text-[14px]"></i>
               Ajouter un Bot
             </button>
             <button @click="startSelection" class="btn btn-primary flex-1">
-              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z"/></svg>
+              <i class="fa-solid fa-play text-[14px]"></i>
               Lancer la Sélection
             </button>
           </template>
