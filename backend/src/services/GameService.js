@@ -255,7 +255,16 @@ export default class GameService {
       kpop: ['BTS', 'BLACKPINK', 'Twice', 'NewJeans', 'Stray Kids', 'IU', 'Utada Hikaru', 'Kenshi Yonezu', 'Yoasobi', 'Babymetal', 'Perfume', 'One Ok Rock', 'Radwimps', 'LiSA', 'Aimer'],
       country: ['Johnny Cash', 'Dolly Parton', 'Willie Nelson', 'Shania Twain', 'Luke Combs', 'Morgan Wallen', 'Zach Bryan', 'Chris Stapleton', 'Bob Dylan', 'Neil Young', 'Joni Mitchell', 'Simon & Garfunkel', 'Mumford & Sons', 'The Lumineers', 'Fleet Foxes', 'Bon Iver', 'Vance Joy'],
       punk: ['The Clash', 'Ramones', 'Sex Pistols', 'Blink-182', 'Sum 41', 'The Offspring', 'Rancid', 'NOFX', 'Bad Religion', 'Rise Against', 'Sublime', 'Madness', 'The Specials', 'Reel Big Fish'],
-      french_rap: ['IAM', 'Supreme NTM', 'Booba', 'Kaaris', 'PNL', 'Nekfeu', 'Lomepal', 'Vald', 'Niska', 'SCH', 'Gims', 'PLK', 'Hamza', 'Freeze Corleone', 'Laylow', 'Josman', 'Dinos', 'Kery James']
+      french_rap: ['IAM', 'Supreme NTM', 'Booba', 'Kaaris', 'PNL', 'Nekfeu', 'Lomepal', 'Vald', 'Niska', 'SCH', 'Gims', 'PLK', 'Hamza', 'Freeze Corleone', 'Laylow', 'Josman', 'Dinos', 'Kery James'],
+      math_rock: ['Tricot', 'Covet', 'Chon', 'Elephant Gym', 'TTNG', 'Delta Sleep', 'American Football'],
+      shoegaze: ['Slowdive', 'My Bloody Valentine', 'Cocteau Twins', 'Alcest', 'DIIV', 'Ride', 'Lush'],
+      idm_glitch: ['Boards of Canada', 'Autechre', 'Venetian Snares', 'Squarepusher', 'Jon Hopkins', 'Lorn'],
+      vaporwave: ['Saint Pepsi', 'Macross 82-99', 'Yung Bae', 'Luxury Elite', 'Blank Banshee', 'Vektroid'],
+      post_rock: ['Godspeed You! Black Emperor', 'Mono', 'Explosions in the Sky', 'Mogwai', 'Caspian', 'Russian Circles'],
+      dark_folk: ['Colter Wall', 'Tyler Childers', 'Orville Peck', 'Amigo the Devil', 'Chelsea Wolfe', 'Emma Ruth Rundle'],
+      chiptune: ['Anamanaguchi', 'Sabrepulse', 'Chipzel', 'Disasterpeace', 'Dubmood', 'Slagsmålsklubben'],
+      krautrock: ['Can', 'Neu!', 'Faust', 'Amon Düül II', 'Tangerine Dream'],
+      dungeon_synth: ['Mortiis', 'Depressive Silence', 'Fief', 'Lustmord', 'Atrium Carceri']
     };
     
     const genres = Object.keys(GENRE_QUERIES);
