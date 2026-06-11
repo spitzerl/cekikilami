@@ -1,327 +1,259 @@
 <template>
-  <div class="relative min-h-screen flex items-center justify-center p-4 md:p-8 overflow-hidden bg-slate-950">
-    <!-- Floating background elements -->
-    <div class="absolute inset-0 pointer-events-none overflow-hidden select-none z-0">
-      <div class="floating-item text-cyan-500/20 text-3xl" style="left: 8%; animation-delay: 0s; animation-duration: 14s;">🎵</div>
-      <div class="floating-item text-purple-500/20 text-4xl" style="left: 22%; animation-delay: 3s; animation-duration: 18s;">🎶</div>
-      <div class="floating-item text-teal-500/20 text-2xl" style="left: 45%; animation-delay: 6s; animation-duration: 13s;">🎧</div>
-      <div class="floating-item text-purple-500/20 text-3xl" style="left: 73%; animation-delay: 1.5s; animation-duration: 19s;">🎵</div>
-      <div class="floating-item text-cyan-500/20 text-4xl" style="left: 88%; animation-delay: 8s; animation-duration: 15s;">🎹</div>
+  <div class="relative min-h-dvh flex flex-col overflow-hidden bg-[var(--surface-base)]">
+
+    <!-- Floating background notes -->
+    <div class="absolute inset-0 pointer-events-none overflow-hidden select-none z-0" aria-hidden="true">
+      <div class="floating-item text-indigo-400/15 text-3xl" style="left:8%;animation-delay:0s;animation-duration:14s">🎵</div>
+      <div class="floating-item text-violet-400/15 text-4xl" style="left:22%;animation-delay:3s;animation-duration:18s">🎶</div>
+      <div class="floating-item text-cyan-400/15 text-2xl" style="left:45%;animation-delay:6s;animation-duration:13s">🎧</div>
+      <div class="floating-item text-violet-400/15 text-3xl" style="left:73%;animation-delay:1.5s;animation-duration:19s">🎵</div>
+      <div class="floating-item text-indigo-400/15 text-4xl" style="left:88%;animation-delay:8s;animation-duration:15s">🎹</div>
     </div>
 
-    <!-- Decorative background blobs -->
-    <div class="absolute -top-40 -left-40 w-96 h-96 bg-purple-600 rounded-full filter blur-[128px] opacity-25 animate-pulse z-0"></div>
-    <div class="absolute -bottom-40 -right-40 w-96 h-96 bg-cyan-600 rounded-full filter blur-[128px] opacity-25 animate-pulse z-0" style="animation-delay: 2s;"></div>
+    <!-- Ambient blobs -->
+    <div class="absolute -top-48 -left-48 w-96 h-96 rounded-full blur-[120px] opacity-20 bg-indigo-600 pointer-events-none" aria-hidden="true"></div>
+    <div class="absolute -bottom-48 -right-48 w-96 h-96 rounded-full blur-[120px] opacity-20 bg-violet-600 pointer-events-none" aria-hidden="true"></div>
 
-    <div class="relative z-10 w-full max-w-7xl flex flex-col gap-6 md:gap-8">
-      <!-- Title & Branding -->
-      <div class="text-center mb-2 animate-float">
-        <h1 class="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight mb-3">
-          <span class="bg-gradient-to-r from-cyan-400 via-teal-300 to-purple-500 bg-clip-text text-transparent">
+    <!-- ── MAIN CONTENT ── -->
+    <main class="relative z-10 flex-1 flex flex-col items-center justify-center px-4 py-10 sm:py-16 gap-8 max-w-6xl mx-auto w-full">
+
+      <!-- Hero -->
+      <div class="text-center animate-fade-in-up opacity-0" style="animation-delay:0s">
+        <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/25 text-indigo-300 text-xs font-bold uppercase tracking-widest mb-5">
+          <span class="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse"></span>
+          Blind Test Social Interactif
+        </div>
+        <h1 class="text-5xl sm:text-6xl md:text-7xl font-extrabold tracking-tight mb-4">
+          <span class="bg-gradient-to-r from-indigo-400 via-violet-300 to-cyan-400 bg-clip-text text-transparent">
             Cékikilami
           </span>
         </h1>
-        <p class="text-xs sm:text-sm md:text-base text-slate-400 font-medium max-w-md mx-auto px-4">
-          Le jeu de blind test social interactif. Devinez qui a proposé chaque morceau et devenez le maître du rythme.
+        <p class="text-base sm:text-lg text-[var(--text-secondary)] max-w-lg mx-auto leading-relaxed">
+          Devinez qui a proposé chaque morceau et devenez le maître du rythme.
         </p>
       </div>
 
       <!-- PWA Install Banner -->
       <Transition name="fade">
-        <div v-if="isAppInstallable" class="glass-panel p-4 rounded-2xl border border-cyan-500/20 max-w-md mx-auto flex items-center justify-between gap-4 shadow-lg shadow-cyan-500/5 animate-fade-in-up">
+        <div v-if="isAppInstallable" role="banner" class="glass-panel p-4 rounded-2xl border border-indigo-500/20 w-full max-w-md flex items-center justify-between gap-4 shadow-lg animate-fade-in-up opacity-0">
           <div class="flex items-center gap-3">
-            <img src="/icon-192.png" class="w-10 h-10 rounded-xl object-cover border border-cyan-500/25 flex-shrink-0" alt="Logo" />
+            <img src="/icon-192.png" class="w-10 h-10 rounded-xl object-cover border border-indigo-500/25 flex-shrink-0" alt="Logo Cékikilami" />
             <div class="text-left">
-              <h4 class="text-sm font-bold text-white">Installer l'application</h4>
-              <p class="text-[11px] text-slate-400">Jouez en plein écran avec une meilleure fluidité.</p>
+              <p class="text-sm font-bold text-white">Installer l'application</p>
+              <p class="text-xs text-[var(--text-secondary)]">Jouez en plein écran, accès hors-ligne.</p>
             </div>
           </div>
-          <button @click="installPWA" class="bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-black px-4 py-2.5 rounded-xl transition-all active:scale-95 shadow-md shadow-cyan-500/10">
+          <button @click="installPWA" class="btn btn-primary text-sm px-4 py-2" style="min-height:36px">
             Installer
           </button>
         </div>
       </Transition>
 
-      <!-- Main Columns Grid -->
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start w-full">
-        
-        <!-- Left Column: Game presentation, Rules & Simulator (Order 2 on mobile, 1 on desktop) -->
-        <div class="lg:col-span-7 flex flex-col gap-6 order-2 lg:order-1 opacity-0 animate-fade-in-up" style="animation-delay: 0.1s;">
-          
-          <!-- Presentation -->
-          <div class="glass-panel p-6 rounded-2xl border border-cyan-500/10">
-            <h2 class="text-2xl font-extrabold mb-2 text-white flex items-center gap-2">
-              Le Concept <span class="text-cyan-400">💡</span>
-            </h2>
-            <p class="text-sm text-slate-300 leading-relaxed">
-              Un blind test pas comme les autres ! Chaque joueur propose secrètement des musiques en accord avec un thème imposé par l'hôte. Écoutez les extraits, décelez les goûts ou indices de vos amis, et votez pour le suspect idéal. Cumulez des points en trouvant les bons auteurs ou en piégeant tout le monde !
-            </p>
+      <!-- Main grid: forms left/top, simulator right/bottom -->
+      <div class="grid grid-cols-1 lg:grid-cols-11 gap-6 lg:gap-10 w-full items-start">
+
+        <!-- ── RIGHT COL (order-1 mobile): Forms ── -->
+        <div class="lg:col-span-5 flex flex-col gap-4 order-1 lg:order-2 animate-fade-in-up opacity-0" style="animation-delay:.08s">
+
+          <!-- Segmented tab -->
+          <div class="seg-control" role="tablist" aria-label="Action principale">
+            <button
+              id="tab-create" role="tab" :aria-selected="activeAction==='create'" aria-controls="panel-create"
+              @click="activeAction='create'"
+              :class="['seg-btn', activeAction==='create' ? 'active-primary' : '']"
+            >
+              <svg class="w-4 h-4 inline-block mr-1.5 -mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+              Créer un Salon
+            </button>
+            <button
+              id="tab-join" role="tab" :aria-selected="activeAction==='join'" aria-controls="panel-join"
+              @click="activeAction='join'"
+              :class="['seg-btn', activeAction==='join' ? 'active-primary' : '']"
+            >
+              <svg class="w-4 h-4 inline-block mr-1.5 -mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"/></svg>
+              Rejoindre
+            </button>
           </div>
 
-          <!-- Interactive Rules Step Grid -->
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <!-- Step 1 -->
-            <div class="glass-card p-4 rounded-xl border border-slate-800/80 hover:border-cyan-500/30 hover:-translate-y-0.5 transition-all duration-300 group">
-              <div class="flex items-center gap-3 mb-2.5">
-                <div class="w-8 h-8 rounded-lg bg-cyan-500/10 flex items-center justify-center border border-cyan-500/20 group-hover:bg-cyan-500/20 group-hover:border-cyan-500/40 transition-colors">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 text-cyan-400">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 9l10.5-3m0 0v15m0-15l-10.5 3m10.5-3v13.5m-10.5 3a3 3 0 1 1-3-3 3 3 0 0 1 3 3Zm10.5-1.5a3 3 0 1 1-3-3 3 3 0 0 1 3 3Z" />
-                  </svg>
-                </div>
-                <span class="text-xs font-black text-cyan-400 tracking-wider uppercase">Étape 1</span>
+          <!-- Form card -->
+          <Transition name="slide-up" mode="out-in">
+            <!-- CREATE -->
+            <div v-if="activeAction==='create'" key="create" id="panel-create" role="tabpanel" aria-labelledby="tab-create" class="glass-panel p-7 rounded-2xl border border-indigo-500/20 shadow-xl">
+              <div class="w-11 h-11 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 mb-5">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
               </div>
-              <h4 class="text-sm font-bold text-slate-200 mb-1">La Sélection</h4>
-              <p class="text-xs text-slate-400 leading-relaxed">
-                Trouvez et proposez secrètement la meilleure musique en rapport avec le thème de la manche.
-              </p>
+              <h2 class="text-2xl font-bold text-white mb-1">Créer un Salon</h2>
+              <p class="text-sm text-[var(--text-secondary)] mb-6">Devenez l'hôte et invitez vos amis via un code.</p>
+
+              <form @submit.prevent="onCreate" class="space-y-4" novalidate>
+                <div>
+                  <label for="create-name" class="form-label">Votre Pseudo</label>
+                  <input
+                    id="create-name" v-model="createName" required
+                    class="form-input" placeholder="Ex: Lucas"
+                    :aria-invalid="!!error && activeAction==='create'"
+                    autocomplete="nickname" maxlength="32"
+                  />
+                </div>
+                <button type="submit" class="btn btn-primary w-full text-base" :disabled="!createName.trim()">
+                  <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z"/></svg>
+                  Lancer le Salon
+                </button>
+              </form>
             </div>
 
-            <!-- Step 2 -->
-            <div class="glass-card p-4 rounded-xl border border-slate-800/80 hover:border-teal-500/30 hover:-translate-y-0.5 transition-all duration-300 group">
-              <div class="flex items-center gap-3 mb-2.5">
-                <div class="w-8 h-8 rounded-lg bg-teal-500/10 flex items-center justify-center border border-teal-500/20 group-hover:bg-teal-500/20 group-hover:border-teal-500/40 transition-colors">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 text-teal-400">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 18v-6a9 9 0 0 1 18 0v6M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H3v-7Zm18 0h-3a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h3v-7Z" />
-                  </svg>
-                </div>
-                <span class="text-xs font-black text-teal-400 tracking-wider uppercase">Étape 2</span>
+            <!-- JOIN -->
+            <div v-else key="join" id="panel-join" role="tabpanel" aria-labelledby="tab-join" class="glass-panel p-7 rounded-2xl border border-violet-500/20 shadow-xl">
+              <div class="w-11 h-11 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-400 mb-5">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"/></svg>
               </div>
-              <h4 class="text-sm font-bold text-slate-200 mb-1">L'Écoute</h4>
-              <p class="text-xs text-slate-400 leading-relaxed">
-                L'extrait est diffusé en temps réel. Écoutez attentivement le style, le genre ou les paroles.
-              </p>
-            </div>
+              <h2 class="text-2xl font-bold text-white mb-1">Rejoindre un Salon</h2>
+              <p class="text-sm text-[var(--text-secondary)] mb-6">Entrez le code à 6 caractères communiqué par l'hôte.</p>
 
-            <!-- Step 3 -->
-            <div class="glass-card p-4 rounded-xl border border-slate-800/80 hover:border-purple-500/30 hover:-translate-y-0.5 transition-all duration-300 group">
-              <div class="flex items-center gap-3 mb-2.5">
-                <div class="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center border border-purple-500/20 group-hover:bg-purple-500/20 group-hover:border-purple-500/40 transition-colors">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 text-purple-400">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.602 10.602z" />
-                  </svg>
+              <form @submit.prevent="onJoin" class="space-y-4" novalidate>
+                <div class="grid grid-cols-5 gap-3">
+                  <div class="col-span-2">
+                    <label for="join-code" class="form-label">Code</label>
+                    <input
+                      id="join-code" v-model="joinCode" required maxlength="6"
+                      class="form-input text-center font-mono uppercase tracking-widest text-lg"
+                      placeholder="ABCDEF"
+                      :aria-invalid="!!error && activeAction==='join'"
+                      autocomplete="off" spellcheck="false"
+                    />
+                  </div>
+                  <div class="col-span-3">
+                    <label for="join-name" class="form-label">Votre Pseudo</label>
+                    <input
+                      id="join-name" v-model="joinName" required
+                      class="form-input" placeholder="Ex: Lucas"
+                      autocomplete="nickname" maxlength="32"
+                    />
+                  </div>
                 </div>
-                <span class="text-xs font-black text-purple-400 tracking-wider uppercase">Étape 3</span>
-              </div>
-              <h4 class="text-sm font-bold text-slate-200 mb-1">Le Vote</h4>
-              <p class="text-xs text-slate-400 leading-relaxed">
-                Accusez le suspect idéal ! Sélectionnez le joueur qui, selon vous, a proposé la musique en cours.
-              </p>
+                <button type="submit" class="btn btn-secondary w-full text-base" :disabled="!joinCode.trim() || !joinName.trim()">
+                  <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9"/></svg>
+                  Rejoindre la Partie
+                </button>
+              </form>
             </div>
+          </Transition>
 
-            <!-- Step 4 -->
-            <div class="glass-card p-4 rounded-xl border border-slate-800/80 hover:border-rose-500/30 hover:-translate-y-0.5 transition-all duration-300 group">
-              <div class="flex items-center gap-3 mb-2.5">
-                <div class="w-8 h-8 rounded-lg bg-rose-500/10 flex items-center justify-center border border-rose-500/20 group-hover:bg-rose-500/20 group-hover:border-rose-500/40 transition-colors">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 text-rose-400">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 15a7 7 0 0 0 7-7V4H5v4a7 7 0 0 0 7 7Zm0 0v4m-4 0h8m-12-8h4m8 0h4" />
-                  </svg>
+          <!-- Error alert -->
+          <Transition name="fade">
+            <div v-if="error" role="alert" aria-live="assertive" class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold" style="background:var(--clr-danger-dim);border:1px solid rgba(244,63,94,.3);color:#fda4af">
+              <svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0zm-9 3.75h.008v.008H12v-.008z"/></svg>
+              {{ error }}
+            </div>
+          </Transition>
+        </div>
+
+        <!-- ── LEFT COL (order-2 mobile): Rules + Simulator ── -->
+        <div class="lg:col-span-6 flex flex-col gap-5 order-2 lg:order-1 animate-fade-in-up opacity-0" style="animation-delay:.16s">
+
+          <!-- Rules grid -->
+          <div class="grid grid-cols-2 gap-3">
+            <div v-for="step in rules" :key="step.id" class="glass-card p-4 rounded-xl hover:border-indigo-500/30 transition-all duration-300 group" style="border:1px solid var(--border)">
+              <div class="flex items-center gap-2 mb-2">
+                <div class="w-7 h-7 rounded-lg flex items-center justify-center transition-colors" :style="`background:${step.dimColor};border:1px solid ${step.borderColor}`">
+                  <span v-html="step.icon" class="text-sm"></span>
                 </div>
-                <span class="text-xs font-black text-rose-400 tracking-wider uppercase">Étape 4</span>
+                <span class="text-[10px] font-black uppercase tracking-wider" :style="`color:${step.color}`">Étape {{ step.id }}</span>
               </div>
-              <h4 class="text-sm font-bold text-slate-200 mb-1">Révélation</h4>
-              <p class="text-xs text-slate-400 leading-relaxed">
-                Les coupables sont démasqués. Marquez des points bonus si personne ne vous a trouvé !
-              </p>
+              <p class="text-sm font-bold text-white mb-0.5">{{ step.title }}</p>
+              <p class="text-xs text-[var(--text-secondary)] leading-relaxed">{{ step.desc }}</p>
             </div>
           </div>
 
-          <!-- Interactive Game Simulator -->
-          <div class="glass-panel p-5 rounded-2xl border border-purple-500/15 shadow-lg shadow-purple-500/2 hover:border-purple-500/30 transition-all duration-300">
+          <!-- Simulator -->
+          <div class="glass-panel p-5 rounded-2xl border border-violet-500/15 hover:border-violet-500/30 transition-all duration-300">
             <div class="flex items-center justify-between mb-4">
-              <h3 class="text-lg font-bold text-white flex items-center gap-2">
-                Simuler un Tour <span class="text-purple-400">🎮</span>
-              </h3>
-              <button @click="resetMockGame" class="text-xs text-slate-400 hover:text-white underline transition-colors">Réinitialiser</button>
+              <h2 class="section-header text-base">
+                <svg class="w-5 h-5 icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14.25 9v6m-4.5 0V9M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg>
+                Simuler un Tour
+              </h2>
+              <button @click="resetMockGame" class="text-xs text-[var(--text-secondary)] hover:text-white underline underline-offset-2 transition-colors">
+                Réinitialiser
+              </button>
             </div>
 
-            <!-- Simulator Body -->
-            <div class="flex flex-col sm:flex-row items-center gap-4 bg-slate-900/60 p-4 rounded-xl border border-slate-800/80 mb-4">
-              <!-- Animated Vinyl -->
-              <div @click="mockPlaying = !mockPlaying" class="relative w-20 h-20 rounded-full flex-shrink-0 cursor-pointer select-none group" title="Cliquer pour jouer/pauser la simulation">
-                <div :class="['absolute inset-0 bg-slate-950 rounded-full border-2 border-slate-800 flex items-center justify-center shadow-lg transition-transform duration-300', mockPlaying ? 'animate-spin-slow' : '']">
-                  <!-- Grooves -->
+            <!-- Track player -->
+            <div class="flex items-center gap-4 bg-slate-900/70 p-4 rounded-xl border border-[var(--border)] mb-4">
+              <!-- Vinyl -->
+              <button
+                @click="mockPlaying=!mockPlaying"
+                :aria-label="mockPlaying ? 'Mettre en pause' : 'Lancer la lecture'"
+                class="relative w-20 h-20 rounded-full flex-shrink-0 cursor-pointer group touch-target"
+              >
+                <div :class="['absolute inset-0 bg-slate-950 rounded-full border-2 border-slate-800 flex items-center justify-center shadow-lg', mockPlaying ? 'animate-spin-slow' : '']">
                   <div class="w-16 h-16 rounded-full border border-slate-800/40 flex items-center justify-center">
                     <div class="w-10 h-10 rounded-full border border-slate-800/60 flex items-center justify-center overflow-hidden relative">
-                      <img v-if="mockTrack?.cover" :src="mockTrack.cover" class="absolute inset-0 w-full h-full object-cover opacity-60 animate-spin-slow" />
-                      <!-- Center Label -->
-                      <div class="w-5 h-5 rounded-full bg-cyan-500 flex items-center justify-center z-10 relative">
+                      <img v-if="mockTrack?.cover" :src="mockTrack.cover" class="absolute inset-0 w-full h-full object-cover opacity-60" alt="" />
+                      <div class="w-5 h-5 rounded-full bg-indigo-500 flex items-center justify-center z-10 relative">
                         <div class="w-1.5 h-1.5 rounded-full bg-slate-950"></div>
                       </div>
                     </div>
                   </div>
                 </div>
-                <!-- Play/Pause Overlay -->
                 <div class="absolute inset-0 bg-slate-950/60 rounded-full opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                  <svg v-if="mockPlaying" class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
-                  </svg>
-                  <svg v-else class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M8 5v14l11-7z"/>
-                  </svg>
+                  <svg v-if="mockPlaying" class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                  <svg v-else class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
                 </div>
-              </div>
+              </button>
 
-              <!-- Track info and interactive soundwave -->
-              <div class="flex-grow text-center sm:text-left">
-                <div class="text-[10px] text-slate-500 uppercase tracking-widest font-black mb-0.5">Thème : Chanson de la honte</div>
-                <div class="text-sm font-extrabold text-white flex flex-col sm:flex-row items-center gap-1.5 justify-center sm:justify-start">
-                  <span>Morceau Mystère 📻</span>
-                  <span class="text-xs text-cyan-400 font-bold bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20 mt-1 sm:mt-0">Devinez l'auteur !</span>
+              <!-- Track info -->
+              <div class="flex-grow min-w-0">
+                <div class="text-[10px] text-[var(--text-muted)] uppercase tracking-widest font-black mb-0.5">Thème : Chanson de la honte</div>
+                <div class="text-sm font-extrabold text-white flex flex-wrap items-center gap-1.5">
+                  Morceau Mystère 📻
+                  <span class="badge badge-accent">Devinez l'auteur !</span>
                 </div>
-                
-                <!-- Equalizer Soundwave -->
-                <div class="flex items-end justify-center sm:justify-start gap-1 h-6 mt-3">
-                  <div :class="['w-1 bg-cyan-400 rounded-full transition-all duration-300', mockPlaying ? 'animate-eq-1' : 'h-1.5']"></div>
-                  <div :class="['w-1 bg-cyan-300 rounded-full transition-all duration-300', mockPlaying ? 'animate-eq-2' : 'h-3']"></div>
-                  <div :class="['w-1 bg-teal-400 rounded-full transition-all duration-300', mockPlaying ? 'animate-eq-3' : 'h-1']"></div>
-                  <div :class="['w-1 bg-purple-400 rounded-full transition-all duration-300', mockPlaying ? 'animate-eq-4' : 'h-2']"></div>
-                  <div :class="['w-1 bg-purple-500 rounded-full transition-all duration-300', mockPlaying ? 'animate-eq-5' : 'h-1.5']"></div>
+                <!-- Equalizer -->
+                <div class="flex items-end gap-1 h-6 mt-3" aria-hidden="true">
+                  <span :class="['w-1.5 bg-indigo-400 rounded-full transition-all duration-300', mockPlaying ? 'animate-eq-1' : 'h-1.5']"></span>
+                  <span :class="['w-1.5 bg-indigo-300 rounded-full transition-all duration-300', mockPlaying ? 'animate-eq-2' : 'h-3']"></span>
+                  <span :class="['w-1.5 bg-violet-400 rounded-full transition-all duration-300', mockPlaying ? 'animate-eq-3' : 'h-1']"></span>
+                  <span :class="['w-1.5 bg-violet-500 rounded-full transition-all duration-300', mockPlaying ? 'animate-eq-4' : 'h-2']"></span>
+                  <span :class="['w-1.5 bg-cyan-400 rounded-full transition-all duration-300', mockPlaying ? 'animate-eq-5' : 'h-1.5']"></span>
                 </div>
               </div>
             </div>
 
-            <!-- Choices list / Result -->
+            <!-- Vote choices / Result -->
             <div v-if="!mockGuessed">
-              <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 text-center sm:text-left">Qui est le coupable ? Accusez un joueur :</div>
+              <p class="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-2">Qui est le coupable ?</p>
               <div class="grid grid-cols-3 gap-2">
-                <button @click="guessSuspect('Alice')" class="px-3 py-2 bg-slate-800/40 hover:bg-slate-700/60 border border-slate-700/60 hover:border-cyan-500/30 rounded-xl text-xs sm:text-sm font-bold text-slate-200 transition-all active:scale-95">Alice 👩‍🦰</button>
-                <button @click="guessSuspect('Bob')" class="px-3 py-2 bg-slate-800/40 hover:bg-slate-700/60 border border-slate-700/60 hover:border-cyan-500/30 rounded-xl text-xs sm:text-sm font-bold text-slate-200 transition-all active:scale-95">Bob 🧔</button>
-                <button @click="guessSuspect('Clara')" class="px-3 py-2 bg-slate-800/40 hover:bg-slate-700/60 border border-slate-700/60 hover:border-cyan-500/30 rounded-xl text-xs sm:text-sm font-bold text-slate-200 transition-all active:scale-95">Clara 👩</button>
+                <button v-for="suspect in mockSuspects" :key="suspect.name"
+                  @click="guessSuspect(suspect.name)"
+                  class="vote-btn justify-center text-sm py-3 min-h-[52px]"
+                >
+                  {{ suspect.emoji }} {{ suspect.name }}
+                </button>
               </div>
             </div>
 
-            <!-- Success / Error screen -->
-            <div v-else class="mt-2">
-              <Transition name="fade" mode="out-in">
-                <div v-if="mockGuessed === 'success'" key="success" class="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4 flex flex-col gap-2">
-                  <div class="flex items-center gap-2 text-emerald-400 font-bold text-sm">
-                    <svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0"/>
-                    </svg>
-                    <span>Bingo ! +100 points !</span>
-                  </div>
-                  <p class="text-xs text-emerald-300/80 leading-relaxed">
-                    C'est bien Alice qui a proposé cette musique<span v-if="mockTrack" class="font-bold text-emerald-200"> ("{{ mockTrack.title }}" par {{ mockTrack.artist }})</span>. Vous marquez 100 points et Alice ne marque aucun point de camouflage !
-                  </p>
-                  <button @click="resetMockGame" class="mt-2 self-start px-4 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-lg transition-all active:scale-95">Recommencer</button>
+            <Transition name="slide-up" mode="out-in">
+              <div v-if="mockGuessed==='success'" key="success" class="rounded-xl p-4 flex flex-col gap-1.5" style="background:var(--clr-success-dim);border:1px solid rgba(16,185,129,.3)">
+                <div class="flex items-center gap-2 text-emerald-400 font-bold text-sm">
+                  <svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0"/></svg>
+                  Bingo ! +100 points !
                 </div>
-
-                <div v-else-if="mockGuessed === 'error'" key="error" class="bg-rose-500/10 border border-rose-500/30 rounded-xl p-4 flex flex-col gap-2">
-                  <div class="flex items-center gap-2 text-rose-400 font-bold text-sm">
-                    <svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0"/>
-                    </svg>
-                    <span>Faux ! Ce n'est pas {{ mockSuspect }}.</span>
-                  </div>
-                  <p class="text-xs text-rose-300/80 leading-relaxed">
-                    {{ mockSuspect }} sourit en coin ! Essayez d'analyser le style pour trouver qui a réellement soumis ce morceau.
-                  </p>
-                  <button @click="resetMockGame" class="mt-2 self-start px-4 py-1.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 font-black text-xs rounded-lg transition-all active:scale-95">Réessayer</button>
-                </div>
-              </Transition>
-            </div>
-
-          </div>
-
-        </div>
-
-        <!-- Right Column: Join/Create Session Forms (Order 1 on mobile, 2 on desktop) -->
-        <div class="lg:col-span-5 flex flex-col gap-6 order-1 lg:order-2">
-          
-          <!-- Segmented Tab Switcher -->
-          <div class="flex justify-center opacity-0 animate-fade-in-up" style="animation-delay: 0.05s;">
-            <div class="bg-slate-950/60 p-1.5 rounded-2xl border border-slate-800/80 flex gap-1.5 shadow-inner w-full sm:w-auto">
-              <button 
-                @click="activeAction = 'create'" 
-                :class="['flex-1 sm:flex-initial px-6 py-2.5 rounded-xl text-sm font-extrabold transition-all duration-300 flex items-center justify-center gap-2 active:scale-95', activeAction === 'create' ? 'bg-cyan-500 text-slate-950 shadow-lg shadow-cyan-500/10' : 'text-slate-400 hover:text-slate-200']"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                </svg>
-                Créer un Salon
-              </button>
-              <button 
-                @click="activeAction = 'join'" 
-                :class="['flex-1 sm:flex-initial px-6 py-2.5 rounded-xl text-sm font-extrabold transition-all duration-300 flex items-center justify-center gap-2 active:scale-95', activeAction === 'join' ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/10' : 'text-slate-400 hover:text-slate-200']"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
-                </svg>
-                Rejoindre un Salon
-              </button>
-            </div>
-          </div>
-
-          <!-- Action Card Container -->
-          <div class="opacity-0 animate-fade-in-up w-full max-w-md mx-auto" style="animation-delay: 0.15s;">
-            <Transition name="fade" mode="out-in">
-              <!-- Create Room Card -->
-              <div v-if="activeAction === 'create'" key="create" class="glass-panel p-8 rounded-2xl shadow-xl flex flex-col justify-between border-cyan-500/20 shadow-cyan-500/2 hover:border-cyan-500/40 transition-all duration-300">
-                <div>
-                  <div class="w-12 h-12 rounded-lg bg-cyan-500/10 flex items-center justify-center text-cyan-400 mb-6 border border-cyan-500/20">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                    </svg>
-                  </div>
-                  <h2 class="text-2xl font-bold text-white mb-2">Créer un Salon</h2>
-                  <p class="text-slate-400 text-sm mb-6">
-                    Devenez l'hôte de la partie, configurez les règles (nombre de musiques, timers, révélations) et invitez vos amis.
-                  </p>
-                </div>
-
-                <form @submit.prevent="onCreate" class="space-y-4">
-                  <div>
-                    <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Votre Pseudo</label>
-                    <input v-model="createName" required class="w-full bg-slate-900/60 border border-slate-700 rounded-lg px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all" placeholder="Pseudo de l'hôte" />
-                  </div>
-                  <button class="w-full glow-btn bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold py-2.5 rounded-lg transition-all">
-                    Lancer le Salon
-                  </button>
-                </form>
+                <p class="text-xs text-emerald-300/80 leading-relaxed">C'est bien Alice qui a proposé ce morceau. Vous gagnez 100 pts !</p>
+                <button @click="resetMockGame" class="btn btn-ghost text-xs self-start mt-1" style="min-height:32px;padding:.3rem .9rem">Rejouer</button>
               </div>
-
-              <!-- Join Room Card -->
-              <div v-else key="join" class="glass-panel p-8 rounded-2xl shadow-xl flex flex-col justify-between border-purple-500/20 shadow-purple-500/2 hover:border-purple-500/40 transition-all duration-300">
-                <div>
-                  <div class="w-12 h-12 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-400 mb-6 border border-purple-500/20">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
-                    </svg>
-                  </div>
-                  <h2 class="text-2xl font-bold text-white mb-2">Rejoindre un Salon</h2>
-                  <p class="text-slate-400 text-sm mb-6">
-                    Entrez le code de session à 6 caractères généré par l'hôte pour vous connecter instantanément.
-                  </p>
+              <div v-else-if="mockGuessed==='error'" key="error" class="rounded-xl p-4 flex flex-col gap-1.5" style="background:var(--clr-danger-dim);border:1px solid rgba(244,63,94,.3)">
+                <div class="flex items-center gap-2 text-rose-400 font-bold text-sm">
+                  <svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0"/></svg>
+                  Faux ! Ce n'est pas {{ mockSuspectName }}.
                 </div>
-
-                <form @submit.prevent="onJoin" class="space-y-4">
-                  <div class="grid grid-cols-3 gap-3">
-                    <div class="col-span-1">
-                      <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Code</label>
-                      <input v-model="joinCode" required maxlength="6" class="w-full bg-slate-900/60 border border-slate-700 rounded-lg px-3 py-2.5 text-white placeholder-slate-500 text-center font-mono uppercase focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all" placeholder="ABCDEF" />
-                    </div>
-                    <div class="col-span-2">
-                      <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Votre Pseudo</label>
-                      <input v-model="joinName" required class="w-full bg-slate-900/60 border border-slate-700 rounded-lg px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all" placeholder="Votre pseudo" />
-                    </div>
-                  </div>
-                  <button class="w-full glow-btn-purple bg-purple-500 hover:bg-purple-400 text-white font-bold py-2.5 rounded-lg transition-all">
-                    Rejoindre la Partie
-                  </button>
-                </form>
+                <p class="text-xs text-rose-300/80 leading-relaxed">{{ mockSuspectName }} sourit en coin… Analysez mieux le style !</p>
+                <button @click="resetMockGame" class="btn btn-ghost text-xs self-start mt-1" style="min-height:32px;padding:.3rem .9rem">Réessayer</button>
               </div>
             </Transition>
           </div>
-
-          <!-- Error Feedback -->
-          <p v-if="error" class="mt-2 text-center text-rose-400 text-sm font-semibold bg-rose-500/10 border border-rose-500/20 py-2.5 rounded-xl max-w-md mx-auto w-full">
-            {{ error }}
-          </p>
-
         </div>
-
       </div>
-    </div>
+    </main>
   </div>
 </template>
 
@@ -335,50 +267,45 @@ const store = useGameStore();
 const router = useRouter();
 
 const activeAction = ref('create');
-const createName = ref('');
-const joinCode = ref('');
-const joinName = ref('');
-const error = ref(null);
+const createName   = ref('');
+const joinCode     = ref('');
+const joinName     = ref('');
+const error        = ref(null);
 
-// PWA installation state
-const deferredPrompt = ref(null);
+// PWA
+const deferredPrompt  = ref(null);
 const isAppInstallable = ref(false);
 
-const handleBeforeInstallPrompt = (e) => {
-  e.preventDefault();
-  deferredPrompt.value = e;
-  isAppInstallable.value = true;
-};
-
-const handleAppInstalled = () => {
-  deferredPrompt.value = null;
-  isAppInstallable.value = false;
-  store.notifications.push({
-    id: Date.now(),
-    type: 'success',
-    message: 'Application installée avec succès !'
-  });
-};
+const handleBeforeInstallPrompt = (e) => { e.preventDefault(); deferredPrompt.value = e; isAppInstallable.value = true; };
+const handleAppInstalled        = ()  => { deferredPrompt.value = null; isAppInstallable.value = false; };
 
 const installPWA = async () => {
   if (!deferredPrompt.value) return;
   deferredPrompt.value.prompt();
-  const { outcome } = await deferredPrompt.value.userChoice;
-  console.log(`User response to install prompt: ${outcome}`);
+  await deferredPrompt.value.userChoice;
   deferredPrompt.value = null;
   isAppInstallable.value = false;
 };
 
-// Mini-game Simulator state
-const mockGuessed = ref(null);
-const mockSuspect = ref('');
-const mockPlaying = ref(false);
-const mockTrack = ref(null);
-const mockAudio = ref(null);
+// Rules data
+const rules = [
+  { id:1, title:'La Sélection',  desc:'Proposez secrètement la meilleure musique selon le thème.',  color:'#a5b4fc', dimColor:'rgba(99,102,241,.1)',   borderColor:'rgba(99,102,241,.2)',   icon:'🎵' },
+  { id:2, title:"L'Écoute",      desc:"L'extrait est diffusé en direct. Écoutez attentivement.",    color:'#67e8f9', dimColor:'rgba(6,182,212,.1)',    borderColor:'rgba(6,182,212,.2)',    icon:'🎧' },
+  { id:3, title:'Le Vote',       desc:"Accusez le suspect ! Qui a proposé ce morceau ?",            color:'#c4b5fd', dimColor:'rgba(139,92,246,.1)',   borderColor:'rgba(139,92,246,.2)',   icon:'🗳️' },
+  { id:4, title:'La Révélation', desc:'Les coupables sont démasqués. Marquez des points bonus !',   color:'#fda4af', dimColor:'rgba(244,63,94,.1)',    borderColor:'rgba(244,63,94,.2)',    icon:'🎭' },
+];
+
+// Simulator
+const mockSuspects   = [{ name:'Alice', emoji:'👩‍🦰' }, { name:'Bob', emoji:'🧔' }, { name:'Clara', emoji:'👩' }];
+const mockGuessed    = ref(null);
+const mockSuspectName = ref('');
+const mockPlaying    = ref(false);
+const mockTrack      = ref(null);
+const mockAudio      = ref(null);
 
 const resetMockGame = () => {
   mockGuessed.value = null;
-  mockSuspect.value = '';
+  mockSuspectName.value = '';
   mockPlaying.value = true;
   if (mockAudio.value) {
     mockAudio.value.currentTime = 0;
@@ -386,62 +313,40 @@ const resetMockGame = () => {
   }
 };
 
+const guessSuspect = (name) => {
+  mockSuspectName.value = name;
+  mockGuessed.value = name === 'Alice' ? 'success' : 'error';
+};
+
 onMounted(async () => {
-  // PWA listeners
   window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
   window.addEventListener('appinstalled', handleAppInstalled);
-
   try {
     const res = await api.searchDeezer();
     const tracks = res.data.tracks;
-    if (tracks && tracks.length > 0) {
+    if (tracks?.length) {
       mockTrack.value = tracks[Math.floor(Math.random() * tracks.length)];
       if (mockTrack.value.preview) {
         mockAudio.value = new Audio(mockTrack.value.preview);
         mockAudio.value.loop = true;
-        mockAudio.value.volume = 0.5;
-        // Start playing automatically
+        mockAudio.value.volume = 0.4;
         mockPlaying.value = true;
-        mockAudio.value.play().catch((e) => {
-          console.log("Autoplay blocked:", e);
-          mockPlaying.value = false;
-        });
+        mockAudio.value.play().catch(() => { mockPlaying.value = false; });
       }
     }
-  } catch (err) {
-    console.error("Failed to load mock track:", err);
-  }
+  } catch { /* silently ignore */ }
 });
 
 onUnmounted(() => {
   window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
   window.removeEventListener('appinstalled', handleAppInstalled);
-
-  if (mockAudio.value) {
-    mockAudio.value.pause();
-    mockAudio.value.src = '';
-    mockAudio.value = null;
-  }
+  if (mockAudio.value) { mockAudio.value.pause(); mockAudio.value.src = ''; mockAudio.value = null; }
 });
 
 watch(mockPlaying, (playing) => {
-  if (mockAudio.value) {
-    if (playing) {
-      mockAudio.value.play().catch(() => { mockPlaying.value = false; });
-    } else {
-      mockAudio.value.pause();
-    }
-  }
+  if (!mockAudio.value) return;
+  playing ? mockAudio.value.play().catch(() => { mockPlaying.value = false; }) : mockAudio.value.pause();
 });
-
-const guessSuspect = (name) => {
-  mockSuspect.value = name;
-  if (name === 'Alice') {
-    mockGuessed.value = 'success';
-  } else {
-    mockGuessed.value = 'error';
-  }
-};
 
 const onCreate = async () => {
   error.value = null;
@@ -450,7 +355,7 @@ const onCreate = async () => {
     store.connectSocket(session.code);
     router.push(`/game/${session.code}`);
   } catch (err) {
-    error.value = err.response?.data?.message || err.message || "Erreur de création";
+    error.value = err.response?.data?.message || err.message || 'Erreur de création';
   }
 };
 
@@ -462,23 +367,7 @@ const onJoin = async () => {
     store.connectSocket(code);
     router.push(`/game/${code}`);
   } catch (err) {
-    error.value = err.response?.data?.message || err.message || "Impossible de rejoindre";
+    error.value = err.response?.data?.message || err.message || 'Impossible de rejoindre';
   }
 };
 </script>
-
-<style scoped>
-/* Vue Transitions for switching active tabs */
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.2s ease, transform 0.2s ease;
-}
-.fade-enter-from {
-  opacity: 0;
-  transform: translateY(8px);
-}
-.fade-leave-to {
-  opacity: 0;
-  transform: translateY(-8px);
-}
-</style>
