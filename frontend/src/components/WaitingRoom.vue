@@ -88,7 +88,7 @@
             <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Musiques par joueur</label>
             <div class="bg-slate-950/60 p-1.5 rounded-2xl border border-slate-800/80 flex gap-1.5 shadow-inner">
               <button 
-                v-for="val in [1, 2, 3, 5]" 
+                v-for="val in [1, 2, 3, 4, 5]" 
                 :key="val" 
                 @click="isHost && (config.maxMusicsPerPlayer = val) && saveConfig()"
                 :disabled="!isHost"
@@ -105,7 +105,7 @@
             <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Durée de sélection</label>
             <div class="bg-slate-950/60 p-1.5 rounded-2xl border border-slate-800/80 flex gap-1.5 shadow-inner flex-wrap">
               <button 
-                v-for="opt in [{ v: 15, l: '15s' }, { v: 30, l: '30s' }, { v: 60, l: '1m' }, { v: 120, l: '2m' }, { v: 180, l: '3m' }]" 
+                v-for="opt in [{ v: 30, l: '30s' }, { v: 60, l: '1m' }, { v: 120, l: '2m' }, { v: 180, l: '3m' }, { v: 300, l: '5m' }]" 
                 :key="opt.v" 
                 @click="isHost && (config.selectionDuration = opt.v) && saveConfig()"
                 :disabled="!isHost"
@@ -139,7 +139,7 @@
             <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Temps de vote</label>
             <div class="bg-slate-950/60 p-1.5 rounded-2xl border border-slate-800/80 flex gap-1.5 shadow-inner flex-wrap">
               <button 
-                v-for="val in [5, 10, 15, 20, 30, 45]" 
+                v-for="val in [20, 30, 40, 50, 60]" 
                 :key="val" 
                 @click="isHost && (config.votingDuration = val) && saveConfig()"
                 :disabled="!isHost"
