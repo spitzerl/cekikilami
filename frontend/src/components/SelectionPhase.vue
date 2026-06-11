@@ -57,7 +57,8 @@
             <div class="relative mb-4">
               <label for="music-search" class="sr-only">Rechercher un artiste ou un titre</label>
               <input id="music-search" v-model="searchQuery"
-                class="form-input pl-11"
+                class="form-input"
+                style="padding-left: 2.75rem"
                 placeholder="Artiste, titre…"
                 autocomplete="off" autocorrect="off" spellcheck="false"
               />
