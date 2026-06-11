@@ -40,7 +40,7 @@
             <!-- Avatar & Medal -->
             <div class="absolute -top-6 sm:-top-10 flex flex-col items-center">
               <div class="relative">
-                <img v-if="podium[1].avatar_seed" :src="`https://api.dicebear.com/9.x/notionists-neutral/svg?seed=${podium[1].avatar_seed}`" class="w-10 h-10 sm:w-14 sm:h-14 rounded-full border-2 border-slate-350 bg-slate-800 shadow-lg transition-transform duration-300 group-hover:scale-110" alt="Avatar" />
+                <img v-if="podium[1].avatar_seed" :src="`https://api.dicebear.com/9.x/notionists-neutral/svg?seed=${podium[1].avatar_seed}&backgroundColor=06b6d4,9333ea,f59e0b,f43f5e,10b981,3b82f6,6366f1`" class="w-10 h-10 sm:w-14 sm:h-14 rounded-full border-2 border-slate-350 bg-slate-800 shadow-lg transition-transform duration-300 group-hover:scale-110" alt="Avatar" />
                 <div v-else class="w-9 h-9 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-slate-200 via-slate-400 to-slate-500 border-2 border-slate-350 flex items-center justify-center text-sm sm:text-xl shadow-lg transition-transform duration-300 group-hover:scale-110">🥈</div>
                 <div v-if="podium[1].avatar_seed" class="absolute -bottom-1 -right-1 sm:-bottom-2 sm:-right-2 w-4 h-4 sm:w-6 sm:h-6 rounded-full bg-gradient-to-br from-slate-200 via-slate-400 to-slate-500 border-2 border-slate-900 flex items-center justify-center text-[8px] sm:text-xs shadow-md">
                   🥈
@@ -75,7 +75,7 @@
               </svg>
               <!-- Avatar & Medal -->
               <div class="relative">
-                <img v-if="podium[0].avatar_seed" :src="`https://api.dicebear.com/9.x/notionists-neutral/svg?seed=${podium[0].avatar_seed}`" class="w-12 h-12 sm:w-16 sm:h-16 rounded-full border-2 border-yellow-300 bg-slate-800 shadow-xl transition-transform duration-300 group-hover:scale-110" alt="Avatar" />
+                <img v-if="podium[0].avatar_seed" :src="`https://api.dicebear.com/9.x/notionists-neutral/svg?seed=${podium[0].avatar_seed}&backgroundColor=06b6d4,9333ea,f59e0b,f43f5e,10b981,3b82f6,6366f1`" class="w-12 h-12 sm:w-16 sm:h-16 rounded-full border-2 border-yellow-300 bg-slate-800 shadow-xl transition-transform duration-300 group-hover:scale-110" alt="Avatar" />
                 <div v-else class="w-11 h-11 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-yellow-300 via-amber-400 to-yellow-600 border-2 border-yellow-300 flex items-center justify-center text-base sm:text-2xl shadow-xl transition-transform duration-300 group-hover:scale-110">🥇</div>
                 <div v-if="podium[0].avatar_seed" class="absolute -bottom-1 -right-1 sm:-bottom-2 sm:-right-2 w-5 h-5 sm:w-7 sm:h-7 rounded-full bg-gradient-to-br from-yellow-300 via-amber-400 to-yellow-600 border-2 border-slate-900 flex items-center justify-center text-[10px] sm:text-sm shadow-md">
                   🥇
@@ -104,7 +104,7 @@
             <!-- Avatar & Medal -->
             <div class="absolute -top-5 sm:-top-10 flex flex-col items-center">
               <div class="relative">
-                <img v-if="podium[2].avatar_seed" :src="`https://api.dicebear.com/9.x/notionists-neutral/svg?seed=${podium[2].avatar_seed}`" class="w-9 h-9 sm:w-12 sm:h-12 rounded-full border-2 border-amber-600 bg-slate-800 shadow-lg transition-transform duration-300 group-hover:scale-110" alt="Avatar" />
+                <img v-if="podium[2].avatar_seed" :src="`https://api.dicebear.com/9.x/notionists-neutral/svg?seed=${podium[2].avatar_seed}&backgroundColor=06b6d4,9333ea,f59e0b,f43f5e,10b981,3b82f6,6366f1`" class="w-9 h-9 sm:w-12 sm:h-12 rounded-full border-2 border-amber-600 bg-slate-800 shadow-lg transition-transform duration-300 group-hover:scale-110" alt="Avatar" />
                 <div v-else class="w-8 h-8 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-amber-600 via-amber-700 to-amber-800 border-2 border-amber-600 flex items-center justify-center text-xs sm:text-lg shadow-lg transition-transform duration-300 group-hover:scale-110">🥉</div>
                 <div v-if="podium[2].avatar_seed" class="absolute -bottom-1 -right-1 sm:-bottom-1.5 sm:-right-1.5 w-3.5 h-3.5 sm:w-5 sm:h-5 rounded-full bg-gradient-to-br from-amber-600 via-amber-700 to-amber-800 border-2 border-slate-900 flex items-center justify-center text-[6px] sm:text-[10px] shadow-md">
                   🥉
@@ -151,7 +151,7 @@
               </div>
               
               <!-- Avatar -->
-              <img v-if="player.avatar_seed" :src="`https://api.dicebear.com/9.x/notionists-neutral/svg?seed=${player.avatar_seed}`" :class="[
+              <img v-if="player.avatar_seed" :src="`https://api.dicebear.com/9.x/notionists-neutral/svg?seed=${player.avatar_seed}&backgroundColor=06b6d4,9333ea,f59e0b,f43f5e,10b981,3b82f6,6366f1`" :class="[
                 'w-10 h-10 rounded-full border bg-slate-800 shadow-sm transition-colors duration-300',
                 idx === 0 ? 'border-yellow-500/40' :
                 idx === 1 ? 'border-slate-400/40' :

@@ -267,7 +267,7 @@
               <div class="flex items-center gap-3 min-w-0">
                 <!-- Status circle indicator -->
                 <span :class="['w-2.5 h-2.5 rounded-full flex-shrink-0', player.is_connected ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500']"></span>
-                <img v-if="player.avatar_seed" :src="`https://api.dicebear.com/9.x/notionists-neutral/svg?seed=${player.avatar_seed}`" class="w-8 h-8 rounded-full border border-slate-700/50 bg-slate-800/80" alt="Avatar" />
+                <img v-if="player.avatar_seed" :src="`https://api.dicebear.com/9.x/notionists-neutral/svg?seed=${player.avatar_seed}&backgroundColor=06b6d4,9333ea,f59e0b,f43f5e,10b981,3b82f6,6366f1`" class="w-8 h-8 rounded-full border border-slate-700/50 bg-slate-800/80" alt="Avatar" />
                 <span class="font-bold text-white truncate">{{ player.name }}</span>
                 <button v-if="player.id === store.player?.id" @click.stop="regenerateAvatar(player.id)" title="Générer un nouvel avatar" class="p-1.5 ml-0.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white active:scale-95 transition-all">
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5">
