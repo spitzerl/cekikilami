@@ -18,9 +18,6 @@
           </svg>
           Partager les scores
         </button>
-        <button v-if="isHost" @click="showPlayersModal = true" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-sm font-bold rounded-xl transition-all flex items-center gap-2">
-          ⚙️ Gérer les joueurs
-        </button>
         <button v-if="isHost" @click="replay" class="glow-btn-purple bg-purple-600 hover:bg-purple-500 text-white font-bold px-6 py-2.5 rounded-xl transition-all flex items-center gap-2 text-sm">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
             <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
@@ -289,44 +286,7 @@
       </section>
     </main>
 
-    <!-- Manage Players Modal -->
-    <div v-if="showPlayersModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
-      <div class="glass-panel max-w-md w-full p-6 rounded-3xl border border-slate-800 shadow-2xl relative">
-        <button @click="showPlayersModal = false" class="absolute top-4 right-4 text-slate-400 hover:text-white transition-all text-xl font-bold">
-          ✕
-        </button>
-        
-        <h3 class="text-xl font-bold text-white mb-6 flex items-center gap-2">
-          ⚙️ Gérer les participants
-        </h3>
-        
-        <div class="space-y-4 max-h-96 overflow-y-auto pr-2">
-          <div v-for="p in store.players" :key="p.id" class="flex items-center justify-between p-3 rounded-xl bg-slate-900/60 border border-slate-850">
-            <div class="flex items-center gap-3">
-              <span :class="['w-2 h-2 rounded-full', p.is_connected ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500']"></span>
-              <span class="font-bold text-slate-200 text-sm">{{ p.name }}</span>
-              <span v-if="p.is_bot" class="text-[9px] bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 px-1.5 py-0.5 rounded font-extrabold uppercase tracking-wider">Bot</span>
-              <span v-if="p.name === store.session?.host_name" class="text-[9px] bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 px-1.5 py-0.5 rounded font-extrabold uppercase tracking-wider">Hôte</span>
-            </div>
-            
-            <div class="flex gap-2">
-              <!-- Promote to Host -->
-              <button v-if="!p.is_bot && p.id !== store.player?.id" @click="promotePlayer(p.id)" title="Promouvoir Hôte" class="p-1.5 rounded-lg bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/20 text-yellow-400 transition-all">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 11.25l-3-3m0 0l-3 3m3-3v11.25M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </button>
-              <!-- Kick Player -->
-              <button v-if="p.id !== store.player?.id" @click="kickPlayer(p.id)" title="Kick du salon" class="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-400 transition-all">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+
 
     <!-- Export Modal -->
     <div v-if="showExportModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
@@ -487,7 +447,6 @@ const replay = async () => {
   }
 };
 
-const showPlayersModal = ref(false);
 const showExportModal = ref(false);
 const exportImageUrl = ref('');
 
@@ -914,28 +873,7 @@ const exportImage = () => {
   showExportModal.value = true;
 };
 
-const promotePlayer = async (targetId) => {
-  if (!isHost.value) return;
-  if (confirm("Voulez-vous vraiment désigner ce joueur comme Hôte ? Vous perdrez vos droits d'administration.")) {
-    try {
-      await store.promotePlayer(targetId);
-      showPlayersModal.value = false;
-    } catch (err) {
-      console.error("Failed to promote player:", err);
-    }
-  }
-};
 
-const kickPlayer = async (targetId) => {
-  if (!isHost.value) return;
-  if (confirm("Voulez-vous vraiment exclure ce joueur de la partie ?")) {
-    try {
-      await store.kickPlayer(targetId);
-    } catch (err) {
-      console.error("Failed to kick player:", err);
-    }
-  }
-};
 </script>
 
 <style scoped>

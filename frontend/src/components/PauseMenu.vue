@@ -1,16 +1,57 @@
 <template>
   <div v-if="isVisible">
-    <!-- Floating Menu Trigger Button -->
-    <button
-      v-if="!isOpen"
-      @click="openMenu"
-      class="fixed bottom-6 right-6 z-40 pointer-events-auto flex items-center justify-center w-12 h-12 rounded-full bg-slate-900/60 hover:bg-slate-900/80 border border-slate-700/50 backdrop-blur-md text-slate-200 hover:text-white shadow-lg transition-all active:scale-95 hover:border-cyan-500/40 group"
-      aria-label="Ouvrir le menu de pause"
-    >
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5 transition-transform group-hover:scale-110">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25v13.5m-7.5-13.5v13.5" />
-      </svg>
-    </button>
+    <!-- Floating Controls Container (Pause & Volume) -->
+    <div v-if="!isOpen" class="fixed bottom-6 right-6 z-40 flex items-center gap-3">
+      <!-- Volume Control Button with Hover Slider -->
+      <div class="relative group">
+        <button
+          class="flex items-center justify-center w-12 h-12 rounded-full bg-slate-900/60 hover:bg-slate-900/80 border border-slate-700/50 backdrop-blur-md text-slate-200 hover:text-white shadow-lg transition-all active:scale-95 hover:border-cyan-500/40"
+          aria-label="Gérer le volume"
+        >
+          <!-- Speaker Icon dynamic based on volume value -->
+          <svg v-if="store.volume === 0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17.25 9.75 19.5 12m0 0 2.25 2.25M19.5 12l2.25-2.25M19.5 12l-2.25 2.25m-10.5-6 4.72-4.72a.75.75 0 0 1 1.28.53v15.88a.75.75 0 0 1-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.009 9.009 0 0 1 2.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75Z" />
+          </svg>
+          <svg v-else-if="store.volume < 0.4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M16.463 8.288a5.25 5.25 0 0 1 0 7.424M6.75 8.25l4.72-4.72a.75.75 0 0 1 1.28.53v15.88a.75.75 0 0 1-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.009 9.009 0 0 1 2.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75Z" />
+          </svg>
+          <svg v-else xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19.114 5.636a9 9 0 0 1 0 12.728M16.463 8.288a5.25 5.25 0 0 1 0 7.424M6.75 8.25l4.72-4.72a.75.75 0 0 1 1.28.53v15.88a.75.75 0 0 1-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.009 9.009 0 0 1 2.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75Z" />
+          </svg>
+        </button>
+
+        <!-- Hover Volume Popup -->
+        <div class="absolute bottom-14 left-1/2 -translate-x-1/2 bg-slate-950/90 border border-slate-800 backdrop-blur-md w-10 py-3 rounded-2xl shadow-2xl flex flex-col items-center gap-1.5 transition-all duration-300 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto origin-bottom scale-90 group-hover:scale-100 mb-1 z-50 before:absolute before:inset-x-0 before:-bottom-3 before:h-3 before:content-['']">
+          <!-- Volume slider wrapper -->
+          <div class="h-24 w-4 flex items-center justify-center overflow-visible">
+            <!-- Vertical volume slider -->
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.05"
+              v-model="store.volume"
+              @input="updateStoreVolume"
+              class="w-20 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-500 origin-center -rotate-90"
+            />
+          </div>
+          <span class="text-[10px] font-bold font-mono text-cyan-400 mt-1 select-none">
+            {{ Math.round(store.volume * 100) }}%
+          </span>
+        </div>
+      </div>
+
+      <!-- Floating Menu Trigger Button (Pause) -->
+      <button
+        @click="openMenu"
+        class="flex items-center justify-center w-12 h-12 rounded-full bg-slate-900/60 hover:bg-slate-900/80 border border-slate-700/50 backdrop-blur-md text-slate-200 hover:text-white shadow-lg transition-all active:scale-95 hover:border-cyan-500/40 group"
+        aria-label="Ouvrir le menu de pause"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5 transition-transform group-hover:scale-110">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25v13.5m-7.5-13.5v13.5" />
+        </svg>
+      </button>
+    </div>
 
     <!-- Pause Menu Overlay -->
     <Transition name="fade">
@@ -251,6 +292,11 @@ const kickPlayer = async (targetId) => {
       console.error("Failed to kick player:", err);
     }
   }
+};
+
+const updateStoreVolume = () => {
+  store.volume = Number(store.volume);
+  localStorage.setItem('cekikilami_volume', String(store.volume));
 };
 </script>
 

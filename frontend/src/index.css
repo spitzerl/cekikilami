@@ -319,8 +319,8 @@ h1, h2, h3, h4, h5, h6 {
   transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
 }
 .switch-input:checked + .switch-track {
-  background: var(--clr-primary);
-  border-color: rgba(99,102,241,0.4);
+  background: var(--clr-accent);
+  border-color: rgba(6,182,212,0.4);
 }
 .switch-input:checked + .switch-track .switch-thumb {
   transform: translateX(1.25rem);

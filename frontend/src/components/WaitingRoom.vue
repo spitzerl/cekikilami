@@ -84,7 +84,14 @@
         <div id="config-body" :class="['mt-5 space-y-5 transition-all duration-300', showConfigOnMobile ? 'block' : 'hidden md:block']">
           <!-- Musiques par joueur -->
           <fieldset>
-            <legend class="form-label">Musiques par joueur</legend>
+            <legend class="form-label">
+              <span class="flex items-center gap-1.5">
+                <svg class="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="m9 9 10.5-3m0 6.553v3.75a2.25 2.25 0 0 1-1.632 2.163l-1.32.377a1.803 1.803 0 1 1-.99-3.467l2.31-.66a2.25 2.25 0 0 0 1.632-2.163Zm0 0V2.25L9 5.25v10.303m0 0v3.75a2.25 2.25 0 0 1-1.632 2.163l-1.32.377a1.803 1.803 0 0 1-.99-3.467l2.31-.66A2.25 2.25 0 0 0 9 15.553Z"/>
+                </svg>
+                <span>Musiques par joueur</span>
+              </span>
+            </legend>
             <div class="seg-control">
               <button v-for="val in [1,2,3,4,5]" :key="val" type="button"
                 @click="isHost && (config.maxMusicsPerPlayer=val) && saveConfig()"
@@ -97,7 +104,14 @@
 
           <!-- Durée sélection -->
           <fieldset>
-            <legend class="form-label">Durée de sélection</legend>
+            <legend class="form-label">
+              <span class="flex items-center gap-1.5">
+                <svg class="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
+                </svg>
+                <span>Durée de sélection</span>
+              </span>
+            </legend>
             <div class="seg-control flex-wrap">
               <button v-for="opt in [{v:30,l:'30s'},{v:60,l:'1m'},{v:120,l:'2m'},{v:180,l:'3m'},{v:300,l:'5m'}]" :key="opt.v" type="button"
                 @click="isHost && (config.selectionDuration=opt.v) && saveConfig()"
@@ -110,7 +124,14 @@
 
           <!-- Durée extrait -->
           <fieldset>
-            <legend class="form-label">Durée d'extrait</legend>
+            <legend class="form-label">
+              <span class="flex items-center gap-1.5">
+                <svg class="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
+                </svg>
+                <span>Durée d'extrait</span>
+              </span>
+            </legend>
             <div class="seg-control">
               <button v-for="val in [10,15,20,30]" :key="val" type="button"
                 @click="isHost && (config.extractDuration=val) && saveConfig()"
@@ -123,7 +144,14 @@
 
           <!-- Temps de vote -->
           <fieldset>
-            <legend class="form-label">Temps de vote</legend>
+            <legend class="form-label">
+              <span class="flex items-center gap-1.5">
+                <svg class="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
+                </svg>
+                <span>Temps de vote</span>
+              </span>
+            </legend>
             <div class="seg-control flex-wrap">
               <button v-for="val in [20,30,40,50,60]" :key="val" type="button"
                 @click="isHost && (config.votingDuration=val) && saveConfig()"
@@ -135,12 +163,28 @@
           </fieldset>
 
           <!-- Toggles -->
-          <div class="divide-y" style="divide-color:var(--border)">
-            <div v-for="toggle in toggleOptions" :key="toggle.key" class="flex items-center justify-between py-3">
-              <label :for="`toggle-${toggle.key}`" class="text-sm text-[var(--text-secondary)] font-semibold pr-4 cursor-pointer">
-                {{ toggle.label }}
-              </label>
-              <label class="switch-container">
+          <div class="space-y-1">
+            <div v-for="toggle in toggleOptions" :key="toggle.key" class="flex items-center justify-between py-2.5">
+              <div class="flex items-center gap-2.5 min-w-0">
+                <!-- Icons -->
+                <svg v-if="toggle.key === 'showAnswers'" class="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>
+                </svg>
+                <svg v-else-if="toggle.key === 'autoAdvance'" class="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644a9 9 0 1 1 18.17 0M5.273 11.25A9 9 0 0 1 15.65 2.57m-4.977 15.549h4.992v-.001" />
+                </svg>
+                <svg v-else-if="toggle.key === 'showVoteCount'" class="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
+                </svg>
+                <svg v-else-if="toggle.key === 'enableBlindTest'" class="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="m9 9 10.5-3m0 6.553v3.75a2.25 2.25 0 0 1-1.632 2.163l-1.32.377a1.803 1.803 0 1 1-.99-3.467l2.31-.66a2.25 2.25 0 0 0 1.632-2.163Zm0 0V2.25L9 5.25v10.303m0 0v3.75a2.25 2.25 0 0 1-1.632 2.163l-1.32.377a1.803 1.803 0 0 1-.99-3.467l2.31-.66A2.25 2.25 0 0 0 9 15.553Z"/>
+                </svg>
+                <label :for="`toggle-${toggle.key}`" class="text-sm text-[var(--text-secondary)] font-semibold pr-4 cursor-pointer truncate">
+                  {{ toggle.label }}
+                </label>
+              </div>
+              <label class="switch-container flex-shrink-0">
                 <input :id="`toggle-${toggle.key}`" type="checkbox" v-model="config[toggle.key]" :disabled="!isHost" @change="saveConfig" class="switch-input" />
                 <span class="switch-track"><span class="switch-thumb"></span></span>
               </label>
@@ -149,7 +193,14 @@
 
           <!-- Limite joueurs -->
           <fieldset>
-            <legend class="form-label">Limite de joueurs</legend>
+            <legend class="form-label">
+              <span class="flex items-center gap-1.5">
+                <svg class="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"/>
+                </svg>
+                <span>Limite de joueurs</span>
+              </span>
+            </legend>
             <div class="seg-control">
               <button v-for="val in [4,8,12,16]" :key="val" type="button"
                 @click="isHost && (config.maxPlayers=val) && saveConfig()"

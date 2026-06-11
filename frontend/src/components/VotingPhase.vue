@@ -34,11 +34,6 @@
           </svg>
         </button>
 
-        <!-- Host Manage Players Button -->
-        <button v-if="isHost" @click="showPlayersModal = true" class="flex-1 sm:flex-none px-3.5 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-1.5">
-          ⚙️ <span>Gérer les joueurs</span>
-        </button>
-
         <!-- Desktop Timer -->
         <div v-if="status !== 'idle'" :class="['hidden sm:flex items-center gap-2 px-4 py-2 rounded-xl border font-bold text-lg transition-all duration-300', remainingTime < 10 ? 'bg-rose-500/10 border-rose-500 text-rose-400 animate-pulse' : 'bg-slate-900 border-slate-800 text-cyan-400']">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
@@ -212,13 +207,7 @@
           </div>
         </div>
 
-        <!-- Volume slider control -->
-        <div class="absolute bottom-4 right-4 flex items-center gap-2 bg-slate-950/80 px-3 py-1.5 rounded-lg border border-slate-800">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4 text-slate-400">
-            <path d="M13.5 4.06c0-1.336-1.616-2.005-2.56-1.06l-4.5 4.5H4.508c-1.141 0-2.063.922-2.063 2.063v4.875c0 1.141.922 2.062 2.062 2.062H6.44l4.5 4.5c.944.945 2.56.276 2.56-1.06V4.06ZM17.78 9.22a.75.75 0 1 0-1.06 1.06L18.44 12l-1.72 1.72a.75.75 0 0 0 1.06 1.06l1.72-1.72 1.72 1.72a.75.75 0 1 0 1.06-1.06L20.56 12l1.72-1.72a.75.75 0 0 0-1.06-1.06l-1.72 1.72-1.72-1.72Z" />
-          </svg>
-          <input type="range" min="0" max="1" step="0.05" v-model="volume" @input="updateVolume" class="w-16 h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-500" />
-        </div>
+
       </section>
 
       <!-- Interactive Zone (Voting List or Revelation Details) -->
@@ -319,44 +308,7 @@
       </section>
     </main>
 
-    <!-- Manage Players Modal -->
-    <div v-if="showPlayersModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
-      <div class="glass-panel max-w-md w-full p-6 rounded-3xl border border-slate-800 shadow-2xl relative">
-        <button @click="showPlayersModal = false" class="absolute top-4 right-4 text-slate-400 hover:text-white transition-all text-xl font-bold">
-          ✕
-        </button>
-        
-        <h3 class="text-xl font-bold text-white mb-6 flex items-center gap-2">
-          ⚙️ Gérer les participants
-        </h3>
-        
-        <div class="space-y-4 max-h-96 overflow-y-auto pr-2">
-          <div v-for="p in store.players" :key="p.id" class="flex items-center justify-between p-3 rounded-xl bg-slate-900/60 border border-slate-850">
-            <div class="flex items-center gap-3">
-              <span :class="['w-2 h-2 rounded-full', p.is_connected ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500']"></span>
-              <span class="font-bold text-slate-200 text-sm">{{ p.name }}</span>
-              <span v-if="p.is_bot" class="text-[9px] bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 px-1.5 py-0.5 rounded font-extrabold uppercase tracking-wider">Bot</span>
-              <span v-if="p.name === store.session?.host_name" class="text-[9px] bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 px-1.5 py-0.5 rounded font-extrabold uppercase tracking-wider">Hôte</span>
-            </div>
-            
-            <div class="flex gap-2">
-              <!-- Promote to Host -->
-              <button v-if="!p.is_bot && p.id !== store.player?.id" @click="promotePlayer(p.id)" title="Promouvoir Hôte" class="p-1.5 rounded-lg bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/20 text-yellow-400 transition-all">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 11.25l-3-3m0 0l-3 3m3-3v11.25M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </button>
-              <!-- Kick Player -->
-              <button v-if="p.id !== store.player?.id" @click="kickPlayer(p.id)" title="Kick du salon" class="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-400 transition-all">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+
   </div>
 </template>
 
@@ -375,7 +327,6 @@ let timerInterval = null;
 // Local Player State
 const selectedVoteId = ref(null);
 const audioError = ref(false);
-const volume = ref(localStorage.getItem('cekikilami_volume') ? Number(localStorage.getItem('cekikilami_volume')) : 0.5);
 
 // Blind Test State
 const blindTestSelectedAnswer = ref(null);
@@ -626,12 +577,11 @@ const formatAudioUrl = (path) => {
   return `${apiBase}${path}`;
 };
 
-const updateVolume = () => {
+watch(() => store.volume, (newVol) => {
   if (audio) {
-    audio.volume = volume.value;
+    audio.volume = newVol;
   }
-  localStorage.setItem('cekikilami_volume', String(volume.value));
-};
+});
 
 const startAudio = () => {
   audioError.value = false;
@@ -642,7 +592,7 @@ const startAudio = () => {
   if (store.currentMusic?.file_path) {
     const url = formatAudioUrl(store.currentMusic.file_path);
     audio = new Audio(url);
-    audio.volume = volume.value;
+    audio.volume = store.volume;
     
     audio.onerror = (e) => {
       console.error("Audio playback error:", e);
@@ -753,28 +703,5 @@ watch(() => store.session?.phase, (newPhase) => {
   }
 });
 
-const showPlayersModal = ref(false);
 
-const promotePlayer = async (targetId) => {
-  if (!isHost.value) return;
-  if (confirm("Voulez-vous vraiment désigner ce joueur comme Hôte ? Vous perdrez vos droits d'administration.")) {
-    try {
-      await store.promotePlayer(targetId);
-      showPlayersModal.value = false;
-    } catch (err) {
-      console.error("Failed to promote player:", err);
-    }
-  }
-};
-
-const kickPlayer = async (targetId) => {
-  if (!isHost.value) return;
-  if (confirm("Voulez-vous vraiment exclure ce joueur de la partie ?")) {
-    try {
-      await store.kickPlayer(targetId);
-    } catch (err) {
-      console.error("Failed to kick player:", err);
-    }
-  }
-};
 </script>

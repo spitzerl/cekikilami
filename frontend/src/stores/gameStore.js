@@ -14,6 +14,7 @@ export const useGameStore = defineStore('game', {
     ranking: [],
     error: null,
     notifications: [],
+    volume: localStorage.getItem('cekikilami_volume') !== null ? Number(localStorage.getItem('cekikilami_volume')) : 0.5,
   }),
   actions: {
     async createSession(hostName) {
