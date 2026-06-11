@@ -1,37 +1,46 @@
 <template>
-  <div class="min-h-screen p-6 max-w-7xl mx-auto flex flex-col justify-start gap-4 opacity-0 animate-fade-in-up">
+  <div class="min-h-screen p-6 pb-24 max-w-7xl mx-auto flex flex-col justify-start gap-4 opacity-0 animate-fade-in-up">
     <!-- Header -->
-    <header class="flex justify-between items-center mb-6 pb-4 border-b border-slate-800">
-      <div>
-        <h1 class="text-3xl font-extrabold text-white flex items-center gap-2">
-          <span>{{ status === 'revelation' ? 'Révélation' : 'Phase de Vote' }}</span>
-        </h1>
-        <p class="text-slate-400 text-sm">
-          Morceau <span class="text-cyan-400 font-bold font-mono">{{ (store.session?.current_music_index || 0) + 1 }}</span>
-        </p>
+    <header class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 pb-4 border-b border-slate-800">
+      <div class="flex justify-between items-center w-full sm:w-auto">
+        <div>
+          <h1 class="text-2xl sm:text-3xl font-extrabold text-white flex items-center gap-2">
+            <span>{{ status === 'revelation' ? 'Révélation' : 'Phase de Vote' }}</span>
+          </h1>
+          <p class="text-slate-400 text-sm mt-0.5">
+            Morceau <span class="text-cyan-400 font-bold font-mono">{{ (store.session?.current_music_index || 0) + 1 }}</span>
+          </p>
+        </div>
+        <!-- Mobile Timer (Compact) -->
+        <div v-if="status !== 'idle'" :class="['flex sm:hidden items-center gap-1.5 px-3 py-1.5 rounded-xl border font-bold text-base transition-all duration-300', remainingTime < 10 ? 'bg-rose-500/10 border-rose-500 text-rose-400 animate-pulse' : 'bg-slate-900 border-slate-800 text-cyan-400']">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+          </svg>
+          <span class="font-mono text-sm">{{ remainingTime }}s</span>
+        </div>
       </div>
 
       <!-- Header Action Controls -->
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2.5 w-full sm:w-auto justify-end">
         <!-- Host Skip/Next Subphase Button -->
         <button
           v-if="isHost && status === 'voting'"
           @click="advanceSubphase"
-          :class="['px-4 py-2 border text-sm font-bold rounded-xl transition-all flex items-center gap-2 shadow-lg active:scale-95', everyoneHasVoted ? 'bg-emerald-600 hover:bg-emerald-500 border-emerald-500 text-white animate-pulse' : 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-200']"
+          :class="['flex-1 sm:flex-none px-3.5 py-2 border text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-lg active:scale-95', everyoneHasVoted ? 'bg-emerald-600 hover:bg-emerald-500 border-emerald-500 text-white animate-pulse' : 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-200']"
         >
           <span>Révéler ({{ totalVotesCast }}/{{ totalEligibleVoters }})</span>
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3.5 h-3.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 4.5l7.5 7.5-7.5 7.5m-6-15l7.5 7.5-7.5 7.5" />
           </svg>
         </button>
 
         <!-- Host Manage Players Button -->
-        <button v-if="isHost" @click="showPlayersModal = true" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-sm font-bold rounded-xl transition-all flex items-center gap-2">
-          ⚙️ Gérer les joueurs
+        <button v-if="isHost" @click="showPlayersModal = true" class="flex-1 sm:flex-none px-3.5 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-1.5">
+          ⚙️ <span>Gérer les joueurs</span>
         </button>
 
-        <!-- Timer -->
-        <div v-if="status !== 'idle'" :class="['flex items-center gap-2 px-4 py-2 rounded-xl border font-bold text-lg transition-all duration-300', remainingTime < 10 ? 'bg-rose-500/10 border-rose-500 text-rose-400 animate-pulse' : 'bg-slate-900 border-slate-800 text-cyan-400']">
+        <!-- Desktop Timer -->
+        <div v-if="status !== 'idle'" :class="['hidden sm:flex items-center gap-2 px-4 py-2 rounded-xl border font-bold text-lg transition-all duration-300', remainingTime < 10 ? 'bg-rose-500/10 border-rose-500 text-rose-400 animate-pulse' : 'bg-slate-900 border-slate-800 text-cyan-400']">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
           </svg>
@@ -76,7 +85,7 @@
     <!-- Main Board (Subsequent phases) -->
     <main v-else class="grid md:grid-cols-2 gap-6 mb-8 items-stretch">
       <!-- Status Box -->
-      <section class="glass-panel p-6 md:p-8 rounded-3xl border border-slate-800 text-center relative overflow-hidden flex flex-col items-center justify-center min-h-[500px] lg:min-h-[600px]">
+      <section class="glass-panel p-4 md:p-8 rounded-3xl border border-slate-800 text-center relative overflow-hidden flex flex-col items-center justify-center min-h-0 py-8 md:min-h-[500px] lg:min-h-[600px]">
 
         <!-- Listening Phase -->
         <div v-if="status === 'listening'" class="space-y-6">
@@ -119,48 +128,48 @@
         <!-- Revelation Phase & Blind Test Revelation -->
         <div v-else-if="status === 'revelation'" class="w-full flex-1 flex flex-col items-center justify-center py-2 relative">
           <!-- Glass Card Container -->
-          <div class="relative w-full max-w-sm bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 shadow-2xl rounded-3xl p-5 flex flex-col items-center text-center overflow-hidden">
+          <div class="relative w-full max-w-sm bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 shadow-2xl rounded-3xl p-3.5 sm:p-5 flex flex-col items-center text-center overflow-hidden">
             
             <!-- Glow Effect -->
             <div class="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-purple-500/10 pointer-events-none"></div>
 
-            <!-- Large cover art -->
-            <div class="relative group mb-4 z-10">
-              <img v-if="store.currentMusic?.cover_url" :src="store.currentMusic.cover_url" class="w-40 h-40 md:w-44 md:h-44 rounded-2xl object-cover shadow-[0_10px_30px_rgba(0,0,0,0.5)] border border-slate-700/80 transition-transform duration-700 group-hover:scale-105 group-hover:-rotate-1" />
-              <div v-else class="w-40 h-40 md:w-44 md:h-44 rounded-2xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center text-white shadow-[0_10px_30px_rgba(0,0,0,0.5)] border border-slate-700/80">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-14 h-14 opacity-80">
+            <!-- Compact cover art on mobile -->
+            <div class="relative group mb-3 sm:mb-4 z-10">
+              <img v-if="store.currentMusic?.cover_url" :src="store.currentMusic.cover_url" class="w-24 h-24 sm:w-40 sm:h-40 md:w-44 md:h-44 rounded-xl sm:rounded-2xl object-cover shadow-[0_10px_30px_rgba(0,0,0,0.5)] border border-slate-700/80 transition-transform duration-700 group-hover:scale-105 group-hover:-rotate-1" />
+              <div v-else class="w-24 h-24 sm:w-40 sm:h-40 md:w-44 md:h-44 rounded-xl sm:rounded-2xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center text-white shadow-[0_10px_30px_rgba(0,0,0,0.5)] border border-slate-700/80">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 sm:w-14 sm:h-14 opacity-80">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M9 9l10.5-3m0 0L21 8.25M19.5 6C19 6 13 12 13 12v6.75m0 0a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
                 </svg>
               </div>
             </div>
 
-            <!-- Song info -->
-            <div class="z-10 w-full mb-3">
-              <h3 class="text-xl md:text-2xl font-black text-white leading-tight truncate max-w-full drop-shadow-md">{{ store.currentMusic?.title }}</h3>
-              <p class="text-sm md:text-base text-cyan-400/80 font-bold truncate max-w-full mt-1 drop-shadow">{{ store.currentMusic?.artist }}</p>
+            <!-- Song info (smaller font on mobile) -->
+            <div class="z-10 w-full mb-2 sm:mb-3">
+              <h3 class="text-base sm:text-xl md:text-2xl font-black text-white leading-tight truncate max-w-full drop-shadow-md">{{ store.currentMusic?.title }}</h3>
+              <p class="text-xs sm:text-sm md:text-base text-cyan-400/80 font-bold truncate max-w-full mt-0.5 sm:mt-1 drop-shadow">{{ store.currentMusic?.artist }}</p>
             </div>
 
-            <!-- Proposer (Only shown during revelation) -->
-            <div v-if="status === 'revelation'" class="z-10 w-full bg-slate-950/40 rounded-xl p-2.5 border border-slate-800/60 mb-3 flex flex-col items-center justify-center gap-1 shadow-inner">
-              <span class="text-[10px] text-yellow-500/80 uppercase font-black tracking-widest">Proposé par</span>
-              <span class="text-xl md:text-2xl font-black text-yellow-400 tracking-wide animate-pulse drop-shadow-md">{{ proposerName }}</span>
+            <!-- Proposer (More compact on mobile) -->
+            <div v-if="status === 'revelation'" class="z-10 w-full bg-slate-950/40 rounded-xl p-1.5 sm:p-2.5 border border-slate-800/60 mb-2 sm:mb-3 flex flex-col items-center justify-center gap-0.5 sm:gap-1 shadow-inner">
+              <span class="text-[9px] sm:text-[10px] text-yellow-500/80 uppercase font-black tracking-widest">Proposé par</span>
+              <span class="text-lg sm:text-xl md:text-2xl font-black text-yellow-400 tracking-wide animate-pulse drop-shadow-md">{{ proposerName }}</span>
             </div>
 
-            <!-- Personal Results -->
-            <div v-if="!isObserver && status === 'revelation'" class="z-10 w-full mt-2 flex flex-col gap-2">
-              <div v-if="store.session?.enable_blind_test && myBlindTestResult" :class="['px-5 py-2.5 rounded-xl border text-sm font-black uppercase tracking-wider shadow-lg', myBlindTestResult.statusClass]">
+            <!-- Personal Results (Smaller badges on mobile) -->
+            <div v-if="!isObserver && status === 'revelation'" class="z-10 w-full mt-1 sm:mt-2 flex flex-col gap-1.5 sm:gap-2">
+              <div v-if="store.session?.enable_blind_test && myBlindTestResult" :class="['px-3 py-1.5 sm:px-5 sm:py-2.5 rounded-xl border text-xs sm:text-sm font-black uppercase tracking-wider shadow-lg', myBlindTestResult.statusClass]">
                 BLIND TEST : {{ myBlindTestResult.statusLabel }}
               </div>
-              <div v-if="myVoteResult" :class="['px-5 py-2.5 rounded-xl border text-sm font-black uppercase tracking-wider shadow-lg', myVoteResult.statusClass]">
+              <div v-if="myVoteResult" :class="['px-3 py-1.5 sm:px-5 sm:py-2.5 rounded-xl border text-xs sm:text-sm font-black uppercase tracking-wider shadow-lg', myVoteResult.statusClass]">
                 VOTE : {{ myVoteResult.statusLabel }}
               </div>
             </div>
           </div>
 
-          <!-- Host: advance to next round (Only in revelation) -->
-          <div v-if="isHost && status === 'revelation'" class="mt-6 z-10">
-            <button @click="advanceFromRevelation" class="glow-btn-purple bg-purple-600 hover:bg-purple-500 text-white font-extrabold py-3.5 px-8 rounded-2xl transition-all flex items-center gap-2.5 text-base shadow-[0_0_20px_rgba(147,51,234,0.4)] active:scale-98">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
+          <!-- Host: advance to next round (Less margin on mobile) -->
+          <div v-if="isHost && status === 'revelation'" class="mt-4 sm:mt-6 z-10">
+            <button @click="advanceFromRevelation" class="glow-btn-purple bg-purple-600 hover:bg-purple-500 text-white font-extrabold py-3 px-6 sm:py-3.5 sm:px-8 rounded-2xl transition-all flex items-center gap-2 text-sm sm:text-base shadow-[0_0_20px_rgba(147,51,234,0.4)] active:scale-98">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4 sm:w-5 sm:h-5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M3 8.689c0-.864.933-1.406 1.683-.977l7.108 4.061a1.125 1.125 0 0 1 0 1.954l-7.108 4.061A1.125 1.125 0 0 1 3 16.811V8.69ZM12.75 8.689c0-.864.933-1.406 1.683-.977l7.108 4.061a1.125 1.125 0 0 1 0 1.954l-7.108 4.061a1.125 1.125 0 0 1-1.683-.977V8.69Z" />
               </svg>
               Manche suivante
@@ -178,7 +187,7 @@
       </section>
 
       <!-- Interactive Zone (Voting List or Revelation Details) -->
-      <section class="glass-panel p-6 rounded-2xl border border-slate-800 min-h-[500px] lg:min-h-[600px] h-full flex flex-col overflow-hidden">
+      <section class="glass-panel p-4 md:p-6 rounded-2xl border border-slate-800 min-h-0 md:min-h-[500px] lg:min-h-[600px] h-full flex flex-col overflow-hidden">
         <!-- Voting Active -->
         <div v-if="status === 'voting'" class="flex flex-col h-full space-y-4">
           <!-- Proposer Message -->
@@ -196,7 +205,7 @@
             <TransitionGroup
               name="list"
               tag="div"
-              class="grid sm:grid-cols-2 gap-4 overflow-y-auto p-3 -mx-3"
+              class="grid grid-cols-2 gap-3 md:gap-4 overflow-y-auto p-3 -mx-3"
             >
               <button
                 v-for="target in eligiblePlayers"
@@ -251,7 +260,7 @@
               📢 C'est votre morceau ! Vous ne participez pas au Blind Test.
             </div>
             <p v-else class="text-xs font-semibold text-cyan-400 uppercase tracking-wider mb-2 text-center flex-shrink-0">Blind Test : Quel est ce morceau ?</p>
-            <TransitionGroup name="list" tag="div" class="grid sm:grid-cols-2 gap-4 overflow-y-auto p-3 -mx-3">
+            <TransitionGroup name="list" tag="div" class="grid grid-cols-2 gap-3 md:gap-4 overflow-y-auto p-3 -mx-3">
               <button
                 v-for="(option, index) in blindTestOptions"
                 :key="index"

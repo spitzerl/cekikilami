@@ -16,15 +16,31 @@
     <div class="relative z-10 w-full max-w-7xl flex flex-col gap-6 md:gap-8">
       <!-- Title & Branding -->
       <div class="text-center mb-2 animate-float">
-        <h1 class="text-5xl md:text-6xl font-extrabold tracking-tight mb-3">
+        <h1 class="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight mb-3">
           <span class="bg-gradient-to-r from-cyan-400 via-teal-300 to-purple-500 bg-clip-text text-transparent">
             Cékikilami
           </span>
         </h1>
-        <p class="text-sm md:text-base text-slate-400 font-medium max-w-md mx-auto">
+        <p class="text-xs sm:text-sm md:text-base text-slate-400 font-medium max-w-md mx-auto px-4">
           Le jeu de blind test social interactif. Devinez qui a proposé chaque morceau et devenez le maître du rythme.
         </p>
       </div>
+
+      <!-- PWA Install Banner -->
+      <Transition name="fade">
+        <div v-if="isAppInstallable" class="glass-panel p-4 rounded-2xl border border-cyan-500/20 max-w-md mx-auto flex items-center justify-between gap-4 shadow-lg shadow-cyan-500/5 animate-fade-in-up">
+          <div class="flex items-center gap-3">
+            <img src="/icon-192.png" class="w-10 h-10 rounded-xl object-cover border border-cyan-500/25 flex-shrink-0" alt="Logo" />
+            <div class="text-left">
+              <h4 class="text-sm font-bold text-white">Installer l'application</h4>
+              <p class="text-[11px] text-slate-400">Jouez en plein écran avec une meilleure fluidité.</p>
+            </div>
+          </div>
+          <button @click="installPWA" class="bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-black px-4 py-2.5 rounded-xl transition-all active:scale-95 shadow-md shadow-cyan-500/10">
+            Installer
+          </button>
+        </div>
+      </Transition>
 
       <!-- Main Columns Grid -->
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start w-full">
@@ -324,6 +340,35 @@ const joinCode = ref('');
 const joinName = ref('');
 const error = ref(null);
 
+// PWA installation state
+const deferredPrompt = ref(null);
+const isAppInstallable = ref(false);
+
+const handleBeforeInstallPrompt = (e) => {
+  e.preventDefault();
+  deferredPrompt.value = e;
+  isAppInstallable.value = true;
+};
+
+const handleAppInstalled = () => {
+  deferredPrompt.value = null;
+  isAppInstallable.value = false;
+  store.notifications.push({
+    id: Date.now(),
+    type: 'success',
+    message: 'Application installée avec succès !'
+  });
+};
+
+const installPWA = async () => {
+  if (!deferredPrompt.value) return;
+  deferredPrompt.value.prompt();
+  const { outcome } = await deferredPrompt.value.userChoice;
+  console.log(`User response to install prompt: ${outcome}`);
+  deferredPrompt.value = null;
+  isAppInstallable.value = false;
+};
+
 // Mini-game Simulator state
 const mockGuessed = ref(null);
 const mockSuspect = ref('');
@@ -342,6 +387,10 @@ const resetMockGame = () => {
 };
 
 onMounted(async () => {
+  // PWA listeners
+  window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+  window.addEventListener('appinstalled', handleAppInstalled);
+
   try {
     const res = await api.searchDeezer();
     const tracks = res.data.tracks;
@@ -365,6 +414,9 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
+  window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+  window.removeEventListener('appinstalled', handleAppInstalled);
+
   if (mockAudio.value) {
     mockAudio.value.pause();
     mockAudio.value.src = '';

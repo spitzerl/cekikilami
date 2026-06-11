@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen p-6 max-w-7xl mx-auto flex flex-col justify-start gap-4 opacity-0 animate-fade-in-up relative">
+  <div class="min-h-screen p-6 pb-24 max-w-7xl mx-auto flex flex-col justify-start gap-4 opacity-0 animate-fade-in-up relative">
     <!-- Ambient glowing backgrounds -->
     <div class="glow-blob bg-purple-600 w-96 h-96 top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2"></div>
     <div class="glow-blob bg-cyan-600 w-96 h-96 bottom-1/4 right-1/4 translate-x-1/2 translate-y-1/2"></div>
@@ -33,24 +33,24 @@
     <!-- Podium & Leaderboard -->
     <main class="space-y-12 mb-8 relative z-10">
       <!-- Top 3 Podium (Only visible if at least 1 player) -->
-      <section v-if="podium.length" class="flex flex-col sm:flex-row items-end justify-center gap-6 pt-20 pb-6 max-w-3xl mx-auto">
+      <section v-if="podium.length" class="flex flex-row items-end justify-center gap-2 sm:gap-6 pt-16 sm:pt-20 pb-6 max-w-3xl mx-auto px-1 sm:px-4">
         <!-- 2nd Place -->
-        <div v-if="podium[1]" class="order-2 sm:order-1 flex flex-col items-center w-full sm:w-48 group relative">
-          <div class="podium-card relative w-full p-6 rounded-3xl flex flex-col items-center justify-between h-48 bg-gradient-to-b from-slate-500/15 via-slate-600/5 to-slate-950/10 border border-slate-500/35 shadow-lg text-center animate-grow-y transition-all duration-300 hover:translate-y-[-4px] hover:border-slate-400/50 hover:shadow-[0_0_30px_rgba(148,163,184,0.15)]" style="animation-delay: 0.15s;">
+        <div v-if="podium[1]" class="order-1 flex flex-col items-center w-[31%] sm:w-48 group relative">
+          <div class="podium-card relative w-full p-2 sm:p-6 rounded-2xl sm:rounded-3xl flex flex-col items-center justify-between h-36 sm:h-48 bg-gradient-to-b from-slate-500/15 via-slate-600/5 to-slate-950/10 border border-slate-500/35 shadow-lg text-center animate-grow-y transition-all duration-300 hover:translate-y-[-4px] hover:border-slate-400/50 hover:shadow-[0_0_30px_rgba(148,163,184,0.15)]" style="animation-delay: 0.15s;">
             <!-- Medal Circle -->
-            <div class="absolute -top-10 w-14 h-14 rounded-full bg-gradient-to-br from-slate-200 via-slate-400 to-slate-500 border-2 border-slate-350 flex items-center justify-center text-xl shadow-lg transition-transform duration-300 group-hover:scale-110">
+            <div class="absolute -top-6 sm:-top-10 w-9 h-9 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-slate-200 via-slate-400 to-slate-500 border-2 border-slate-350 flex items-center justify-center text-sm sm:text-xl shadow-lg transition-transform duration-300 group-hover:scale-110">
               🥈
             </div>
             
-            <div class="h-6"></div>
+            <div class="h-3 sm:h-6"></div>
             
-            <div>
-              <p class="font-extrabold text-white truncate max-w-full text-base mb-1 tracking-wide">{{ podium[1].name }}</p>
-              <p class="text-2xl font-black text-slate-300 font-mono mb-2">{{ podium[1].score }} <span class="text-xs font-normal text-slate-400">pts</span></p>
+            <div class="min-w-0 w-full">
+              <p class="font-extrabold text-white truncate max-w-full text-xs sm:text-base mb-0.5 sm:mb-1 tracking-wide">{{ podium[1].name }}</p>
+              <p class="text-lg sm:text-2xl font-black text-slate-300 font-mono mb-1 sm:mb-2">{{ podium[1].score }}<span class="text-[9px] sm:text-xs font-normal text-slate-400"> pts</span></p>
             </div>
             
-            <!-- Quick stats -->
-            <div class="flex gap-2 text-[10px] font-bold mt-auto">
+            <!-- Quick stats (desktop only) -->
+            <div class="hidden sm:flex gap-2 text-[10px] font-bold mt-auto">
               <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full flex items-center gap-1">🎯 {{ podium[1].correctGuesses || 0 }}</span>
               <span class="bg-purple-500/10 text-purple-400 border border-purple-500/20 px-2 py-0.5 rounded-full flex items-center gap-1">💜 {{ podium[1].votesReceived || 0 }}</span>
             </div>
@@ -58,30 +58,30 @@
         </div>
 
         <!-- 1st Place -->
-        <div v-if="podium[0]" class="order-1 sm:order-2 flex flex-col items-center w-full sm:w-52 transform -translate-y-4 group relative">
-          <div class="podium-card podium-card-1 relative w-full p-6 rounded-3xl flex flex-col items-center justify-between h-56 bg-gradient-to-b from-yellow-500/15 via-amber-500/5 to-yellow-950/10 border border-yellow-500/40 shadow-[0_0_30px_rgba(234,179,8,0.15)] text-center animate-grow-y transition-all duration-300 hover:translate-y-[-4px] hover:border-yellow-500/60 hover:shadow-[0_0_40px_rgba(234,179,8,0.25)]" style="animation-delay: 0.3s;">
+        <div v-if="podium[0]" class="order-2 flex flex-col items-center w-[36%] sm:w-52 transform -translate-y-2 sm:-translate-y-4 group relative">
+          <div class="podium-card podium-card-1 relative w-full p-2.5 sm:p-6 rounded-2xl sm:rounded-3xl flex flex-col items-center justify-between h-42 sm:h-56 bg-gradient-to-b from-yellow-500/15 via-amber-500/5 to-yellow-950/10 border border-yellow-500/40 shadow-[0_0_30px_rgba(234,179,8,0.15)] text-center animate-grow-y transition-all duration-300 hover:translate-y-[-4px] hover:border-yellow-500/60 hover:shadow-[0_0_40px_rgba(234,179,8,0.25)]" style="animation-delay: 0.3s;">
             <!-- Crown & Medal -->
-            <div class="absolute -top-16 flex flex-col items-center select-none">
+            <div class="absolute -top-10 sm:-top-16 flex flex-col items-center select-none">
               <!-- Crown SVG -->
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-9 h-9 text-yellow-400 drop-shadow-[0_0_6px_rgba(234,179,8,0.6)] animate-float mb-0.5">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 sm:w-9 sm:h-9 text-yellow-400 drop-shadow-[0_0_6px_rgba(234,179,8,0.6)] animate-float mb-0.5">
                 <path d="M2 4 5 16h14l3-12-6 7-4-7-4 7-6-7Z"/>
                 <path d="M3 20h18"/>
               </svg>
               <!-- Medal Circle -->
-              <div class="w-16 h-16 rounded-full bg-gradient-to-br from-yellow-300 via-amber-400 to-yellow-600 border-2 border-yellow-300 flex items-center justify-center text-2xl shadow-xl transition-transform duration-300 group-hover:scale-110">
+              <div class="w-11 h-11 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-yellow-300 via-amber-400 to-yellow-600 border-2 border-yellow-300 flex items-center justify-center text-base sm:text-2xl shadow-xl transition-transform duration-300 group-hover:scale-110">
                 🥇
               </div>
             </div>
             
-            <div class="h-10"></div>
+            <div class="h-6 sm:h-10"></div>
             
-            <div>
-              <p class="font-extrabold text-white truncate max-w-full text-lg mb-1 tracking-wide">{{ podium[0].name }}</p>
-              <p class="text-3xl font-black text-yellow-400 font-mono mb-2">{{ podium[0].score }} <span class="text-xs font-normal text-yellow-500/80">pts</span></p>
+            <div class="min-w-0 w-full">
+              <p class="font-extrabold text-white truncate max-w-full text-sm sm:text-lg mb-0.5 sm:mb-1 tracking-wide">{{ podium[0].name }}</p>
+              <p class="text-xl sm:text-3xl font-black text-yellow-400 font-mono mb-1 sm:mb-2">{{ podium[0].score }}<span class="text-[10px] sm:text-xs font-normal text-yellow-500/80"> pts</span></p>
             </div>
             
-            <!-- Quick stats -->
-            <div class="flex gap-2 text-[10px] font-bold mt-auto">
+            <!-- Quick stats (desktop only) -->
+            <div class="hidden sm:flex gap-2 text-[10px] font-bold mt-auto">
               <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-1 rounded-full flex items-center gap-1">🎯 {{ podium[0].correctGuesses || 0 }}</span>
               <span class="bg-purple-500/10 text-purple-400 border border-purple-500/20 px-2.5 py-1 rounded-full flex items-center gap-1">💜 {{ podium[0].votesReceived || 0 }}</span>
             </div>
@@ -89,22 +89,22 @@
         </div>
 
         <!-- 3rd Place -->
-        <div v-if="podium[2]" class="order-3 flex flex-col items-center w-full sm:w-44 group relative">
-          <div class="podium-card relative w-full p-5 rounded-3xl flex flex-col items-center justify-between h-42 bg-gradient-to-b from-amber-700/15 via-amber-800/5 to-amber-950/10 border border-amber-800/30 shadow-lg text-center animate-grow-y transition-all duration-300 hover:translate-y-[-4px] hover:border-amber-700/50 hover:shadow-[0_0_30px_rgba(180,83,9,0.15)]" style="animation-delay: 0s;">
+        <div v-if="podium[2]" class="order-3 flex flex-col items-center w-[29%] sm:w-44 group relative">
+          <div class="podium-card relative w-full p-2 sm:p-5 rounded-2xl sm:rounded-3xl flex flex-col items-center justify-between h-32 sm:h-42 bg-gradient-to-b from-amber-700/15 via-amber-800/5 to-amber-950/10 border border-amber-800/30 shadow-lg text-center animate-grow-y transition-all duration-300 hover:translate-y-[-4px] hover:border-amber-700/50 hover:shadow-[0_0_30px_rgba(180,83,9,0.15)]" style="animation-delay: 0s;">
             <!-- Medal Circle -->
-            <div class="absolute -top-10 w-12 h-12 rounded-full bg-gradient-to-br from-amber-600 via-amber-700 to-amber-800 border-2 border-amber-600 flex items-center justify-center text-lg shadow-lg transition-transform duration-300 group-hover:scale-110">
+            <div class="absolute -top-5 sm:-top-10 w-8 h-8 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-amber-600 via-amber-700 to-amber-800 border-2 border-amber-600 flex items-center justify-center text-xs sm:text-lg shadow-lg transition-transform duration-300 group-hover:scale-110">
               🥉
             </div>
             
-            <div class="h-4"></div>
+            <div class="h-2.5 sm:h-4"></div>
             
-            <div>
-              <p class="font-extrabold text-white truncate max-w-full text-sm mb-1 tracking-wide">{{ podium[2].name }}</p>
-              <p class="text-xl font-black text-amber-500 font-mono mb-2">{{ podium[2].score }} <span class="text-xs font-normal text-amber-650/80">pts</span></p>
+            <div class="min-w-0 w-full">
+              <p class="font-extrabold text-white truncate max-w-full text-[10px] sm:text-sm mb-0.5 sm:mb-1 tracking-wide">{{ podium[2].name }}</p>
+              <p class="text-base sm:text-xl font-black text-amber-500 font-mono mb-1 sm:mb-2">{{ podium[2].score }}<span class="text-[8px] sm:text-xs font-normal text-amber-650/80"> pts</span></p>
             </div>
             
-            <!-- Quick stats -->
-            <div class="flex gap-1.5 text-[9px] font-bold mt-auto">
+            <!-- Quick stats (desktop only) -->
+            <div class="hidden sm:flex gap-1.5 text-[9px] font-bold mt-auto">
               <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full flex items-center gap-0.5">🎯 {{ podium[2].correctGuesses || 0 }}</span>
               <span class="bg-purple-500/10 text-purple-400 border border-purple-500/20 px-2 py-0.5 rounded-full flex items-center gap-0.5">💜 {{ podium[2].votesReceived || 0 }}</span>
             </div>
