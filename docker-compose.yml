@@ -36,16 +36,10 @@ services:
         condition: service_healthy # Attend que le healthcheck de Postgres passe au vert
       redis:
         condition: service_started
+    ports:
+      - "3001:3001"
     networks:
       - internal-network
-      - traefik-network
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.musicgame-backend.rule=Host(`cekikilami.lucasspitzer.fr`) && (PathPrefix(`/api`) || PathPrefix(`/socket.io`))"
-      - "traefik.http.routers.musicgame-backend.entrypoints=websecure"
-      - "traefik.http.routers.musicgame-backend.tls=true"
-      - "traefik.http.routers.musicgame-backend.tls.certresolver=letsencrypt"
-      - "traefik.http.services.musicgame-backend.loadbalancer.server.port=3001"
     restart: on-failure # Redémarre automatiquement en cas de crash imprévu
 
   frontend:
@@ -56,16 +50,10 @@ services:
         VITE_SOCKET_URL: https://cekikilami.lucasspitzer.fr
     depends_on:
       - backend
+    ports:
+      - "8080:80"
     networks:
       - internal-network
-      - traefik-network
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.musicgame-frontend.rule=Host(`cekikilami.lucasspitzer.fr`)"
-      - "traefik.http.routers.musicgame-frontend.entrypoints=websecure"
-      - "traefik.http.routers.musicgame-frontend.tls=true"
-      - "traefik.http.routers.musicgame-frontend.tls.certresolver=letsencrypt"
-      - "traefik.http.services.musicgame-frontend.loadbalancer.server.port=80"
 
 volumes:
   postgres_data:
@@ -73,6 +61,3 @@ volumes:
 networks:
   internal-network:
     driver: bridge
-  traefik-network:
-    external: true
-    name: proxy
