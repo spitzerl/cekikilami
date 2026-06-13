@@ -36,10 +36,9 @@ services:
         condition: service_healthy # Attend que le healthcheck de Postgres passe au vert
       redis:
         condition: service_started
-    ports:
-      - "3001:3001"
     networks:
       - internal-network
+      - proxy
     restart: on-failure # Redémarre automatiquement en cas de crash imprévu
 
   frontend:
@@ -50,10 +49,9 @@ services:
         VITE_SOCKET_URL: https://cekikilami.lucasspitzer.fr
     depends_on:
       - backend
-    ports:
-      - "8080:80"
     networks:
       - internal-network
+      - proxy
 
 volumes:
   postgres_data:
@@ -61,3 +59,5 @@ volumes:
 networks:
   internal-network:
     driver: bridge
+  proxy:
+    external: true
