@@ -1,41 +1,7 @@
 <template>
   <div v-if="isVisible">
-    <!-- Floating Controls Container (Pause & Volume) -->
-    <div v-if="!isOpen" class="fixed bottom-6 right-6 z-40 flex items-center gap-3">
-      <!-- Volume Control Button with Hover Slider -->
-      <div class="relative group">
-        <button
-          class="flex items-center justify-center w-12 h-12 rounded-full bg-slate-900/60 hover:bg-slate-900/80 border border-slate-700/50 backdrop-blur-md text-slate-200 hover:text-white shadow-lg transition-all active:scale-95 hover:border-cyan-500/40"
-          aria-label="Gérer le volume"
-        >
-          <!-- Speaker Icon dynamic based on volume value -->
-          <i v-if="store.volume === 0" class="fa-solid fa-volume-xmark text-[18px]"></i>
-          <i v-else-if="store.volume < 0.4" class="fa-solid fa-volume-low text-[18px]"></i>
-          <i v-else class="fa-solid fa-volume-high text-[18px]"></i>
-        </button>
-
-        <!-- Hover Volume Popup -->
-        <div class="absolute bottom-14 left-1/2 -translate-x-1/2 bg-slate-950/90 border border-slate-800 backdrop-blur-md w-10 py-3 rounded-2xl shadow-2xl flex flex-col items-center gap-1.5 transition-all duration-300 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto origin-bottom scale-90 group-hover:scale-100 mb-1 z-50 before:absolute before:inset-x-0 before:-bottom-3 before:h-3 before:content-['']">
-          <!-- Volume slider wrapper -->
-          <div class="h-24 w-4 flex items-center justify-center overflow-visible">
-            <!-- Vertical volume slider -->
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.05"
-              v-model="store.volume"
-              @input="updateStoreVolume"
-              class="w-20 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-500 origin-center -rotate-90"
-            />
-          </div>
-          <span class="text-[10px] font-bold font-mono text-cyan-400 mt-1 select-none">
-            {{ Math.round(store.volume * 100) }}%
-          </span>
-        </div>
-      </div>
-
-      <!-- Floating Menu Trigger Button (Pause) -->
+    <!-- Floating Menu Trigger Button (Pause) - Only visible on desktop/tablet -->
+    <div v-if="!isOpen" class="hidden sm:flex fixed bottom-6 right-6 z-40">
       <button
         @click="openMenu"
         class="flex items-center justify-center w-12 h-12 rounded-full bg-slate-900/60 hover:bg-slate-900/80 border border-slate-700/50 backdrop-blur-md text-slate-200 hover:text-white shadow-lg transition-all active:scale-95 hover:border-cyan-500/40 group"
@@ -69,6 +35,38 @@
                   <i class="fa-regular fa-copy text-[12px] opacity-60"></i>
                 </span>
                 <span v-if="copied" class="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded animate-fade-in">Lien copié !</span>
+              </div>
+            </div>
+
+            <!-- Volume Control inside Pause Menu -->
+            <div class="p-4 bg-slate-950/40 border border-slate-800/80 rounded-2xl flex flex-col gap-2">
+              <div class="flex justify-between items-center text-sm font-bold">
+                <span class="text-slate-350 flex items-center gap-2">
+                  <i class="fa-solid fa-volume-high text-cyan-400"></i>
+                  Volume de la musique
+                </span>
+                <span class="font-mono text-cyan-400">
+                  {{ Math.round(store.volume * 100) }}%
+                </span>
+              </div>
+              <div class="flex items-center gap-3">
+                <button 
+                  type="button" 
+                  @click="store.volume = store.volume > 0 ? 0 : 0.5; updateStoreVolume()"
+                  class="text-slate-400 hover:text-white transition-colors"
+                >
+                  <i v-if="store.volume === 0" class="fa-solid fa-volume-xmark text-lg text-rose-450"></i>
+                  <i v-else class="fa-solid fa-volume-low text-lg"></i>
+                </button>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  v-model="store.volume"
+                  @input="updateStoreVolume"
+                  class="flex-1 h-2 bg-slate-850 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+                />
               </div>
             </div>
 
@@ -204,12 +202,18 @@ const handleKeyDown = (e) => {
   }
 };
 
+const handleOpenPauseMenu = () => {
+  openMenu();
+};
+
 onMounted(() => {
   window.addEventListener('keydown', handleKeyDown);
+  window.addEventListener('open-pause-menu', handleOpenPauseMenu);
 });
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeyDown);
+  window.removeEventListener('open-pause-menu', handleOpenPauseMenu);
 });
 
 const copyLink = async () => {

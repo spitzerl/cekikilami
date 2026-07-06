@@ -1,22 +1,33 @@
 <template>
-  <div class="min-h-screen p-6 pb-24 max-w-7xl mx-auto flex flex-col justify-start gap-4 opacity-0 animate-fade-in-up relative">
+  <div class="game-main-layout p-4 pb-0 max-w-7xl mx-auto opacity-0 animate-fade-in-up relative">
     <!-- Ambient glowing backgrounds -->
     <div class="glow-blob bg-purple-600 w-96 h-96 top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2"></div>
     <div class="glow-blob bg-cyan-600 w-96 h-96 bottom-1/4 right-1/4 translate-x-1/2 translate-y-1/2"></div>
     <div class="glow-blob bg-pink-600 w-80 h-80 top-1/2 left-2/3 -translate-x-1/2"></div>
 
     <!-- Header -->
-    <header class="flex justify-between items-center mb-8 pb-4 border-b border-slate-800">
-      <div>
-        <h1 class="text-3xl font-extrabold text-white">Classement Final</h1>
-        <p class="text-slate-400 text-sm">Session terminée ! Félicitations à tous les participants.</p>
+    <header class="page-header">
+      <div class="flex justify-between items-center w-full sm:w-auto">
+        <div>
+          <h1 class="text-xl sm:text-3xl font-extrabold text-white">Classement Final</h1>
+          <p class="text-slate-400 text-xs hidden sm:block">Session terminée ! Félicitations à tous les participants.</p>
+        </div>
+        <!-- Mobile Options/Pause Button -->
+        <button 
+          type="button"
+          @click="triggerPause"
+          class="flex sm:hidden items-center justify-center w-10 h-10 rounded-xl bg-slate-900/60 hover:bg-slate-900/80 border border-slate-700/50 backdrop-blur-md text-slate-200 hover:text-white shadow-lg transition-all active:scale-95 hover:border-cyan-500/40 flex-shrink-0 ml-4"
+          title="Options / Menu"
+        >
+          <i class="fa-solid fa-pause text-[16px]"></i>
+        </button>
       </div>
-      <div class="flex flex-wrap items-center gap-3">
-        <button @click="exportImage" class="glow-btn bg-cyan-600 hover:bg-cyan-500 text-white font-bold px-4 py-2.5 rounded-xl transition-all flex items-center gap-2 text-sm shadow-lg shadow-cyan-600/20">
+      <div class="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+        <button @click="exportImage" class="glow-btn bg-cyan-600 hover:bg-cyan-500 text-white font-bold px-4 py-2.5 rounded-xl transition-all flex items-center gap-2 text-sm shadow-lg shadow-cyan-600/20 flex-1 sm:flex-none justify-center">
           <i class="fa-solid fa-download text-[14px]"></i>
           Partager les scores
         </button>
-        <button v-if="isHost" @click="replay" class="glow-btn-purple bg-purple-600 hover:bg-purple-500 text-white font-bold px-6 py-2.5 rounded-xl transition-all flex items-center gap-2 text-sm">
+        <button v-if="isHost" @click="replay" class="glow-btn-purple bg-purple-600 hover:bg-purple-500 text-white font-bold px-6 py-2.5 rounded-xl transition-all flex items-center gap-2 text-sm flex-1 sm:flex-none justify-center">
           <i class="fa-solid fa-rotate-right text-[14px]"></i>
           Rejouer
         </button>
@@ -27,7 +38,7 @@
     <GamePlayersTracker />
 
     <!-- Podium & Leaderboard -->
-    <main class="space-y-12 mb-8 relative z-10">
+    <main class="flex-1 min-h-0 overflow-y-auto space-y-8 sm:space-y-12 relative z-10 scrollbar-none">
       <!-- Top 3 Podium (Only visible if at least 1 player) -->
       <section v-if="podium.length" class="flex flex-row items-end justify-center gap-2 sm:gap-6 pt-16 sm:pt-20 pb-6 max-w-3xl mx-auto px-1 sm:px-4">
         <!-- 2nd Place -->
@@ -329,6 +340,10 @@ import { getPlayersRankings } from '../utils/ranking';
 const route = useRoute();
 const router = useRouter();
 const store = useGameStore();
+
+const triggerPause = () => {
+  window.dispatchEvent(new CustomEvent('open-pause-menu'));
+};
 
 const rankings = computed(() => getPlayersRankings(store.ranking));
 const getPlayerRank = (player) => rankings.value[player?.id];

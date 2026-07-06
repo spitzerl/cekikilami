@@ -2,7 +2,7 @@
   <div v-if="store.session && store.session.phase !== 'waiting'" class="tracker-outer-container fixed bottom-0 left-0 right-0 z-[100] flex justify-center items-end pointer-events-none px-4 pb-0">
     <!-- Horizontal Deck Container -->
     <div 
-      class="flex gap-2.5 sm:gap-4 items-end overflow-visible max-w-full pointer-events-auto pt-16 pb-0 scrollbar-none snap-x"
+      class="player-deck scrollbar-none snap-x"
       @mouseleave="activePlayerId = null"
     >
       <div v-for="(player, index) in sortedPlayers" :key="player.id" 
@@ -10,7 +10,8 @@
         class="player-card-dock relative flex flex-col items-center justify-start bg-gradient-to-b from-slate-900/92 to-slate-950/98 backdrop-blur-md border border-white/[0.06] border-t-white/[0.12] shadow-2xl transition-all select-none cursor-pointer"
         :class="{ 
           'opacity-60': !player.is_connected,
-          'active': activePlayerId === player.id
+          'active': activePlayerId === player.id,
+          'is-local': isLocalPlayer(player)
         }"
       >
         <!-- Avatar overlapping top of card (half-outside) -->
@@ -44,14 +45,16 @@
             <span v-if="isSelectionPhase" :class="isReady(player) ? 'text-emerald-450 font-black' : 'text-slate-400/80 font-semibold'">
               🎵 {{ getMusicCount(player) }}/{{ maxMusics }}
             </span>
-            <span v-else class="text-[var(--clr-accent)] font-black text-sm sm:text-base">
+            <span v-else :class="isLocalPlayer(player) ? 'text-indigo-400 font-black text-sm sm:text-base' : 'text-[var(--clr-accent)] font-black text-sm sm:text-base'">
               {{ player.score || 0 }}<span class="text-[10px] sm:text-xs font-semibold text-slate-400/70 ml-0.5">pt</span>
             </span>
           </div>
 
           <!-- Extended details (revealed when card is lifted/hovered/active) -->
           <div class="extended-info flex flex-col items-center gap-0.5 sm:gap-1 w-full text-center mt-2.5 opacity-0 transform translate-y-2">
-            <p class="font-black text-xs sm:text-sm tracking-wide text-slate-100 truncate max-w-full select-all">{{ player.name }}</p>
+            <p class="font-black text-xs sm:text-sm tracking-wide truncate max-w-full select-all" :class="isLocalPlayer(player) ? 'text-indigo-300' : 'text-slate-100'">
+              {{ player.name }}<span v-if="isLocalPlayer(player)" class="text-[8px] sm:text-[9px] text-indigo-400/85 font-black ml-1 uppercase tracking-wider">(Vous)</span>
+            </p>
             
             <div class="flex gap-1 items-center justify-center flex-wrap max-w-full mt-0.5">
               <span v-if="player.is_bot" class="text-[8px] sm:text-[9px] bg-cyan-500/10 text-cyan-400 px-1.5 py-0.2 rounded font-black border border-cyan-500/20 uppercase tracking-widest">Bot</span>
@@ -81,6 +84,7 @@ const activePlayerId = ref(null);
 const isSelectionPhase = computed(() => store.session?.phase === 'selection');
 const rankings = computed(() => getPlayersRankings(store.players));
 const getPlayerRank = (player) => rankings.value[player.id];
+const isLocalPlayer = (player) => store.player && player.id === store.player.id;
 
 const maxMusics = computed(() => store.session?.max_musics_per_player || 2);
 
@@ -129,27 +133,44 @@ const sortedPlayers = computed(() => {
 
 <style scoped>
 .tracker-outer-container {
-  height: 150px;
+  height: 170px;
   overflow: hidden;
 }
 @media (min-width: 640px) {
   .tracker-outer-container {
-    height: 200px;
+    height: 220px;
+  }
+}
+
+.player-deck {
+  display: flex;
+  gap: 0.625rem;
+  align-items: flex-end;
+  overflow-x: auto;
+  max-width: 100%;
+  pointer-events: auto;
+  padding-top: 4rem;
+  padding-bottom: 0;
+  justify-content: safe center;
+}
+@media (min-width: 640px) {
+  .player-deck {
+    gap: 1rem;
   }
 }
 
 /* Responsive docked layout & lifting effect */
 .player-card-dock {
   width: 76px;
-  height: 104px;
+  height: 50px;
   padding-top: 24px;
-  transform: translateY(54px);
   border-top-left-radius: 20px;
   border-top-right-radius: 20px;
   border-bottom: 0 !important; /* Merge seamlessly with the screen bottom */
+  flex-shrink: 0;
   /* Smooth ease-out-expo transition curve (no overshoot to avoid bottom gaps) */
   transition: 
-    transform 0.45s cubic-bezier(0.16, 1, 0.3, 1), 
+    height 0.45s cubic-bezier(0.16, 1, 0.3, 1), 
     border-radius 0.45s cubic-bezier(0.16, 1, 0.3, 1),
     background-color 0.3s ease, 
     border-color 0.3s ease, 
@@ -183,7 +204,7 @@ const sortedPlayers = computed(() => {
 
 .player-card-dock:hover,
 .player-card-dock.active {
-  transform: translateY(0px); /* Anchor perfectly at the bottom edge */
+  height: 104px;
   background-color: rgba(15, 23, 42, 0.98);
   border-color: rgba(56, 189, 248, 0.3);
   border-top-color: rgba(255, 255, 255, 0.2);
@@ -195,18 +216,34 @@ const sortedPlayers = computed(() => {
     inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
+.player-card-dock.is-local {
+  background-image: linear-gradient(to bottom, rgba(30, 27, 75, 0.92), rgba(15, 23, 42, 0.98));
+  border-color: rgba(99, 102, 241, 0.15);
+  border-top-color: rgba(129, 140, 248, 0.3);
+}
+
+.player-card-dock.is-local:hover,
+.player-card-dock.is-local.active {
+  background-color: rgba(30, 27, 75, 0.98);
+  border-color: rgba(129, 140, 248, 0.45);
+  border-top-color: rgba(255, 255, 255, 0.25);
+  box-shadow: 
+    0 20px 40px -15px rgba(99, 102, 241, 0.45),
+    0 8px 16px -8px rgba(99, 102, 241, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
 @media (min-width: 640px) {
   .player-card-dock {
     width: 108px;
-    height: 140px;
+    height: 66px;
     padding-top: 32px;
-    transform: translateY(74px);
     border-top-left-radius: 28px;
     border-top-right-radius: 28px;
   }
   .player-card-dock:hover,
   .player-card-dock.active {
-    transform: translateY(0px); /* Anchor perfectly at the bottom edge */
+    height: 140px;
     border-top-left-radius: 38px;
     border-top-right-radius: 38px;
     box-shadow: 

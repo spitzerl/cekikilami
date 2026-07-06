@@ -1,19 +1,29 @@
 <template>
-  <div class="page-container animate-fade-in-up opacity-0">
+  <div class="game-main-layout animate-fade-in-up opacity-0">
 
     <!-- Header -->
     <header class="page-header">
       <div>
-        <h1 class="text-2xl sm:text-3xl font-extrabold text-white">Sélection des Musiques</h1>
-        <p class="text-sm text-[var(--text-secondary)] mt-0.5">Proposez vos morceaux avant la fin du temps imparti.</p>
+        <h1 class="text-xl sm:text-3xl font-extrabold text-white">Sélection des Musiques</h1>
+        <p class="text-sm text-[var(--text-secondary)] mt-0.5 hidden sm:block">Proposez vos morceaux avant la fin du temps imparti.</p>
       </div>
 
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2">
         <!-- Timer -->
         <div :class="['timer-display', remainingTime < 20 ? 'urgent' : '']" role="timer" :aria-label="`Temps restant : ${formatTime(remainingTime)}`">
           <i class="fa-regular fa-clock text-[18px]"></i>
           <span>{{ formatTime(remainingTime) }}</span>
         </div>
+
+        <!-- Pause Button next to Timer (Mobile only, on desktop we keep the floating menu) -->
+        <button 
+          type="button"
+          @click="triggerPause"
+          class="flex sm:hidden items-center justify-center w-10 h-10 rounded-xl bg-slate-900/60 hover:bg-slate-900/80 border border-slate-700/50 backdrop-blur-md text-slate-200 hover:text-white shadow-lg transition-all active:scale-95 hover:border-cyan-500/40"
+          title="Mettre en pause / Options"
+        >
+          <i class="fa-solid fa-pause text-[16px]"></i>
+        </button>
 
         <!-- Host skip -->
         <button v-if="isHost && allPlayersReady" @click="forceStartVoting"
@@ -28,12 +38,42 @@
     <!-- Players Tracker Widget -->
     <GamePlayersTracker />
 
-    <div class="flex flex-col gap-6 min-w-0 w-full">
+    <div class="flex-1 min-h-0 overflow-y-auto flex flex-col gap-4 sm:gap-6 min-w-0 w-full scrollbar-none">
+      <!-- Tabs Switcher on mobile/tablet -->
+      <div class="lg:hidden flex p-1 bg-slate-950/60 border border-slate-800/80 rounded-2xl w-full">
+        <button 
+          type="button"
+          @click="activeTab = 'search'"
+          :class="['flex-1 py-2.5 px-4 rounded-xl font-extrabold text-sm transition-all flex items-center justify-center gap-2', 
+            activeTab === 'search' ? 'bg-cyan-500 text-slate-950 font-black shadow-lg shadow-cyan-500/20' : 'text-slate-400 hover:text-slate-200']"
+        >
+          <i class="fa-solid fa-magnifying-glass text-xs"></i>
+          Rechercher
+        </button>
+        <button 
+          type="button"
+          @click="activeTab = 'selected'"
+          :class="['flex-1 py-2.5 px-4 rounded-xl font-extrabold text-sm transition-all flex items-center justify-center gap-2 relative', 
+            activeTab === 'selected' ? 'bg-cyan-500 text-slate-950 font-black shadow-lg shadow-cyan-500/20' : 'text-slate-400 hover:text-slate-200']"
+        >
+          <i class="fa-solid fa-music text-xs"></i>
+          Vos choix
+          <span :class="['px-1.5 py-0.5 rounded-full text-[10px] font-bold font-mono ml-1', 
+            activeTab === 'selected' ? 'bg-slate-950 text-cyan-400' : 'bg-slate-800 text-slate-400']"
+          >
+            {{ store.musics.length }}/{{ store.session?.max_musics_per_player || 2 }}
+          </span>
+        </button>
+      </div>
+
       <!-- Search + Submitted -->
       <div class="grid lg:grid-cols-2 gap-6 min-w-0 w-full">
 
         <!-- Music search -->
-        <section class="glass-panel p-4 sm:p-5 rounded-2xl border border-[var(--border-strong)] flex flex-col gap-4 min-w-0" aria-labelledby="search-heading">
+        <section class="glass-panel p-4 sm:p-5 rounded-2xl border border-[var(--border-strong)] gap-4 min-w-0" 
+          :class="[activeTab === 'search' ? 'flex flex-col' : 'hidden lg:flex lg:flex-col']"
+          aria-labelledby="search-heading"
+        >
           <h2 id="search-heading" class="section-header">
             <i class="fa-solid fa-magnifying-glass text-[18px] icon"></i>
             Rechercher une musique
@@ -55,9 +95,8 @@
 
             <p v-if="searchError" role="alert" class="text-sm text-rose-400 mb-3">{{ searchError }}</p>
 
-            <!-- Results list -->
             <TransitionGroup name="list" tag="ul" v-if="tracks.length"
-              class="max-h-64 overflow-y-auto space-y-1 rounded-xl p-1 min-w-0" style="background:rgba(15,23,42,.5)"
+              class="max-h-48 sm:max-h-64 overflow-y-auto space-y-1 rounded-xl p-1 min-w-0" style="background:rgba(15,23,42,.5)"
               aria-label="Résultats de recherche">
               <li v-for="track in tracks" :key="track.id"
                 class="flex items-center justify-between gap-2 sm:gap-3 p-2 sm:p-2.5 rounded-lg hover:bg-white/5 transition-colors border border-transparent hover:border-[var(--border)] min-w-0">
@@ -93,7 +132,10 @@
         </section>
 
         <!-- Submitted musics -->
-        <section class="glass-panel p-4 sm:p-5 rounded-2xl border border-[var(--border-strong)] flex flex-col min-w-0" aria-labelledby="submitted-heading">
+        <section class="glass-panel p-4 sm:p-5 rounded-2xl border border-[var(--border-strong)] min-w-0" 
+          :class="[activeTab === 'selected' ? 'flex flex-col' : 'hidden lg:flex lg:flex-col']"
+          aria-labelledby="submitted-heading"
+        >
           <div class="flex justify-between items-center mb-4">
             <h2 id="submitted-heading" class="section-header">
               <i class="fa-solid fa-music text-[18px] icon"></i>
@@ -149,11 +191,15 @@ const route  = useRoute();
 const router = useRouter();
 const store  = useGameStore();
 
+const triggerPause = () => {
+  window.dispatchEvent(new CustomEvent('open-pause-menu'));
+};
+
 const searchQuery  = ref('');
 const tracks       = ref([]);
 const isSearching  = ref(false);
 const searchError  = ref('');
-const activeTab    = ref('selection');
+const activeTab    = ref('search');
 const remainingTime = ref(0);
 let timerInterval  = null;
 
