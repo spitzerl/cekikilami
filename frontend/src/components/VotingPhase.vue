@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen p-6 pb-24 max-w-7xl mx-auto flex flex-col justify-start gap-4 opacity-0 animate-fade-in-up">
+  <div class="min-h-screen p-6 pb-24 max-w-7xl mx-auto flex flex-col justify-start gap-4 opacity-0 animate-fade-in-up game-main-layout">
     <!-- Header -->
     <header class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 pb-4 border-b border-slate-800">
       <div class="flex justify-between items-center w-full sm:w-auto">
@@ -37,6 +37,9 @@
         </div>
       </div>
     </header>
+
+    <!-- Players Tracker Widget -->
+    <GamePlayersTracker />
 
     <!-- First Round Start Screen -->
     <main v-if="status === 'idle'" class="flex flex-col items-center justify-center min-h-[500px] lg:min-h-[600px] w-full relative z-10 mb-8">
@@ -296,6 +299,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useGameStore } from '../stores/gameStore';
+import GamePlayersTracker from './GamePlayersTracker.vue';
 
 const route = useRoute();
 const router = useRouter();

@@ -94,7 +94,7 @@
               <button v-for="val in [1,2,3,4,5]" :key="val" type="button"
                 @click="isHost && (config.maxMusicsPerPlayer=val) && saveConfig()"
                 :disabled="!isHost"
-                :class="['seg-btn', config.maxMusicsPerPlayer===val ? 'active-accent' : '']"
+                :class="['seg-btn', config.maxMusicsPerPlayer===val ? 'active-primary' : '']"
                 :aria-pressed="config.maxMusicsPerPlayer===val"
               >{{ val }}</button>
             </div>
@@ -112,7 +112,7 @@
               <button v-for="opt in [{v:30,l:'30s'},{v:60,l:'1m'},{v:120,l:'2m'},{v:180,l:'3m'},{v:300,l:'5m'}]" :key="opt.v" type="button"
                 @click="isHost && (config.selectionDuration=opt.v) && saveConfig()"
                 :disabled="!isHost"
-                :class="['seg-btn', config.selectionDuration===opt.v ? 'active-accent' : '']"
+                :class="['seg-btn', config.selectionDuration===opt.v ? 'active-primary' : '']"
                 :aria-pressed="config.selectionDuration===opt.v"
               >{{ opt.l }}</button>
             </div>
@@ -130,7 +130,7 @@
               <button v-for="val in [10,15,20,30]" :key="val" type="button"
                 @click="isHost && (config.extractDuration=val) && saveConfig()"
                 :disabled="!isHost"
-                :class="['seg-btn', config.extractDuration===val ? 'active-accent' : '']"
+                :class="['seg-btn', config.extractDuration===val ? 'active-primary' : '']"
                 :aria-pressed="config.extractDuration===val"
               >{{ val }}s</button>
             </div>
@@ -148,7 +148,7 @@
               <button v-for="val in [20,30,40,50,60]" :key="val" type="button"
                 @click="isHost && (config.votingDuration=val) && saveConfig()"
                 :disabled="!isHost"
-                :class="['seg-btn', config.votingDuration===val ? 'active-accent' : '']"
+                :class="['seg-btn', config.votingDuration===val ? 'active-primary' : '']"
                 :aria-pressed="config.votingDuration===val"
               >{{ val }}s</button>
             </div>
@@ -187,7 +187,7 @@
               <button v-for="val in [4,8,12,16]" :key="val" type="button"
                 @click="isHost && (config.maxPlayers=val) && saveConfig()"
                 :disabled="!isHost"
-                :class="['seg-btn', config.maxPlayers===val ? 'active-accent' : '']"
+                :class="['seg-btn', config.maxPlayers===val ? 'active-primary' : '']"
                 :aria-pressed="config.maxPlayers===val"
               >{{ val }}</button>
             </div>

@@ -23,6 +23,9 @@
       </div>
     </header>
 
+    <!-- Players Tracker Widget -->
+    <GamePlayersTracker />
+
     <!-- Podium & Leaderboard -->
     <main class="space-y-12 mb-8 relative z-10">
       <!-- Top 3 Podium (Only visible if at least 1 player) -->
@@ -34,9 +37,9 @@
             <div class="absolute -top-6 sm:-top-10 flex flex-col items-center">
               <div class="relative">
                 <img v-if="podium[1].avatar_seed" :src="`https://api.dicebear.com/9.x/notionists-neutral/svg?seed=${podium[1].avatar_seed}&backgroundColor=06b6d4,9333ea,f59e0b,f43f5e,10b981,3b82f6,6366f1`" class="w-10 h-10 sm:w-14 sm:h-14 rounded-full border-2 border-slate-350 bg-slate-800 shadow-lg transition-transform duration-300 group-hover:scale-110" alt="Avatar" />
-                <div v-else class="w-9 h-9 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-slate-200 via-slate-400 to-slate-500 border-2 border-slate-350 flex items-center justify-center text-sm sm:text-xl shadow-lg transition-transform duration-300 group-hover:scale-110">🥈</div>
+                <div v-else class="w-9 h-9 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-slate-200 via-slate-400 to-slate-500 border-2 border-slate-350 flex items-center justify-center text-sm sm:text-xl shadow-lg transition-transform duration-300 group-hover:scale-110">{{ getRankBadgeEmoji(podium[1]) }}</div>
                 <div v-if="podium[1].avatar_seed" class="absolute -bottom-1 -right-1 sm:-bottom-2 sm:-right-2 w-4 h-4 sm:w-6 sm:h-6 rounded-full bg-gradient-to-br from-slate-200 via-slate-400 to-slate-500 border-2 border-slate-900 flex items-center justify-center text-[8px] sm:text-xs shadow-md">
-                  🥈
+                  {{ getRankBadgeEmoji(podium[1]) }}
                 </div>
               </div>
             </div>
@@ -66,9 +69,9 @@
               <!-- Avatar & Medal -->
               <div class="relative">
                 <img v-if="podium[0].avatar_seed" :src="`https://api.dicebear.com/9.x/notionists-neutral/svg?seed=${podium[0].avatar_seed}&backgroundColor=06b6d4,9333ea,f59e0b,f43f5e,10b981,3b82f6,6366f1`" class="w-12 h-12 sm:w-16 sm:h-16 rounded-full border-2 border-yellow-300 bg-slate-800 shadow-xl transition-transform duration-300 group-hover:scale-110" alt="Avatar" />
-                <div v-else class="w-11 h-11 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-yellow-300 via-amber-400 to-yellow-600 border-2 border-yellow-300 flex items-center justify-center text-base sm:text-2xl shadow-xl transition-transform duration-300 group-hover:scale-110">🥇</div>
+                <div v-else class="w-11 h-11 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-yellow-300 via-amber-400 to-yellow-600 border-2 border-yellow-300 flex items-center justify-center text-base sm:text-2xl shadow-xl transition-transform duration-300 group-hover:scale-110">{{ getRankBadgeEmoji(podium[0]) }}</div>
                 <div v-if="podium[0].avatar_seed" class="absolute -bottom-1 -right-1 sm:-bottom-2 sm:-right-2 w-5 h-5 sm:w-7 sm:h-7 rounded-full bg-gradient-to-br from-yellow-300 via-amber-400 to-yellow-600 border-2 border-slate-900 flex items-center justify-center text-[10px] sm:text-sm shadow-md">
-                  🥇
+                  {{ getRankBadgeEmoji(podium[0]) }}
                 </div>
               </div>
             </div>
@@ -95,9 +98,9 @@
             <div class="absolute -top-5 sm:-top-10 flex flex-col items-center">
               <div class="relative">
                 <img v-if="podium[2].avatar_seed" :src="`https://api.dicebear.com/9.x/notionists-neutral/svg?seed=${podium[2].avatar_seed}&backgroundColor=06b6d4,9333ea,f59e0b,f43f5e,10b981,3b82f6,6366f1`" class="w-9 h-9 sm:w-12 sm:h-12 rounded-full border-2 border-amber-600 bg-slate-800 shadow-lg transition-transform duration-300 group-hover:scale-110" alt="Avatar" />
-                <div v-else class="w-8 h-8 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-amber-600 via-amber-700 to-amber-800 border-2 border-amber-600 flex items-center justify-center text-xs sm:text-lg shadow-lg transition-transform duration-300 group-hover:scale-110">🥉</div>
+                <div v-else class="w-8 h-8 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-amber-600 via-amber-700 to-amber-800 border-2 border-amber-600 flex items-center justify-center text-xs sm:text-lg shadow-lg transition-transform duration-300 group-hover:scale-110">{{ getRankBadgeEmoji(podium[2]) }}</div>
                 <div v-if="podium[2].avatar_seed" class="absolute -bottom-1 -right-1 sm:-bottom-1.5 sm:-right-1.5 w-3.5 h-3.5 sm:w-5 sm:h-5 rounded-full bg-gradient-to-br from-amber-600 via-amber-700 to-amber-800 border-2 border-slate-900 flex items-center justify-center text-[6px] sm:text-[10px] shadow-md">
-                  🥉
+                  {{ getRankBadgeEmoji(podium[2]) }}
                 </div>
               </div>
             </div>
@@ -132,27 +135,27 @@
               <!-- Rank number inside a badge -->
               <div :class="[
                 'w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm font-mono border shadow-sm',
-                idx === 0 ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' :
-                idx === 1 ? 'bg-slate-400/20 text-slate-300 border-slate-400/30' :
-                idx === 2 ? 'bg-amber-700/20 text-amber-500 border-amber-700/30' :
+                getPlayerRank(player) === 1 ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' :
+                getPlayerRank(player) === 2 ? 'bg-slate-400/20 text-slate-300 border-slate-400/30' :
+                getPlayerRank(player) === 3 ? 'bg-amber-700/20 text-amber-500 border-amber-700/30' :
                 'bg-slate-900/60 text-slate-400 border-slate-850'
               ]">
-                #{{ idx + 1 }}
+                {{ getPlayerRank(player) !== null ? `#${getPlayerRank(player)}` : '-' }}
               </div>
               
               <!-- Avatar -->
               <img v-if="player.avatar_seed" :src="`https://api.dicebear.com/9.x/notionists-neutral/svg?seed=${player.avatar_seed}&backgroundColor=06b6d4,9333ea,f59e0b,f43f5e,10b981,3b82f6,6366f1`" :class="[
                 'w-10 h-10 rounded-full border bg-slate-800 shadow-sm transition-colors duration-300',
-                idx === 0 ? 'border-yellow-500/40' :
-                idx === 1 ? 'border-slate-400/40' :
-                idx === 2 ? 'border-amber-700/40' :
+                getPlayerRank(player) === 1 ? 'border-yellow-500/40' :
+                getPlayerRank(player) === 2 ? 'border-slate-400/40' :
+                getPlayerRank(player) === 3 ? 'border-amber-700/40' :
                 'border-slate-800'
               ]" alt="Avatar" />
               <div v-else :class="[
                 'w-10 h-10 rounded-full border flex items-center justify-center font-bold uppercase text-sm shadow-sm transition-colors duration-300',
-                idx === 0 ? 'bg-gradient-to-br from-yellow-500/20 to-yellow-600/10 border-yellow-500/40 text-yellow-300' :
-                idx === 1 ? 'bg-gradient-to-br from-slate-400/20 to-slate-500/10 border-slate-400/40 text-slate-200' :
-                idx === 2 ? 'bg-gradient-to-br from-amber-700/20 to-amber-800/10 border-amber-700/40 text-amber-400' :
+                getPlayerRank(player) === 1 ? 'bg-gradient-to-br from-yellow-500/20 to-yellow-600/10 border-yellow-500/40 text-yellow-300' :
+                getPlayerRank(player) === 2 ? 'bg-gradient-to-br from-slate-400/20 to-slate-500/10 border-slate-400/40 text-slate-200' :
+                getPlayerRank(player) === 3 ? 'bg-gradient-to-br from-amber-700/20 to-amber-800/10 border-amber-700/40 text-amber-400' :
                 'bg-gradient-to-br from-slate-700 to-slate-900 border-slate-800 text-slate-300'
               ]">
                 {{ player.name.substring(0, 2) }}
@@ -320,10 +323,22 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useGameStore } from '../stores/gameStore';
+import GamePlayersTracker from './GamePlayersTracker.vue';
+import { getPlayersRankings } from '../utils/ranking';
 
 const route = useRoute();
 const router = useRouter();
 const store = useGameStore();
+
+const rankings = computed(() => getPlayersRankings(store.ranking));
+const getPlayerRank = (player) => rankings.value[player?.id];
+const getRankBadgeEmoji = (player) => {
+  const rank = getPlayerRank(player);
+  if (rank === 1) return '🥇';
+  if (rank === 2) return '🥈';
+  if (rank === 3) return '🥉';
+  return `#${rank}`;
+};
 
 const isHost = computed(() => {
   return store.player && store.session && store.player.name === store.session.host_name;

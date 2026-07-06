@@ -25,25 +25,12 @@
       </div>
     </header>
 
-    <!-- Mobile tabs -->
-    <div class="flex md:hidden seg-control mb-5" role="tablist" aria-label="Navigation sélection">
-      <button id="tab-sel" role="tab" :aria-selected="activeTab==='selection'" aria-controls="panel-sel"
-        @click="activeTab='selection'"
-        :class="['seg-btn', activeTab==='selection' ? 'active-accent' : '']">
-        Ma Sélection ({{ store.musics.length }}/{{ store.session?.max_musics_per_player || 2 }})
-      </button>
-      <button id="tab-track" role="tab" :aria-selected="activeTab==='tracker'" aria-controls="panel-tracker"
-        @click="activeTab='tracker'"
-        :class="['seg-btn', activeTab==='tracker' ? 'active-accent' : '']">
-        Suivi des Dépôts
-      </button>
-    </div>
+    <!-- Players Tracker Widget -->
+    <GamePlayersTracker />
 
     <div class="flex flex-col gap-6 min-w-0 w-full">
-
-      <!-- Search + Submitted (hidden on mobile when tracker tab active) -->
-      <div id="panel-sel" role="tabpanel" aria-labelledby="tab-sel"
-        :class="['grid lg:grid-cols-2 gap-6 min-w-0 w-full', activeTab==='tracker' ? 'hidden md:grid' : 'grid']">
+      <!-- Search + Submitted -->
+      <div class="grid lg:grid-cols-2 gap-6 min-w-0 w-full">
 
         <!-- Music search -->
         <section class="glass-panel p-4 sm:p-5 rounded-2xl border border-[var(--border-strong)] flex flex-col gap-4 min-w-0" aria-labelledby="search-heading">
@@ -147,34 +134,6 @@
           </p>
         </section>
       </div>
-
-      <!-- Submission tracker -->
-      <section id="panel-tracker" role="tabpanel" aria-labelledby="tracker-heading"
-        :class="['glass-panel p-5 rounded-2xl border border-[var(--border-strong)]', activeTab==='tracker' ? 'block' : 'hidden md:block']">
-        <h2 id="tracker-heading" class="section-header mb-4">
-          <i class="fa-solid fa-users text-[18px] icon"></i>
-          Suivi des dépôts
-        </h2>
-        <div class="flex flex-wrap gap-3" aria-live="polite">
-          <div v-for="player in store.players" :key="player.id"
-            class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-colors"
-            style="background:var(--surface-raised);border:1px solid var(--border-strong)">
-            <span :class="['status-dot', player.is_connected ? 'online' : 'offline']"></span>
-            <img v-if="player.avatar_seed"
-              :src="`https://api.dicebear.com/9.x/notionists-neutral/svg?seed=${player.avatar_seed}&backgroundColor=6366f1,8b5cf6,06b6d4,f43f5e,10b981`"
-              class="w-6 h-6 rounded-full border border-[var(--border)]" :alt="`Avatar de ${player.name}`" loading="lazy" />
-            <span class="font-bold text-sm text-[var(--text-secondary)]">{{ player.name }}</span>
-            <span v-if="player.is_bot" class="badge badge-bot">Bot</span>
-            <span v-if="player.name === store.session?.host_name" class="badge badge-host">Hôte</span>
-            <span class="text-xs font-mono font-bold pl-2 border-l border-[var(--border)]"
-              :class="getPlayerMusicCount(player.id) >= (store.session?.max_musics_per_player || 2) ? 'text-emerald-400' : 'text-[var(--text-secondary)]'">
-              {{ getPlayerMusicCount(player.id) }}/{{ store.session?.max_musics_per_player || 2 }}
-            </span>
-            <i v-if="getPlayerMusicCount(player.id) >= (store.session?.max_musics_per_player || 2)"
-              class="fa-solid fa-check text-[14px] text-emerald-400" aria-label="Prêt" role="img"></i>
-          </div>
-        </div>
-      </section>
     </div>
   </div>
 </template>
@@ -184,6 +143,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import apiService from '../services/apiService';
 import { useGameStore } from '../stores/gameStore';
+import GamePlayersTracker from './GamePlayersTracker.vue';
 
 const route  = useRoute();
 const router = useRouter();
