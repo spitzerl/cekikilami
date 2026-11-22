@@ -581,8 +581,9 @@ const formatAudioUrl = (path) => {
     return path.replace('http://', 'https://');
   }
   if (path.startsWith('https://')) return path;
-  const apiBase = import.meta.env.VITE_API_URL || '';
-  return `${apiBase}${path}`;
+  // Les fichiers uploadés sont servis sur /uploads et passent par le proxy
+  // Vite (dev) ou Nginx (prod). Ne pas préfixer avec VITE_API_URL qui contient /api.
+  return path;
 };
 
 watch(() => store.volume, (newVol) => {
