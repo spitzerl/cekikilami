@@ -1,17 +1,47 @@
 <template>
-  <section class="mx-auto max-w-xl p-6">
-    <h2 class="mb-4 text-2xl font-bold">Créer une partie</h2>
-    <form class="flex gap-3" @submit.prevent="submit">
-      <input v-model="hostName" required class="w-full rounded px-3 py-2" placeholder="Ton pseudo" />
-      <button class="rounded bg-cyan-500 px-4 py-2 font-semibold text-white">Créer</button>
-    </form>
-  </section>
+  <div class="home">
+    <header class="home-top shell">
+      <span class="brand">
+        <span class="brand-mark" aria-hidden="true"></span>
+        Cékikilami
+      </span>
+      <span class="spacer"></span>
+      <RouterLink to="/" class="text-link">Accueil</RouterLink>
+    </header>
+
+    <main class="home-main shell" style="align-items: center">
+      <section class="panel panel-pad reveal" style="width: 100%; max-width: 420px">
+        <h1 class="console-title">Créer une partie</h1>
+        <p class="console-sub">Vous serez l’hôte du salon.</p>
+
+        <form @submit.prevent="submit">
+          <div class="field">
+            <label for="host-name" class="label">Votre pseudo</label>
+            <input
+              id="host-name"
+              v-model="hostName"
+              required
+              class="input"
+              placeholder="Ex. Lucas"
+              autocomplete="nickname"
+              maxlength="32"
+            />
+          </div>
+          <button type="submit" class="btn btn-primary btn-block btn-lg" style="margin-top: 16px">
+            <AppIcon name="play" :size="16" />
+            Créer le salon
+          </button>
+        </form>
+      </section>
+    </main>
+  </div>
 </template>
 
 <script setup>
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useGameStore } from '../stores/gameStore';
+import AppIcon from './AppIcon.vue';
 
 const store = useGameStore();
 const router = useRouter();

@@ -1,153 +1,159 @@
 <template>
   <div v-if="isVisible">
-    <!-- Floating Menu Trigger Button (Pause) - Only visible on desktop/tablet -->
-    <div v-if="!isOpen" class="hidden sm:flex fixed bottom-6 right-6 z-40">
-      <button
-        @click="openMenu"
-        class="flex items-center justify-center w-12 h-12 rounded-full bg-slate-900/60 hover:bg-slate-900/80 border border-slate-700/50 backdrop-blur-md text-slate-200 hover:text-white shadow-lg transition-all active:scale-95 hover:border-cyan-500/40 group"
-        aria-label="Ouvrir le menu de pause"
-      >
-        <i class="fa-solid fa-pause text-[18px] transition-transform group-hover:scale-110"></i>
-      </button>
-    </div>
-
-    <!-- Pause Menu Overlay -->
     <Transition name="fade">
-      <div v-if="isOpen" class="fixed inset-0 z-[9998] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
-        <div class="glass-panel max-w-md w-full p-6 rounded-3xl border border-slate-800 shadow-2xl relative bg-slate-900/90 text-left transition-all duration-300">
-          
-          <!-- Close button -->
-          <button @click="closeMenu" class="absolute top-4 right-4 text-slate-400 hover:text-white transition-all text-xl font-bold" aria-label="Fermer le menu">
-            ✕
-          </button>
-
-          <!-- Main Menu -->
-          <div v-if="currentTab === 'main'" class="space-y-6">
-            <div class="text-center pb-2 border-b border-slate-800/80">
-              <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 mb-3 animate-pulse">
-                <i class="fa-solid fa-pause text-[22px]"></i>
+      <div v-if="isOpen" class="overlay" @click.self="closeMenu">
+        <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="pause-title">
+          <template v-if="currentTab === 'main'">
+            <div class="dialog-head">
+              <div>
+                <h2 id="pause-title" class="dialog-title">Partie en pause</h2>
+                <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px; flex-wrap: wrap">
+                  <span class="hint">Code</span>
+                  <button
+                    type="button"
+                    class="code-chip"
+                    style="height: 28px; font-size: 11px"
+                    title="Copier le lien d’invitation"
+                    @click="copyLink"
+                  >
+                    {{ store.session?.code }}
+                    <AppIcon name="copy" :size="12" />
+                  </button>
+                  <span v-if="copied" class="hint" style="color: var(--success)">Copié</span>
+                </div>
               </div>
-              <h2 class="text-2xl font-black text-white tracking-wide">Partie en Pause</h2>
-              <div class="flex items-center justify-center gap-1.5 mt-2">
-                <span class="text-xs text-slate-400">Code de la session :</span>
-                <span @click="copyLink" class="font-mono text-xs text-cyan-400 font-bold bg-slate-950/80 px-2 py-0.5 rounded border border-slate-800 cursor-pointer hover:bg-slate-800 hover:border-cyan-500/40 transition-all active:scale-95 inline-flex items-center gap-1" title="Copier le lien d'invitation">
-                  {{ store.session?.code }}
-                  <i class="fa-regular fa-copy text-[12px] opacity-60"></i>
-                </span>
-                <span v-if="copied" class="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded animate-fade-in">Lien copié !</span>
-              </div>
+              <button
+                ref="closeButton"
+                type="button"
+                class="btn btn-ghost btn-icon btn-sm"
+                aria-label="Fermer le menu"
+                @click="closeMenu"
+              >
+                <AppIcon name="x" :size="16" />
+              </button>
             </div>
 
-            <!-- Volume Control inside Pause Menu -->
-            <div class="p-4 bg-slate-950/40 border border-slate-800/80 rounded-2xl flex flex-col gap-2">
-              <div class="flex justify-between items-center text-sm font-bold">
-                <span class="text-slate-350 flex items-center gap-2">
-                  <i class="fa-solid fa-volume-high text-cyan-400"></i>
-                  Volume de la musique
-                </span>
-                <span class="font-mono text-cyan-400">
-                  {{ Math.round(store.volume * 100) }}%
-                </span>
+            <div class="dialog-section">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px">
+                <span class="label" style="margin: 0">Volume de la musique</span>
+                <span class="mono" style="font-size: 12px; color: var(--ink-2)">{{ Math.round(store.volume * 100) }} %</span>
               </div>
-              <div class="flex items-center gap-3">
-                <button 
-                  type="button" 
-                  @click="store.volume = store.volume > 0 ? 0 : 0.5; updateStoreVolume()"
-                  class="text-slate-400 hover:text-white transition-colors"
+              <div class="volume-row">
+                <button
+                  type="button"
+                  class="btn btn-ghost btn-icon btn-sm"
+                  :aria-label="store.volume === 0 ? 'Rétablir le son' : 'Couper le son'"
+                  @click="toggleMute"
                 >
-                  <i v-if="store.volume === 0" class="fa-solid fa-volume-xmark text-lg text-rose-450"></i>
-                  <i v-else class="fa-solid fa-volume-low text-lg"></i>
+                  <AppIcon :name="store.volume === 0 ? 'volume-x' : store.volume < 0.5 ? 'volume-1' : 'volume-2'" :size="17" />
                 </button>
                 <input
+                  v-model.number="store.volume"
+                  class="range"
                   type="range"
                   min="0"
                   max="1"
                   step="0.05"
-                  v-model="store.volume"
+                  aria-label="Volume de la musique"
                   @input="updateStoreVolume"
-                  class="flex-1 h-2 bg-slate-850 rounded-lg appearance-none cursor-pointer accent-cyan-500"
                 />
               </div>
             </div>
 
-            <!-- Actions list -->
-            <div class="flex flex-col gap-3">
-              <!-- Reprendre -->
-              <button
-                @click="closeMenu"
-                class="w-full py-3.5 px-5 rounded-2xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black transition-all flex items-center justify-center gap-2 text-base shadow-lg active:scale-98"
-              >
-                <i class="fa-solid fa-play text-[16px]"></i>
+            <div class="dialog-actions">
+              <button type="button" class="btn btn-primary btn-block" @click="closeMenu">
+                <AppIcon name="play" :size="15" />
                 Reprendre la partie
               </button>
-
-              <!-- Gérer les joueurs -->
-              <button
-                @click="currentTab = 'players'"
-                class="w-full py-3.5 px-5 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700/80 text-slate-200 hover:text-white font-bold transition-all flex items-center justify-center gap-2 text-base active:scale-98"
-              >
-                <i class="fa-solid fa-users text-[16px] text-purple-400"></i>
+              <button type="button" class="btn btn-secondary btn-block" @click="currentTab = 'players'">
+                <AppIcon name="users" :size="15" />
                 Gérer les joueurs ({{ store.players.length }})
               </button>
-
-              <!-- Retourner au lobby (Hôte seulement, hors page waiting room elle-même) -->
               <button
                 v-if="isHost && isNotInWaitingRoom"
+                type="button"
+                class="btn btn-warning btn-block"
                 @click="confirmReset"
-                class="w-full py-3.5 px-5 rounded-2xl bg-amber-600/10 hover:bg-amber-600/20 border border-amber-600/30 text-amber-300 font-bold transition-all flex items-center justify-center gap-2 text-base active:scale-98"
               >
-                <i class="fa-solid fa-arrow-rotate-left text-[16px]"></i>
-                Retourner au salon d'attente
+                <AppIcon name="rotate-ccw" :size="15" />
+                Retourner au salon d’attente
               </button>
-
-              <!-- Quitter la partie -->
-              <button
-                @click="confirmLeave"
-                class="w-full py-3.5 px-5 rounded-2xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 font-bold transition-all flex items-center justify-center gap-2 text-base active:scale-98"
-              >
-                <i class="fa-solid fa-arrow-right-from-bracket text-[16px]"></i>
+              <button type="button" class="btn btn-danger btn-block" @click="confirmLeave">
+                <AppIcon name="log-out" :size="15" />
                 Quitter la partie
               </button>
             </div>
-          </div>
+          </template>
 
-          <!-- Player Management Submenu -->
-          <div v-else class="space-y-6">
-            <div class="flex items-center gap-2 border-b border-slate-800/80 pb-4">
-              <button @click="currentTab = 'main'" class="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-all">
-                <i class="fa-solid fa-chevron-left text-[16px]"></i>
+          <template v-else>
+            <div class="dialog-head">
+              <div style="display: flex; align-items: flex-start; gap: 8px">
+                <button
+                  type="button"
+                  class="btn btn-ghost btn-icon btn-sm"
+                  aria-label="Retour au menu"
+                  @click="currentTab = 'main'"
+                >
+                  <AppIcon name="chevron-left" :size="16" />
+                </button>
+                <div>
+                  <h2 class="dialog-title" style="font-size: 18px">Gérer les joueurs</h2>
+                  <p class="panel-sub">{{ store.players.length }} personne{{ store.players.length > 1 ? 's' : '' }} dans ce salon.</p>
+                </div>
+              </div>
+              <button type="button" class="btn btn-ghost btn-icon btn-sm" aria-label="Fermer le menu" @click="closeMenu">
+                <AppIcon name="x" :size="16" />
               </button>
-              <h2 class="text-xl font-bold text-white flex items-center gap-2">
-                ⚙️ Gestion des joueurs
-              </h2>
             </div>
 
-            <!-- Players List -->
-            <div class="space-y-3 max-h-[320px] overflow-y-auto pr-1">
-              <div v-for="p in store.players" :key="p.id" class="flex items-center justify-between p-3.5 rounded-xl bg-slate-950/40 border border-slate-800/60">
-                <div class="flex items-center gap-3 min-w-0">
-                  <span :class="['w-2 h-2 rounded-full flex-shrink-0', p.is_connected ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500']" :title="p.is_connected ? 'Connecté' : 'Déconnecté'"></span>
-                  <span class="font-bold text-slate-200 text-sm truncate max-w-[150px]">{{ p.name }}</span>
-                  <span v-if="p.is_bot" class="text-[9px] bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 px-1.5 py-0.5 rounded font-extrabold uppercase tracking-wider flex-shrink-0">Bot</span>
-                  <span v-if="p.name === store.session?.host_name" class="text-[9px] bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 px-1.5 py-0.5 rounded font-extrabold uppercase tracking-wider flex-shrink-0">Hôte</span>
+            <div style="padding-top: 8px">
+              <div v-for="p in store.players" :key="p.id" class="row">
+                <div class="media-row">
+                  <div style="position: relative; flex-shrink: 0">
+                    <img v-if="p.avatar_seed" :src="avatarUrl(p.avatar_seed)" class="avatar avatar-sm" alt="" />
+                    <span v-else class="avatar avatar-sm avatar-fallback">{{ initials(p.name) }}</span>
+                    <span
+                      :class="['status-dot', p.is_connected ? 'is-online' : 'is-offline']"
+                      style="position: absolute; right: -1px; bottom: -1px; width: 8px; height: 8px; border: 1.5px solid var(--surface)"
+                    ></span>
+                  </div>
+                  <div class="media-text">
+                    <p class="media-title">
+                      {{ p.name }}
+                      <span v-if="p.id === store.player?.id" class="tag tag-accent" style="margin-left: 4px">Vous</span>
+                    </p>
+                    <p class="media-sub">
+                      <template v-if="p.name === store.session?.host_name">Hôte</template>
+                      <template v-else-if="p.is_bot">Bot</template>
+                      <template v-else>{{ p.is_connected ? 'En ligne' : 'Hors ligne' }}</template>
+                    </p>
+                  </div>
                 </div>
-                
-                <div class="flex gap-2 flex-shrink-0">
-                  <!-- Actions reserved for Host targeting other human players -->
-                  <template v-if="isHost && p.id !== store.player?.id">
-                    <!-- Promote to Host -->
-                    <button v-if="!p.is_bot" @click="promotePlayer(p.id)" title="Promouvoir Hôte (Transférer les droits)" class="p-2 rounded-xl bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/20 text-yellow-400 transition-all active:scale-90">
-                      <i class="fa-solid fa-crown text-[13px]"></i>
-                    </button>
-                    <!-- Kick Player -->
-                    <button @click="kickPlayer(p.id)" title="Exclure de la partie" class="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-400 transition-all active:scale-90">
-                      <i class="fa-solid fa-user-slash text-[13px]"></i>
-                    </button>
-                  </template>
+
+                <div v-if="isHost && p.id !== store.player?.id" style="display: flex; gap: 4px">
+                  <button
+                    v-if="!p.is_bot"
+                    type="button"
+                    class="btn btn-secondary btn-icon btn-sm"
+                    title="Transférer les droits d’hôte"
+                    :aria-label="`Promouvoir ${p.name} comme hôte`"
+                    @click="promotePlayer(p.id)"
+                  >
+                    <AppIcon name="crown" :size="13" />
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-danger btn-icon btn-sm"
+                    title="Exclure de la partie"
+                    :aria-label="`Exclure ${p.name}`"
+                    @click="kickPlayer(p.id)"
+                  >
+                    <AppIcon name="user-x" :size="13" />
+                  </button>
                 </div>
               </div>
             </div>
-          </div>
+          </template>
         </div>
       </div>
     </Transition>
@@ -155,9 +161,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useGameStore } from '../stores/gameStore';
+import AppIcon from './AppIcon.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -166,6 +173,7 @@ const store = useGameStore();
 const isOpen = ref(false);
 const currentTab = ref('main');
 const copied = ref(false);
+const closeButton = ref(null);
 
 const isVisible = computed(() => {
   return store.session && store.player && route.path.startsWith('/game/');
@@ -178,6 +186,17 @@ const isHost = computed(() => {
 const isNotInWaitingRoom = computed(() => {
   return route.path !== `/game/${store.session?.code}`;
 });
+
+const avatarUrl = (seed) =>
+  `https://api.dicebear.com/9.x/notionists-neutral/svg?seed=${encodeURIComponent(seed)}&backgroundColor=e9e8e2,f1f1ec,ffffff`;
+
+const initials = (name) =>
+  (name || '?')
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part.charAt(0))
+    .join('')
+    .toUpperCase();
 
 const openMenu = () => {
   isOpen.value = true;
@@ -206,6 +225,14 @@ const handleOpenPauseMenu = () => {
   openMenu();
 };
 
+watch(isOpen, async (open) => {
+  document.body.style.overflow = open ? 'hidden' : '';
+  if (open) {
+    await nextTick();
+    closeButton.value?.focus();
+  }
+});
+
 onMounted(() => {
   window.addEventListener('keydown', handleKeyDown);
   window.addEventListener('open-pause-menu', handleOpenPauseMenu);
@@ -214,6 +241,7 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeyDown);
   window.removeEventListener('open-pause-menu', handleOpenPauseMenu);
+  document.body.style.overflow = '';
 });
 
 const copyLink = async () => {
@@ -221,11 +249,9 @@ const copyLink = async () => {
     const inviteLink = `${window.location.origin}/game/${store.session?.code}`;
     await navigator.clipboard.writeText(inviteLink);
     copied.value = true;
-    setTimeout(() => {
-      copied.value = false;
-    }, 2000);
+    setTimeout(() => { copied.value = false; }, 2000);
   } catch (err) {
-    console.error("Failed to copy link:", err);
+    console.error('Failed to copy link:', err);
   }
 };
 
@@ -234,7 +260,7 @@ const confirmReset = async () => {
     await store.resetSession();
     closeMenu();
   } catch (err) {
-    console.error("Failed to reset session:", err);
+    console.error('Failed to reset session:', err);
   }
 };
 
@@ -249,7 +275,7 @@ const promotePlayer = async (targetId) => {
     await store.promotePlayer(targetId);
     currentTab.value = 'main';
   } catch (err) {
-    console.error("Failed to promote player:", err);
+    console.error('Failed to promote player:', err);
   }
 };
 
@@ -257,8 +283,13 @@ const kickPlayer = async (targetId) => {
   try {
     await store.kickPlayer(targetId);
   } catch (err) {
-    console.error("Failed to kick player:", err);
+    console.error('Failed to kick player:', err);
   }
+};
+
+const toggleMute = () => {
+  store.volume = store.volume === 0 ? 0.5 : 0;
+  updateStoreVolume();
 };
 
 const updateStoreVolume = () => {
@@ -266,18 +297,3 @@ const updateStoreVolume = () => {
   localStorage.setItem('cekikilami_volume', String(store.volume));
 };
 </script>
-
-<style scoped>
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-}
-.fade-enter-to,
-.fade-leave-from {
-  opacity: 1;
-}
-</style>

@@ -1,182 +1,241 @@
 <template>
-  <div class="game-main-layout animate-fade-in-up opacity-0">
-
-    <!-- Header -->
-    <header class="page-header">
-      <div>
-        <h1 class="text-xl sm:text-3xl font-extrabold text-white">Sélection des Musiques</h1>
-        <p class="text-sm text-[var(--text-secondary)] mt-0.5 hidden sm:block">Proposez vos morceaux avant la fin du temps imparti.</p>
-      </div>
-
-      <div class="flex items-center gap-2">
-        <!-- Timer -->
-        <div :class="['timer-display', remainingTime < 20 ? 'urgent' : '']" role="timer" :aria-label="`Temps restant : ${formatTime(remainingTime)}`">
-          <i class="fa-regular fa-clock text-[18px]"></i>
-          <span>{{ formatTime(remainingTime) }}</span>
-        </div>
-
-        <!-- Pause Button next to Timer (Mobile only, on desktop we keep the floating menu) -->
-        <button 
-          type="button"
-          @click="triggerPause"
-          class="flex sm:hidden items-center justify-center w-10 h-10 rounded-xl bg-slate-900/60 hover:bg-slate-900/80 border border-slate-700/50 backdrop-blur-md text-slate-200 hover:text-white shadow-lg transition-all active:scale-95 hover:border-cyan-500/40"
-          title="Mettre en pause / Options"
+  <div class="game-layout">
+    <GameHeader
+      title="Sélection"
+      :subtitle="`Choisissez jusqu’à ${store.session?.max_musics_per_player || 2} morceau${(store.session?.max_musics_per_player || 2) > 1 ? 'x' : ''} sur le thème. Votre sélection reste secrète.`"
+      :step="2"
+    >
+      <template #actions>
+        <div
+          :class="['timer', remainingTime < 20 ? 'is-urgent' : '']"
+          role="timer"
+          :aria-label="`Temps restant : ${formatTime(remainingTime)}`"
         >
-          <i class="fa-solid fa-pause text-[16px]"></i>
-        </button>
-
-        <!-- Host skip -->
-        <button v-if="isHost && allPlayersReady" @click="forceStartVoting"
-          class="btn btn-primary text-sm"
-          title="Tous les joueurs ont choisi — passer au vote maintenant">
-          <i class="fa-solid fa-forward text-[14px]"></i>
+          <AppIcon name="clock" :size="15" />
+          {{ formatTime(remainingTime) }}
+        </div>
+        <button
+          v-if="isHost && allPlayersReady"
+          type="button"
+          class="btn btn-primary"
+          title="Tous les joueurs ont choisi — passer au vote"
+          @click="forceStartVoting"
+        >
+          <AppIcon name="forward" :size="15" />
           Passer au vote
         </button>
-      </div>
-    </header>
+      </template>
+    </GameHeader>
 
-    <!-- Players Tracker Widget -->
-    <GamePlayersTracker />
-
-    <div class="flex-1 min-h-0 overflow-y-auto flex flex-col gap-4 sm:gap-6 min-w-0 w-full scrollbar-none">
-      <!-- Tabs Switcher on mobile/tablet -->
-      <div class="lg:hidden flex p-1 bg-slate-950/60 border border-slate-800/80 rounded-2xl w-full">
-        <button 
+    <main class="game-shell game-body">
+      <!-- Mobile tabs -->
+      <div class="selection-tabs lg:hidden" role="tablist" aria-label="Recherche ou sélection">
+        <button
+          id="tab-search"
           type="button"
+          role="tab"
+          :aria-selected="activeTab === 'search'"
+          aria-controls="panel-search"
+          :class="['selection-tab', activeTab === 'search' ? 'is-active' : '']"
           @click="activeTab = 'search'"
-          :class="['flex-1 py-2.5 px-4 rounded-xl font-extrabold text-sm transition-all flex items-center justify-center gap-2', 
-            activeTab === 'search' ? 'bg-cyan-500 text-slate-950 font-black shadow-lg shadow-cyan-500/20' : 'text-slate-400 hover:text-slate-200']"
         >
-          <i class="fa-solid fa-magnifying-glass text-xs"></i>
+          <AppIcon name="search" :size="15" />
           Rechercher
         </button>
-        <button 
+        <button
+          id="tab-selected"
           type="button"
+          role="tab"
+          :aria-selected="activeTab === 'selected'"
+          aria-controls="panel-selected"
+          :class="['selection-tab', activeTab === 'selected' ? 'is-active' : '']"
           @click="activeTab = 'selected'"
-          :class="['flex-1 py-2.5 px-4 rounded-xl font-extrabold text-sm transition-all flex items-center justify-center gap-2 relative', 
-            activeTab === 'selected' ? 'bg-cyan-500 text-slate-950 font-black shadow-lg shadow-cyan-500/20' : 'text-slate-400 hover:text-slate-200']"
         >
-          <i class="fa-solid fa-music text-xs"></i>
-          Vos choix
-          <span :class="['px-1.5 py-0.5 rounded-full text-[10px] font-bold font-mono ml-1', 
-            activeTab === 'selected' ? 'bg-slate-950 text-cyan-400' : 'bg-slate-800 text-slate-400']"
-          >
+          <AppIcon name="music" :size="15" />
+          Votre sélection
+          <span class="count-pill">
             {{ store.musics.length }}/{{ store.session?.max_musics_per_player || 2 }}
           </span>
         </button>
       </div>
 
-      <!-- Search + Submitted -->
-      <div class="grid lg:grid-cols-2 gap-6 min-w-0 w-full">
-
-        <!-- Music search -->
-        <section class="glass-panel p-4 sm:p-5 rounded-2xl border border-[var(--border-strong)] gap-4 min-w-0" 
-          :class="[activeTab === 'search' ? 'flex flex-col' : 'hidden lg:flex lg:flex-col']"
+      <div class="grid lg:grid-cols-2 gap-4 items-start">
+        <!-- Search -->
+        <section
+          id="panel-search"
+          class="panel panel-pad"
+          :class="activeTab === 'search' ? 'block' : 'hidden lg:block'"
           aria-labelledby="search-heading"
         >
-          <h2 id="search-heading" class="section-header">
-            <i class="fa-solid fa-magnifying-glass text-[18px] icon"></i>
-            Rechercher une musique
-          </h2>
-
-          <div v-if="store.musics.length < (store.session?.max_musics_per_player || 2)" class="min-w-0">
-            <!-- Search input -->
-            <div class="relative mb-4">
-              <label for="music-search" class="sr-only">Rechercher un artiste ou un titre</label>
-              <input id="music-search" v-model="searchQuery"
-                class="form-input"
-                style="padding-left: 2.75rem"
-                placeholder="Artiste, titre…"
-                autocomplete="off" autocorrect="off" spellcheck="false"
-              />
-              <i v-if="!isSearching" class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none text-[16px]"></i>
-              <i v-else class="fa-solid fa-circle-notch fa-spin absolute left-3.5 top-1/2 -translate-y-1/2 text-indigo-400 pointer-events-none text-[16px]"></i>
+          <div class="panel-head">
+            <div>
+              <h2 id="search-heading" class="panel-title">
+                <AppIcon name="search" :size="16" />
+                Chercher un morceau
+              </h2>
+              <p class="panel-sub">Artiste, titre ou les deux.</p>
             </div>
-
-            <p v-if="searchError" role="alert" class="text-sm text-rose-400 mb-3">{{ searchError }}</p>
-
-            <TransitionGroup name="list" tag="ul" v-if="tracks.length"
-              class="max-h-48 sm:max-h-64 overflow-y-auto space-y-1 rounded-xl p-1 min-w-0" style="background:rgba(15,23,42,.5)"
-              aria-label="Résultats de recherche">
-              <li v-for="track in tracks" :key="track.id"
-                class="flex items-center justify-between gap-2 sm:gap-3 p-2 sm:p-2.5 rounded-lg hover:bg-white/5 transition-colors border border-transparent hover:border-[var(--border)] min-w-0">
-                <div class="flex items-center gap-2 sm:gap-3 min-w-0">
-                  <img v-if="track.cover" :src="track.cover" class="w-9 h-9 sm:w-10 sm:h-10 rounded-lg object-cover flex-shrink-0" :alt="`Pochette ${track.title}`" loading="lazy" />
-                  <div class="min-w-0">
-                    <p class="truncate font-semibold text-xs sm:text-sm text-white">{{ track.title }}</p>
-                    <p class="truncate text-[10px] sm:text-xs text-[var(--text-secondary)]">{{ track.artist }}</p>
-                  </div>
-                </div>
-                <div class="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
-                  <button type="button" @click="togglePreview(track)"
-                    :aria-label="previewUrl===track.preview && isPlaying ? 'Mettre en pause' : `Écouter ${track.title}`"
-                    class="btn btn-ghost btn-sm btn-icon">
-                    <i v-if="previewUrl===track.preview && isPlaying" class="fa-solid fa-pause text-[14px]"></i>
-                    <i v-else class="fa-solid fa-play text-[14px]"></i>
-                  </button>
-                  <button type="button" @click="chooseTrack(track)"
-                    :aria-label="`Choisir ${track.title}`"
-                    class="btn btn-primary btn-sm px-2.5 sm:px-3">
-                    Choisir
-                  </button>
-                </div>
-              </li>
-            </TransitionGroup>
+            <span class="count-pill">
+              {{ store.musics.length }}/{{ store.session?.max_musics_per_player || 2 }}
+            </span>
           </div>
 
-          <div v-else class="flex flex-col items-center justify-center py-8 px-4 text-center rounded-xl" style="background:var(--surface-raised);border:1px solid var(--border)">
-            <i class="fa-regular fa-circle-check text-[32px] text-emerald-400 mb-2"></i>
-            <p class="text-sm font-semibold text-emerald-400">Maximum atteint !</p>
-            <p class="text-xs text-[var(--text-secondary)] mt-1">Vous avez soumis {{ store.session?.max_musics_per_player || 2 }} musique(s). Attendez la fin du chrono.</p>
+          <div v-if="store.musics.length < (store.session?.max_musics_per_player || 2)">
+            <div class="input-wrap" style="margin-bottom: 12px">
+              <label for="music-search" class="sr-only">Rechercher un artiste ou un titre</label>
+              <input
+                id="music-search"
+                v-model="searchQuery"
+                class="input input-search"
+                placeholder="Ex. Daft Punk, Billie Jean…"
+                autocomplete="off"
+                autocorrect="off"
+                spellcheck="false"
+              />
+              <AppIcon
+                v-if="!isSearching"
+                name="search"
+                :size="16"
+                class="input-icon"
+              />
+              <AppIcon
+                v-else
+                name="loader"
+                :size="16"
+                class="input-icon animate-spin"
+              />
+            </div>
+
+            <p v-if="searchError" role="alert" class="hint" style="color: var(--danger); margin-bottom: 8px">
+              {{ searchError }}
+            </p>
+
+            <TransitionGroup
+              v-if="tracks.length"
+              name="list"
+              tag="div"
+              class="track-list"
+              aria-label="Résultats de recherche"
+            >
+              <div v-for="track in tracks" :key="track.id" class="track-row">
+                <div class="media-row">
+                  <img
+                    v-if="track.cover"
+                    :src="track.cover"
+                    class="media-cover"
+                    :alt="`Pochette de ${track.title}`"
+                    loading="lazy"
+                  />
+                  <span v-else class="media-cover media-cover-fallback">
+                    <AppIcon name="music" :size="18" />
+                  </span>
+                  <div class="media-text">
+                    <p class="media-title">{{ track.title }}</p>
+                    <p class="media-sub">{{ track.artist }}</p>
+                  </div>
+                </div>
+
+                <div class="track-row-actions">
+                  <button
+                    type="button"
+                    class="btn btn-ghost btn-icon btn-sm"
+                    :aria-label="previewUrl === track.preview && isPlaying ? `Mettre ${track.title} en pause` : `Écouter ${track.title}`"
+                    @click="togglePreview(track)"
+                  >
+                    <AppIcon :name="previewUrl === track.preview && isPlaying ? 'pause' : 'play'" :size="14" />
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-secondary btn-sm"
+                    :aria-label="`Ajouter ${track.title} à votre sélection`"
+                    @click="chooseTrack(track)"
+                  >
+                    <AppIcon name="plus" :size="14" />
+                    <span class="hidden sm:inline">Ajouter</span>
+                  </button>
+                </div>
+              </div>
+            </TransitionGroup>
+
+            <div v-else-if="!isSearching && !searchError" class="hint" style="padding: 20px 0; text-align: center">
+              Aucun résultat. Essayez un autre artiste.
+            </div>
+          </div>
+
+          <div v-else class="empty-state">
+            <span class="status-dot is-online"></span>
+            <strong>Sélection complète</strong>
+            <p>
+              Vous avez proposé {{ store.session?.max_musics_per_player || 2 }} morceaux.
+              Attendez la fin du chrono ou la validation de l’hôte.
+            </p>
           </div>
         </section>
 
-        <!-- Submitted musics -->
-        <section class="glass-panel p-4 sm:p-5 rounded-2xl border border-[var(--border-strong)] min-w-0" 
-          :class="[activeTab === 'selected' ? 'flex flex-col' : 'hidden lg:flex lg:flex-col']"
-          aria-labelledby="submitted-heading"
+        <!-- Selection -->
+        <section
+          id="panel-selected"
+          class="panel panel-pad"
+          :class="activeTab === 'selected' ? 'block' : 'hidden lg:block'"
+          aria-labelledby="selected-heading"
         >
-          <div class="flex justify-between items-center mb-4">
-            <h2 id="submitted-heading" class="section-header">
-              <i class="fa-solid fa-music text-[18px] icon"></i>
-              Vos musiques
-            </h2>
-            <!-- Progress bar -->
-            <div class="flex items-center gap-2">
-              <div class="flex gap-1" aria-hidden="true">
-                <div v-for="i in (store.session?.max_musics_per_player || 2)" :key="i"
-                  :class="['w-4 h-4 rounded-full border-2 transition-all duration-500', i <= store.musics.length ? 'border-indigo-500 bg-indigo-500' : 'border-[var(--border-strong)] bg-transparent']">
-                </div>
-              </div>
-              <span class="text-xs font-bold text-[var(--text-secondary)]" aria-label="`${store.musics.length} musiques soumises sur ${store.session?.max_musics_per_player || 2}`">
-                {{ store.musics.length }}/{{ store.session?.max_musics_per_player || 2 }}
-              </span>
+          <div class="panel-head">
+            <div>
+              <h2 id="selected-heading" class="panel-title">
+                <AppIcon name="music" :size="16" />
+                Votre sélection
+              </h2>
+              <p class="panel-sub">Elle restera invisible jusqu’à la révélation.</p>
+            </div>
+            <div class="progress-dots" aria-hidden="true">
+              <span
+                v-for="i in (store.session?.max_musics_per_player || 2)"
+                :key="i"
+                :class="['progress-dot', i <= store.musics.length ? 'is-filled' : '']"
+              ></span>
             </div>
           </div>
 
-          <TransitionGroup name="list" tag="div" class="flex-1 space-y-1 min-w-0">
-            <div v-for="music in store.musics" :key="music.id" class="player-row min-w-0">
-              <div class="flex items-center gap-2 sm:gap-3 min-w-0">
-                <img v-if="music.cover_url" :src="music.cover_url" class="w-9 h-9 sm:w-10 sm:h-10 rounded-lg object-cover flex-shrink-0 border border-[var(--border)]" :alt="`Pochette ${music.title}`" loading="lazy" />
-                <div class="min-w-0">
-                  <p class="font-bold text-white text-xs sm:text-sm truncate">{{ music.title }}</p>
-                  <p class="text-[10px] sm:text-xs text-[var(--text-secondary)] truncate">{{ music.artist }}</p>
+          <TransitionGroup v-if="store.musics.length" name="list" tag="div" class="row-list">
+            <div v-for="music in store.musics" :key="music.id" class="row row-static">
+              <div class="media-row">
+                <img
+                  v-if="music.cover_url"
+                  :src="music.cover_url"
+                  class="media-cover"
+                  :alt="`Pochette de ${music.title}`"
+                  loading="lazy"
+                />
+                <span v-else class="media-cover media-cover-fallback">
+                  <AppIcon name="music" :size="18" />
+                </span>
+                <div class="media-text">
+                  <p class="media-title">{{ music.title }}</p>
+                  <p class="media-sub">{{ music.artist }}</p>
                 </div>
               </div>
-              <button @click="deleteSubmittedMusic(music.id)"
-                :aria-label="`Supprimer ${music.title}`"
-                class="btn btn-danger btn-sm btn-icon flex-shrink-0">
-                <i class="fa-solid fa-trash-can text-[14px]"></i>
+              <button
+                type="button"
+                class="btn btn-ghost btn-icon btn-sm"
+                style="color: var(--danger)"
+                :aria-label="`Retirer ${music.title}`"
+                @click="deleteSubmittedMusic(music.id)"
+              >
+                <AppIcon name="trash" :size="14" />
               </button>
             </div>
           </TransitionGroup>
 
-          <p v-if="!store.musics.length" class="text-xs text-[var(--text-muted)] italic mt-4 text-center">
-            Aucune musique ajoutée pour le moment.
-          </p>
+          <div v-else class="empty-state">
+            <AppIcon name="music" :size="20" />
+            <strong>Aucune musique pour l’instant</strong>
+            <p>Cherchez un morceau et ajoutez-le. Vous pouvez encore changer d’avis.</p>
+          </div>
         </section>
       </div>
-    </div>
+    </main>
+
+    <GamePlayersTracker />
   </div>
 </template>
 
@@ -185,34 +244,30 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import apiService from '../services/apiService';
 import { useGameStore } from '../stores/gameStore';
+import GameHeader from './GameHeader.vue';
 import GamePlayersTracker from './GamePlayersTracker.vue';
+import AppIcon from './AppIcon.vue';
 
-const route  = useRoute();
+const route = useRoute();
 const router = useRouter();
-const store  = useGameStore();
+const store = useGameStore();
 
-const triggerPause = () => {
-  window.dispatchEvent(new CustomEvent('open-pause-menu'));
-};
-
-const searchQuery  = ref('');
-const tracks       = ref([]);
-const isSearching  = ref(false);
-const searchError  = ref('');
-const activeTab    = ref('search');
+const searchQuery = ref('');
+const tracks = ref([]);
+const isSearching = ref(false);
+const searchError = ref('');
+const activeTab = ref('search');
 const remainingTime = ref(0);
-let timerInterval  = null;
+let timerInterval = null;
 
 const previewUrl = ref(null);
-const isPlaying  = ref(false);
-let audioObject  = null;
+const isPlaying = ref(false);
+let audioObject = null;
 
 const formatTime = (secs) => {
   const m = Math.floor(secs / 60), s = secs % 60;
   return `${m}:${s.toString().padStart(2, '0')}`;
 };
-
-const getPlayerMusicCount = (id) => store.musicCounts ? (store.musicCounts[id] || 0) : 0;
 
 const updateTimer = () => {
   if (store.session?.timer_ends_at) {
@@ -232,7 +287,7 @@ const allPlayersReady = computed(() => {
 });
 
 const handleKeyDown = (e) => {
-  if (e.code === 'Space' && isHost.value && !['INPUT','TEXTAREA'].includes(document.activeElement?.tagName)) {
+  if (e.code === 'Space' && isHost.value && !['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) {
     e.preventDefault(); forceStartVoting();
   }
 };
@@ -254,7 +309,7 @@ onUnmounted(() => {
 });
 
 watch(() => store.session?.phase, (p) => {
-  if (p === 'voting')  router.push(`/game/${route.params.code}/voting`);
+  if (p === 'voting') router.push(`/game/${route.params.code}/voting`);
   if (p === 'results') router.push(`/game/${route.params.code}/results`);
   if (p === 'waiting') router.push(`/game/${route.params.code}`);
 });
@@ -305,8 +360,6 @@ const chooseTrack = async (track) => {
   } catch (err) { console.error('Failed to add music:', err); }
 };
 
-const deleteSubmittedMusic = async (id) => { try { await store.deleteMusic(id); } catch {} };
-const forceStartVoting = async () => { if (isHost.value) try { await store.startVoting(); } catch {} };
-const promotePlayer = async (id) => { try { await store.promotePlayer(id); } catch {} };
-const kickPlayer    = async (id) => { try { await store.kickPlayer(id); }    catch {} };
+const deleteSubmittedMusic = async (id) => { try { await store.deleteMusic(id); } catch { /* noop */ } };
+const forceStartVoting = async () => { if (isHost.value) try { await store.startVoting(); } catch { /* noop */ } };
 </script>
