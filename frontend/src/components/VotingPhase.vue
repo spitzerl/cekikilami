@@ -328,7 +328,6 @@ const audioError = ref(false);
 
 // Blind Test State
 const blindTestSelectedAnswer = ref(null);
-const hasAnsweredBlindTest = computed(() => blindTestSelectedAnswer.value !== null);
 
 const blindTestOptions = computed(() => {
   if (!store.currentMusic || !store.currentMusic.blind_test_options) return [];
@@ -344,6 +343,15 @@ const blindTestResult = computed(() => {
   const answer = store.currentMusic.blind_test_answers.find(a => a.player_id === store.player.id);
   return answer || null;
 });
+
+const answeredBlindTestOption = computed(() => {
+  if (blindTestSelectedAnswer.value) return blindTestSelectedAnswer.value;
+  const answer = blindTestResult.value;
+  if (!answer) return null;
+  return { title: answer.answer_title, artist: answer.answer_artist };
+});
+
+const hasAnsweredBlindTest = computed(() => answeredBlindTestOption.value !== null);
 
 const submitBlindTestAnswer = async (option) => {
   if (isObserver.value || status.value !== 'listening' || hasAnsweredBlindTest.value) return;
@@ -368,7 +376,7 @@ const getBlindTestOptionClass = (option) => {
   }
   
   // Has answered
-  const isSelected = blindTestSelectedAnswer.value?.title === option.title && blindTestSelectedAnswer.value?.artist === option.artist;
+  const isSelected = answeredBlindTestOption.value?.title === option.title && answeredBlindTestOption.value?.artist === option.artist;
   
   if (isSelected) {
     if (blindTestResult.value) {
