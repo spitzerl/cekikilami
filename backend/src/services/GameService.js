@@ -5,6 +5,12 @@ import Music from '../models/Music.js';
 
 const VALID_PHASES = ['waiting', 'selection', 'voting', 'results'];
 
+function httpError(status, message) {
+  const error = new Error(message);
+  error.status = status;
+  return error;
+}
+
 const normalizeTitle = (t) => {
   if (!t) return '';
   return t
@@ -114,10 +120,10 @@ export default class GameService {
   async updateConfig(code, config) {
     const session = await Session.findByCode(code);
     if (!session) {
-      throw new Error('Session introuvable');
+      throw httpError(404, 'Session introuvable');
     }
     if (session.phase !== 'waiting' && (session.phase !== 'voting' || session.voting_status !== 'idle')) {
-      throw new Error('Impossible de modifier les paramètres en cours de jeu');
+      throw httpError(409, 'Impossible de modifier les paramètres en cours de jeu');
     }
     const updated = await Session.updateConfig(code, config);
     this.log(code, `Configuration updated: ${JSON.stringify(config)}`);
@@ -127,15 +133,15 @@ export default class GameService {
   async addBot(code) {
     const session = await Session.findByCode(code);
     if (!session) {
-      throw new Error('Session introuvable');
+      throw httpError(404, 'Session introuvable');
     }
     if (session.phase !== 'waiting') {
-      throw new Error('Impossible d\'ajouter un bot après le début de la partie');
+      throw httpError(409, 'Impossible d\'ajouter un bot après le début de la partie');
     }
 
     const players = await Player.findBySession(session.id);
     if (players.length >= session.max_players) {
-      throw new Error('Nombre maximum de joueurs atteint');
+      throw httpError(409, 'Nombre maximum de joueurs atteint');
     }
 
     // Choose a unique real name for the bot from the pool
@@ -163,16 +169,16 @@ export default class GameService {
   async joinSession(code, playerName) {
     const session = await Session.findByCode(code);
     if (!session) {
-      throw new Error('Session introuvable');
+      throw httpError(404, 'Session introuvable');
     }
 
     if (session.phase !== 'waiting') {
-      throw new Error('La partie a déjà commencé');
+      throw httpError(409, 'La partie a déjà commencé');
     }
 
     const players = await Player.findBySession(session.id);
     if (players.length >= session.max_players) {
-      throw new Error('La session est complète');
+      throw httpError(409, 'La session est complète');
     }
 
     const player = await Player.create({ sessionId: session.id, name: playerName });
@@ -183,18 +189,18 @@ export default class GameService {
   async addMusic(code, payload) {
     const session = await Session.findByCode(code);
     if (!session) {
-      throw new Error('Session introuvable');
+      throw httpError(404, 'Session introuvable');
     }
 
     if (session.phase !== 'selection') {
-      throw new Error('La phase de sélection n\'est pas active');
+      throw httpError(409, 'La phase de sélection n\'est pas active');
     }
 
     // Check count of player's musics
     const musics = await Music.findBySession(session.id);
     const playerMusics = musics.filter(m => m.player_id === payload.playerId);
     if (playerMusics.length >= session.max_musics_per_player) {
-      throw new Error(`Vous avez déjà ajouté le nombre maximum de musiques (${session.max_musics_per_player})`);
+      throw httpError(409, `Vous avez déjà ajouté le nombre maximum de musiques (${session.max_musics_per_player})`);
     }
 
     const music = await Music.create({ sessionId: session.id, ...payload });
@@ -205,14 +211,14 @@ export default class GameService {
   async deleteMusic(code, musicId, playerId) {
     const session = await Session.findByCode(code);
     if (!session) {
-      throw new Error('Session introuvable');
+      throw httpError(404, 'Session introuvable');
     }
     if (session.phase !== 'selection') {
-      throw new Error('Impossible de supprimer des musiques en dehors de la sélection');
+      throw httpError(409, 'Impossible de supprimer des musiques en dehors de la sélection');
     }
     const deleted = await Music.deleteMusic(musicId, playerId);
     if (!deleted) {
-      throw new Error('Musique introuvable ou non autorisée');
+      throw httpError(404, 'Musique introuvable ou non autorisée');
     }
     this.log(code, `Music deleted: id ${musicId} by player ${playerId}`);
     return this.getState(code);
@@ -221,10 +227,10 @@ export default class GameService {
   async startSelection(code) {
     const session = await Session.findByCode(code);
     if (!session) {
-      throw new Error('Session introuvable');
+      throw httpError(404, 'Session introuvable');
     }
     if (session.phase !== 'waiting') {
-      throw new Error('La sélection a déjà démarré');
+      throw httpError(409, 'La sélection a déjà démarré');
     }
 
     // Transition to selection
@@ -386,7 +392,7 @@ export default class GameService {
   async startVoting(code) {
     const session = await Session.findByCode(code);
     if (!session) {
-      throw new Error('Session introuvable');
+      throw httpError(404, 'Session introuvable');
     }
 
     // Clear selection timer just in case
@@ -571,10 +577,10 @@ export default class GameService {
   async startRound(code) {
     const session = await Session.findByCode(code);
     if (!session) {
-      throw new Error('Session introuvable');
+      throw httpError(404, 'Session introuvable');
     }
     if (session.phase !== 'voting' || session.voting_status !== 'idle') {
-      throw new Error('Impossible de lancer la manche depuis ce statut');
+      throw httpError(409, 'Impossible de lancer la manche depuis ce statut');
     }
     await this.enterVotingSubphase(code, session.current_music_index, 'listening');
     return this.getState(code);
@@ -583,10 +589,10 @@ export default class GameService {
   async advanceRound(code) {
     const session = await Session.findByCode(code);
     if (!session) {
-      throw new Error('Session introuvable');
+      throw httpError(404, 'Session introuvable');
     }
     if (session.phase !== 'voting') {
-      throw new Error('La phase de vote n\'est pas active');
+      throw httpError(409, 'La phase de vote n\'est pas active');
     }
 
     const status = session.voting_status;
@@ -653,37 +659,37 @@ export default class GameService {
   async submitVote(code, voterId, musicId, guessedPlayerId) {
     const session = await Session.findByCode(code);
     if (!session) {
-      throw new Error('Session introuvable');
+      throw httpError(404, 'Session introuvable');
     }
 
     if (session.phase !== 'voting') {
-      throw new Error('La phase de vote n\'est pas active');
+      throw httpError(409, 'La phase de vote n\'est pas active');
     }
 
     if (session.voting_status !== 'voting') {
-      throw new Error('Les votes sont fermés pour ce morceau');
+      throw httpError(409, 'Les votes sont fermés pour ce morceau');
     }
 
     // Check if voter is observer
     const players = await Player.findBySession(session.id);
     const voter = players.find(p => p.id === voterId);
     if (!voter || voter.is_observer) {
-      throw new Error('Vous êtes observateur et ne pouvez pas voter');
+      throw httpError(403, 'Vous êtes observateur et ne pouvez pas voter');
     }
 
     const music = await Music.findById(musicId);
     if (!music || music.session_id !== session.id) {
-      throw new Error('Musique invalide');
+      throw httpError(400, 'Musique invalide');
     }
 
     // Check if timer expired
     if (session.timer_ends_at && new Date() > new Date(session.timer_ends_at)) {
-      throw new Error('Le temps est écoulé pour ce vote');
+      throw httpError(409, 'Le temps est écoulé pour ce vote');
     }
 
     // Validate vote
     if (voterId === guessedPlayerId) {
-      throw new Error('Vous ne pouvez pas voter pour vous-même');
+      throw httpError(400, 'Vous ne pouvez pas voter pour vous-même');
     }
 
     await query(
@@ -706,18 +712,18 @@ export default class GameService {
   async submitBlindTestAnswer(code, playerId, musicId, answerTitle, answerArtist) {
     const session = await Session.findByCode(code);
     if (!session || session.phase !== 'voting' || session.voting_status !== 'listening' || !session.enable_blind_test) {
-      throw new Error('Action non autorisée');
+      throw httpError(403, 'Action non autorisée');
     }
     
     // Check if player is an observer
     const players = await Player.findBySession(session.id);
     const player = players.find(p => p.id === playerId);
-    if (!player || player.is_observer) throw new Error('Action non autorisée');
+    if (!player || player.is_observer) throw httpError(403, 'Action non autorisée');
     
     const music = await Music.findById(musicId);
-    if (!music || music.session_id !== session.id) throw new Error('Musique introuvable');
+    if (!music || music.session_id !== session.id) throw httpError(404, 'Musique introuvable');
     if (music.player_id === playerId) {
-      throw new Error('Vous ne pouvez pas participer au blind test pour votre propre musique');
+      throw httpError(400, 'Vous ne pouvez pas participer au blind test pour votre propre musique');
     }
     
     const isCorrect = music.title === answerTitle && music.artist === answerArtist;
@@ -738,7 +744,7 @@ export default class GameService {
   async finishSession(code) {
     const session = await Session.findByCode(code);
     if (!session) {
-      throw new Error('Session introuvable');
+      throw httpError(404, 'Session introuvable');
     }
 
     this.clearTimer(code);
@@ -766,7 +772,7 @@ export default class GameService {
   async resetSession(code) {
     const session = await Session.findByCode(code);
     if (!session) {
-      throw new Error('Session introuvable');
+      throw httpError(404, 'Session introuvable');
     }
 
     this.clearTimer(code);
@@ -785,7 +791,7 @@ export default class GameService {
   async getState(code, playerId = null) {
     const session = await Session.findByCode(code);
     if (!session) {
-      throw new Error('Session introuvable');
+      throw httpError(404, 'Session introuvable');
     }
 
     const players = await Player.findBySession(session.id);
@@ -968,17 +974,17 @@ export default class GameService {
 
   async promotePlayer(code, requesterId, targetPlayerId) {
     const session = await Session.findByCode(code);
-    if (!session) throw new Error('Session introuvable');
+    if (!session) throw httpError(404, 'Session introuvable');
 
     const players = await Player.findBySession(session.id);
     const requester = players.find(p => p.id === requesterId);
     if (!requester || requester.name !== session.host_name) {
-      throw new Error('Seul l\'hôte actuel peut promouvoir un autre joueur');
+      throw httpError(403, 'Seul l\'hôte actuel peut promouvoir un autre joueur');
     }
 
     const targetPlayer = players.find(p => p.id === targetPlayerId);
-    if (!targetPlayer) throw new Error('Joueur cible introuvable');
-    if (targetPlayer.is_bot) throw new Error('Impossible de promouvoir un bot');
+    if (!targetPlayer) throw httpError(404, 'Joueur cible introuvable');
+    if (targetPlayer.is_bot) throw httpError(400, 'Impossible de promouvoir un bot');
 
     await query(
       'UPDATE sessions SET host_name = $1, updated_at = NOW() WHERE code = $2',
@@ -992,19 +998,19 @@ export default class GameService {
 
   async kickPlayer(code, requesterId, targetPlayerId) {
     const session = await Session.findByCode(code);
-    if (!session) throw new Error('Session introuvable');
+    if (!session) throw httpError(404, 'Session introuvable');
 
     const players = await Player.findBySession(session.id);
     const requester = players.find(p => p.id === requesterId);
     if (!requester || requester.name !== session.host_name) {
-      throw new Error('Seul l\'hôte actuel peut kick un joueur');
+      throw httpError(403, 'Seul l\'hôte actuel peut kick un joueur');
     }
 
     const targetPlayer = players.find(p => p.id === targetPlayerId);
-    if (!targetPlayer) throw new Error('Joueur cible introuvable');
+    if (!targetPlayer) throw httpError(404, 'Joueur cible introuvable');
 
     if (targetPlayer.name === session.host_name) {
-      throw new Error('L\'hôte ne peut pas se kick lui-même. Transférez d\'abord le rôle d\'hôte.');
+      throw httpError(400, 'L\'hôte ne peut pas se kick lui-même. Transférez d\'abord le rôle d\'hôte.');
     }
 
     // Disconnect socket for the kicked player
@@ -1043,13 +1049,13 @@ export default class GameService {
   }
   async regenerateAvatar(code, playerId) {
     const session = await Session.findByCode(code);
-    if (!session) throw new Error('Session introuvable');
+    if (!session) throw httpError(404, 'Session introuvable');
 
     const newSeed = Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
     const updatedPlayer = await Player.updateAvatarSeed(playerId, newSeed);
     
     if (!updatedPlayer) {
-      throw new Error('Joueur introuvable');
+      throw httpError(404, 'Joueur introuvable');
     }
 
     this.log(code, `Player ${updatedPlayer.name} regenerated avatar`);
