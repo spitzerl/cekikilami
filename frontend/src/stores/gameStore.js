@@ -209,6 +209,11 @@ export const useGameStore = defineStore('game', {
         this.currentMusic = state.currentMusic || null;
         this.votes = state.votes || null;
         this.musicCounts = state.musicCounts || null;
+        // Keep the local player object in sync (observer status, avatar, etc.)
+        if (state.player) {
+          this.player = state.player;
+          localStorage.setItem('music_game_player', JSON.stringify(state.player));
+        }
       });
 
       socketService.on('sound:play', ({ type }) => {

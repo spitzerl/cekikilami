@@ -884,6 +884,13 @@ export default class GameService {
       return new Date(a.created_at) - new Date(b.created_at);
     });
 
+    const parsedPlayerId = playerId !== null && playerId !== undefined && playerId !== ''
+      ? Number.parseInt(playerId, 10)
+      : null;
+    const playerSelf = Number.isInteger(parsedPlayerId)
+      ? computedPlayers.find(p => p.id === parsedPlayerId) || null
+      : null;
+
     // Filter musics depending on phase to prevent cheating
     let filteredMusics = [];
     let currentMusic = null;
@@ -898,20 +905,15 @@ export default class GameService {
         musicCounts[p.id] = rawMusics.filter(m => m.player_id === p.id).length;
       });
 
-      const parsedPlayerId = playerId ? Number.parseInt(playerId, 10) : null;
-      const playerSelf = parsedPlayerId ? computedPlayers.find(p => p.id === parsedPlayerId) || null : null;
-
       if (playerId) {
-        const targetId = Number.parseInt(playerId, 10);
-        filteredMusics = rawMusics.filter(m => m.player_id === targetId);
+        filteredMusics = rawMusics.filter(m => m.player_id === parsedPlayerId);
       }
 
       statePayload = {
         session,
         players: computedPlayers,
         musics: filteredMusics,
-        musicCounts,
-        player: playerSelf
+        musicCounts
       };
     } else if (session.phase === 'voting') {
       // Return only the current music, play order
@@ -919,7 +921,6 @@ export default class GameService {
       if (currentTrack) {
         currentMusic = { ...currentTrack };
         
-        const parsedPlayerId = playerId ? Number.parseInt(playerId, 10) : null;
         currentMusic.is_proposer = parsedPlayerId === currentTrack.player_id;
         
         // Hide proposer (player_id) unless we are in the revelation subphase AND show_answers is true
@@ -936,7 +937,6 @@ export default class GameService {
           currentMusic.blind_test_answers = currentBlindTestAnswers;
           // Hide other players' answers unless revelation
           if (session.voting_status === 'listening' || session.voting_status === 'voting') {
-             const parsedPlayerId = playerId ? Number.parseInt(playerId, 10) : null;
              if (parsedPlayerId) {
                 currentMusic.blind_test_answers = currentBlindTestAnswers.filter(b => b.player_id === parsedPlayerId);
              } else {
@@ -978,18 +978,16 @@ export default class GameService {
       };
     } else {
       // waiting phase
-      const parsedPlayerIdWaiting = playerId ? Number.parseInt(playerId, 10) : null;
-      const playerSelfWaiting = parsedPlayerIdWaiting ? computedPlayers.find(p => p.id === parsedPlayerIdWaiting) || null : null;
       statePayload = {
         session,
         players: computedPlayers,
-        musics: rawMusics,
-        player: playerSelfWaiting
+        musics: rawMusics
       };
     }
 
     return {
       ...statePayload,
+      player: playerSelf,
       serverTime: new Date().toISOString()
     };
   }
