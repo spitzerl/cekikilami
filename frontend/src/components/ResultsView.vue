@@ -270,7 +270,7 @@ const getPlayerName = (id) => {
 };
 
 const avatarUrl = (seed) =>
-  `https://api.dicebear.com/9.x/notionists-neutral/svg?seed=${encodeURIComponent(seed)}&backgroundColor=e9e8e2,f1f1ec,ffffff`;
+  `https://api.dicebear.com/9.x/notionists-neutral/svg?seed=${encodeURIComponent(seed)}&backgroundColor=f5d7b6,f2c7a1,ebd3ba`;
 
 const initials = (name) =>
   (name || '?')
@@ -426,26 +426,26 @@ const exportImage = () => {
 
   // Paper background
   const bgGrad = ctx.createRadialGradient(400, canvasHeight / 2, 50, 400, canvasHeight / 2, Math.max(600, canvasHeight));
-  bgGrad.addColorStop(0, '#fbfbf7');
-  bgGrad.addColorStop(0.7, '#f1f1ec');
-  bgGrad.addColorStop(1, '#e7e6df');
+  bgGrad.addColorStop(0, '#fff8ed');
+  bgGrad.addColorStop(0.7, '#f6ead9');
+  bgGrad.addColorStop(1, '#eedcc5');
   ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, 800, canvasHeight);
 
-  drawGlowBlob(ctx, 130, 140, 300, 'rgba(43, 63, 232, 0.06)');
-  drawGlowBlob(ctx, 670, canvasHeight - 140, 300, 'rgba(43, 63, 232, 0.05)');
+  drawGlowBlob(ctx, 130, 140, 300, 'rgba(233, 163, 58, 0.16)');
+  drawGlowBlob(ctx, 670, canvasHeight - 140, 300, 'rgba(185, 61, 31, 0.06)');
 
   // Header
-  ctx.fillStyle = '#171715';
+  ctx.fillStyle = '#332419';
   ctx.font = '800 38px Archivo, system-ui, -apple-system, sans-serif';
   ctx.fillText('CÉKIKILAMI', 50, 75);
 
-  ctx.fillStyle = '#56564f';
+  ctx.fillStyle = '#6f5543';
   ctx.font = '600 14px Archivo, system-ui, sans-serif';
   ctx.fillText(`Classement final — salon ${store.session?.code || ''}`, 50, 108);
 
   const dateStr = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  ctx.fillStyle = '#8a8a80';
+  ctx.fillStyle = '#7d6553';
   ctx.font = '500 13px ui-monospace, monospace';
   ctx.textAlign = 'right';
   ctx.fillText(dateStr, 750, 108);
@@ -454,7 +454,7 @@ const exportImage = () => {
   ctx.beginPath();
   ctx.moveTo(50, 132);
   ctx.lineTo(750, 132);
-  ctx.strokeStyle = 'rgba(23, 23, 21, 0.16)';
+  ctx.strokeStyle = 'rgba(51, 36, 25, 0.16)';
   ctx.lineWidth = 1;
   ctx.stroke();
 
@@ -464,7 +464,7 @@ const exportImage = () => {
 
     const colGrad = ctx.createLinearGradient(x, y, x, y + h);
     colGrad.addColorStop(0, fillColor);
-    colGrad.addColorStop(1, 'rgba(251, 251, 247, 0.4)');
+    colGrad.addColorStop(1, 'rgba(255, 248, 237, 0.4)');
     drawRoundedRect(ctx, x, y, w, h, radius, colGrad, borderStyle, 1.5);
 
     const medalRadius = rankEmoji === '🥇' ? 28 : rankEmoji === '🥈' ? 24 : 22;
@@ -472,7 +472,7 @@ const exportImage = () => {
 
     ctx.beginPath();
     ctx.arc(x + w / 2, medalY, medalRadius + 3, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(23, 23, 21, 0.08)';
+    ctx.fillStyle = 'rgba(51, 36, 25, 0.08)';
     ctx.fill();
 
     const medalGrad = ctx.createLinearGradient(x + w / 2 - medalRadius, medalY - medalRadius, x + w / 2 + medalRadius, medalY + medalRadius);
@@ -506,7 +506,7 @@ const exportImage = () => {
       ctx.fillText('👑', x + w / 2, medalY - medalRadius - 8);
     }
 
-    ctx.fillStyle = '#171715';
+    ctx.fillStyle = '#332419';
     ctx.font = '700 14px Archivo, system-ui, sans-serif';
     ctx.textAlign = 'center';
     let displayName = player.name;
@@ -516,7 +516,7 @@ const exportImage = () => {
     ctx.fillStyle = rankEmoji === '🥇' ? '#b8860b' : rankEmoji === '🥈' ? '#64748b' : '#9a3412';
     ctx.font = '700 22px ui-monospace, monospace';
     ctx.fillText(`${player.score}`, x + w / 2 - 10, y + h - 55);
-    ctx.fillStyle = '#56564f';
+    ctx.fillStyle = '#6f5543';
     ctx.font = '500 11px Archivo, sans-serif';
     ctx.fillText('pts', x + w / 2 + (player.score.toString().length * 6) + 4, y + h - 55);
 
@@ -529,70 +529,70 @@ const exportImage = () => {
     const bRad = 9;
     const startX = x + w / 2 - bW - 3;
 
-    drawRoundedRect(ctx, startX, statsY - 12, bW, bH, bRad, 'rgba(14, 115, 80, 0.06)', 'rgba(14, 115, 80, 0.2)', 1);
-    ctx.fillStyle = '#0e7350';
+    drawRoundedRect(ctx, startX, statsY - 12, bW, bH, bRad, 'rgba(69, 109, 51, 0.06)', 'rgba(69, 109, 51, 0.2)', 1);
+    ctx.fillStyle = '#456d33';
     ctx.font = '600 9px Archivo, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText(`🎯 ${correctVal}`, startX + bW / 2, statsY);
 
     const startX2 = x + w / 2 + 3;
-    drawRoundedRect(ctx, startX2, statsY - 12, bW, bH, bRad, 'rgba(43, 63, 232, 0.06)', 'rgba(43, 63, 232, 0.2)', 1);
-    ctx.fillStyle = '#2b3fe8';
+    drawRoundedRect(ctx, startX2, statsY - 12, bW, bH, bRad, 'rgba(185, 61, 31, 0.06)', 'rgba(185, 61, 31, 0.2)', 1);
+    ctx.fillStyle = '#9e3417';
     ctx.font = '600 9px Archivo, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText(`💜 ${votesVal}`, startX2 + bW / 2, statsY);
   };
 
   ctx.textAlign = 'center';
-  drawPodiumColumn(175, 260, 130, 160, 16, 'rgba(100, 116, 139, 0.10)', 'rgba(100, 116, 139, 0.25)', second, '🥈');
+  drawPodiumColumn(175, 260, 130, 160, 16, 'rgba(111, 85, 67, 0.10)', 'rgba(111, 85, 67, 0.25)', second, '🥈');
   drawPodiumColumn(325, 220, 150, 200, 20, 'rgba(234, 179, 8, 0.14)', 'rgba(202, 138, 4, 0.4)', first, '🥇');
   drawPodiumColumn(495, 290, 130, 130, 16, 'rgba(154, 52, 18, 0.08)', 'rgba(154, 52, 18, 0.22)', third, '🥉');
   ctx.textAlign = 'left';
 
-  drawRoundedRect(ctx, 50, 450, 700, panelHeight, 16, 'rgba(251, 251, 247, 0.9)', 'rgba(23, 23, 21, 0.12)', 1);
+  drawRoundedRect(ctx, 50, 450, 700, panelHeight, 16, 'rgba(255, 248, 237, 0.9)', 'rgba(51, 36, 25, 0.12)', 1);
 
-  ctx.fillStyle = '#8a8a80';
+  ctx.fillStyle = '#7d6553';
   ctx.font = '600 11px ui-monospace, monospace';
   ctx.fillText('Classement', 70, 485);
 
   let yOffset = 515;
   if (ranking.length <= 3) {
-    ctx.fillStyle = '#8a8a80';
+    ctx.fillStyle = '#7d6553';
     ctx.font = 'italic 13px Archivo, sans-serif';
     ctx.fillText('Aucun autre joueur', 70, 515);
   } else {
     for (let i = 3; i < ranking.length; i++) {
       const p = ranking[i];
 
-      drawRoundedRect(ctx, 70, yOffset - 16, 32, 22, 6, 'rgba(23, 23, 21, 0.04)', 'rgba(23, 23, 21, 0.1)', 1);
+      drawRoundedRect(ctx, 70, yOffset - 16, 32, 22, 6, 'rgba(51, 36, 25, 0.04)', 'rgba(51, 36, 25, 0.1)', 1);
 
-      ctx.fillStyle = '#56564f';
+      ctx.fillStyle = '#6f5543';
       ctx.font = '600 11px ui-monospace, monospace';
       ctx.textAlign = 'center';
       ctx.fillText(`#${i + 1}`, 86, yOffset - 1);
 
       ctx.beginPath();
       ctx.arc(122, yOffset - 5, 12, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(23, 23, 21, 0.06)';
+      ctx.fillStyle = 'rgba(51, 36, 25, 0.06)';
       ctx.fill();
-      ctx.strokeStyle = 'rgba(23, 23, 21, 0.12)';
+      ctx.strokeStyle = 'rgba(51, 36, 25, 0.12)';
       ctx.stroke();
 
-      ctx.fillStyle = '#56564f';
+      ctx.fillStyle = '#6f5543';
       ctx.font = '700 9px Archivo, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(p.name.substring(0, 2).toUpperCase(), 122, yOffset - 5);
       ctx.textBaseline = 'alphabetic';
 
-      ctx.fillStyle = '#171715';
+      ctx.fillStyle = '#332419';
       ctx.font = '600 13px Archivo, system-ui, sans-serif';
       ctx.textAlign = 'left';
       let displayName = p.name;
       if (p.is_bot) displayName += ' (Bot)';
       ctx.fillText(truncateText(displayName, 14), 146, yOffset);
 
-      ctx.fillStyle = '#2b3fe8';
+      ctx.fillStyle = '#9e3417';
       ctx.font = '600 13px ui-monospace, monospace';
       ctx.textAlign = 'right';
       ctx.fillText(`${p.score} pts`, 370, yOffset);
@@ -601,7 +601,7 @@ const exportImage = () => {
       ctx.beginPath();
       ctx.moveTo(70, yOffset + 12);
       ctx.lineTo(370, yOffset + 12);
-      ctx.strokeStyle = 'rgba(23, 23, 21, 0.07)';
+      ctx.strokeStyle = 'rgba(51, 36, 25, 0.07)';
       ctx.stroke();
 
       yOffset += 40;
@@ -611,11 +611,11 @@ const exportImage = () => {
   ctx.beginPath();
   ctx.moveTo(400, 470);
   ctx.lineTo(400, 450 + panelHeight - 25);
-  ctx.strokeStyle = 'rgba(23, 23, 21, 0.12)';
+  ctx.strokeStyle = 'rgba(51, 36, 25, 0.12)';
   ctx.lineWidth = 1;
   ctx.stroke();
 
-  ctx.fillStyle = '#8a8a80';
+  ctx.fillStyle = '#7d6553';
   ctx.font = '600 11px ui-monospace, monospace';
   ctx.fillText('Statistiques', 430, 485);
 
@@ -645,44 +645,44 @@ const exportImage = () => {
     ctx.font = '22px system-ui';
     ctx.fillText(icon, 430, statsY - 2);
 
-    ctx.fillStyle = '#8a8a80';
+    ctx.fillStyle = '#7d6553';
     ctx.font = '600 11px Archivo, sans-serif';
     ctx.fillText(title, 468, statsY - 10);
 
-    ctx.fillStyle = valColor || '#171715';
+    ctx.fillStyle = valColor || '#332419';
     ctx.font = '700 14px Archivo, system-ui, sans-serif';
     ctx.fillText(value, 468, statsY + 8);
 
     statsY += 52;
   };
 
-  drawStatItem('🎵', 'Morceaux joués', `${totalTracks} titres proposés`, '#56564f');
+  drawStatItem('🎵', 'Morceaux joués', `${totalTracks} titres proposés`, '#6f5543');
 
   if (bestDetective) {
-    drawStatItem('🎯', 'Meilleur détective', `${bestDetective} (${maxCorrect} correct${maxCorrect > 1 ? 's' : ''})`, '#0e7350');
+    drawStatItem('🎯', 'Meilleur détective', `${bestDetective} (${maxCorrect} correct${maxCorrect > 1 ? 's' : ''})`, '#456d33');
   } else {
-    drawStatItem('🎯', 'Meilleur détective', 'Aucune bonne réponse', '#8a8a80');
+    drawStatItem('🎯', 'Meilleur détective', 'Aucune bonne réponse', '#7d6553');
   }
 
   if (mostSuspected) {
-    drawStatItem('💜', 'Le plus suspecté', `${mostSuspected} (${maxVotes} vote${maxVotes > 1 ? 's' : ''})`, '#2b3fe8');
+    drawStatItem('💜', 'Le plus suspecté', `${mostSuspected} (${maxVotes} vote${maxVotes > 1 ? 's' : ''})`, '#9e3417');
   } else {
-    drawStatItem('💜', 'Le plus suspecté', 'Aucun vote reçu', '#8a8a80');
+    drawStatItem('💜', 'Le plus suspecté', 'Aucun vote reçu', '#7d6553');
   }
 
   ctx.beginPath();
   ctx.moveTo(50, 450 + panelHeight + 25);
   ctx.lineTo(750, 450 + panelHeight + 25);
-  ctx.strokeStyle = 'rgba(23, 23, 21, 0.12)';
+  ctx.strokeStyle = 'rgba(51, 36, 25, 0.12)';
   ctx.lineWidth = 1;
   ctx.stroke();
 
-  ctx.fillStyle = '#8a8a80';
+  ctx.fillStyle = '#7d6553';
   ctx.font = '500 13px Archivo, system-ui, sans-serif';
   ctx.fillText('Cékikilami, jeu de musique en ligne', 50, 450 + panelHeight + 65);
 
   ctx.textAlign = 'right';
-  ctx.fillStyle = '#8a8a80';
+  ctx.fillStyle = '#7d6553';
   ctx.font = '500 12px ui-monospace, monospace';
   ctx.fillText('cekikilami.lucasspitzer.fr', 750, 450 + panelHeight + 65);
   ctx.textAlign = 'left';

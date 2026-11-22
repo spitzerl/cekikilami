@@ -114,7 +114,7 @@
             </div>
             <h2 class="stage-title">{{ store.currentMusic?.title }}</h2>
             <p class="stage-text">{{ store.currentMusic?.artist }}</p>
-            <p class="stage-kicker" style="margin-top: 22px; margin-bottom: 0">Qui a proposé ce morceau ?</p>
+            <p class="stage-question">Qui a proposé ce morceau ?</p>
 
             <div v-if="audioError" class="callout callout-danger" style="margin-top: 14px; width: 100%; max-width: 380px" role="alert">
               <AppIcon name="alert-triangle" :size="15" style="flex-shrink: 0; margin-top: 1px" />
@@ -536,7 +536,7 @@ const getVoteCountForPlayer = (playerId) => {
 };
 
 const avatarUrl = (seed) =>
-  `https://api.dicebear.com/9.x/notionists-neutral/svg?seed=${encodeURIComponent(seed)}&backgroundColor=e9e8e2,f1f1ec,ffffff`;
+  `https://api.dicebear.com/9.x/notionists-neutral/svg?seed=${encodeURIComponent(seed)}&backgroundColor=f5d7b6,f2c7a1,ebd3ba`;
 
 const initials = (name) =>
   (name || '?')

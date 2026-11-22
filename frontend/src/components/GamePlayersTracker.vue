@@ -116,7 +116,7 @@ const initials = (name) =>
     .toUpperCase();
 
 const avatarUrl = (seed) =>
-  `https://api.dicebear.com/9.x/notionists-neutral/svg?seed=${encodeURIComponent(seed)}&backgroundColor=e9e8e2,f1f1ec,ffffff`;
+  `https://api.dicebear.com/9.x/notionists-neutral/svg?seed=${encodeURIComponent(seed)}&backgroundColor=f5d7b6,f2c7a1,ebd3ba`;
 
 const toggleActive = (playerId) => {
   activePlayerId.value = activePlayerId.value === playerId ? null : playerId;
