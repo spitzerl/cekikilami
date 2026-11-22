@@ -6,7 +6,7 @@
       :step="4"
     >
       <template #actions>
-        <button type="button" class="btn btn-secondary" @click="exportImage">
+        <button type="button" class="btn btn-secondary" :disabled="!store.ranking.length" @click="exportImage">
           <AppIcon name="download" :size="15" />
           Partager les scores
         </button>
@@ -68,35 +68,12 @@
               <div style="min-width: 0">
                 <p class="rank-name">{{ player.name }}</p>
                 <p class="rank-sub">
-                  {{ player.correctGuesses || 0 }} corrects, {{ player.votesReceived || 0 }} votes
+                  {{ player.correctGuesses || 0 }} bonne{{ (player.correctGuesses || 0) > 1 ? 's' : '' }} réponse{{ (player.correctGuesses || 0) > 1 ? 's' : '' }},
+                  {{ player.votesReceived || 0 }} vote{{ (player.votesReceived || 0) > 1 ? 's' : '' }} reçu{{ (player.votesReceived || 0) > 1 ? 's' : '' }}
                 </p>
               </div>
               <p class="runner-score">{{ player.score }}<small class="faint"> pts</small></p>
             </div>
-          </div>
-        </section>
-
-        <!-- Game stats -->
-        <section class="stats-strip" aria-label="Statistiques de la partie">
-          <div class="stat-cell">
-            <p class="stat-label">Morceaux joués</p>
-            <p class="stat-value">{{ totalTracks }} <span>titre{{ totalTracks > 1 ? 's' : '' }}</span></p>
-          </div>
-          <div class="stat-cell">
-            <p class="stat-label">Meilleur détective</p>
-            <p v-if="bestDetective" class="stat-value">
-              {{ bestDetective.name }}
-              <span>({{ bestDetective.correctGuesses }} correct{{ bestDetective.correctGuesses > 1 ? 's' : '' }})</span>
-            </p>
-            <p v-else class="stat-value faint">Aucun</p>
-          </div>
-          <div class="stat-cell">
-            <p class="stat-label">Le plus suspecté</p>
-            <p v-if="mostSuspected" class="stat-value">
-              {{ mostSuspected.name }}
-              <span>({{ mostSuspected.votesReceived }} vote{{ mostSuspected.votesReceived > 1 ? 's' : '' }})</span>
-            </p>
-            <p v-else class="stat-value faint">Aucun</p>
           </div>
         </section>
 
@@ -106,11 +83,10 @@
             <div>
               <h2 id="ranking-heading" class="panel-title">
                 <AppIcon name="bar-chart" :size="16" />
-                Classement
+                Classement complet
               </h2>
-              <p class="panel-sub">{{ store.ranking.length }} joueur{{ store.ranking.length > 1 ? 's' : '' }} à table.</p>
+              <p class="panel-sub">{{ store.ranking.length }} joueur{{ store.ranking.length > 1 ? 's' : '' }} classé{{ store.ranking.length > 1 ? 's' : '' }}, du premier au dernier.</p>
             </div>
-            <span class="count-pill mono">{{ store.session?.code || '—' }}</span>
           </div>
 
           <div>
@@ -133,12 +109,37 @@
                     <span v-if="player.is_observer" class="tag" style="margin-left: 4px">Spectateur</span>
                   </p>
                   <p class="rank-sub">
-                    {{ player.correctGuesses || 0 }} corrects, {{ player.votesReceived || 0 }} votes
+                    {{ player.correctGuesses || 0 }} bonne{{ (player.correctGuesses || 0) > 1 ? 's' : '' }} réponse{{ (player.correctGuesses || 0) > 1 ? 's' : '' }},
+                    {{ player.votesReceived || 0 }} vote{{ (player.votesReceived || 0) > 1 ? 's' : '' }} reçu{{ (player.votesReceived || 0) > 1 ? 's' : '' }}
                   </p>
                 </div>
               </div>
               <p class="rank-score">{{ player.score }}<small> pts</small></p>
             </div>
+          </div>
+        </section>
+
+        <!-- Game stats -->
+        <section class="stats-strip" aria-label="Statistiques de la partie">
+          <div class="stat-cell">
+            <p class="stat-label">Morceaux joués</p>
+            <p class="stat-value">{{ totalTracks }} <span>titre{{ totalTracks > 1 ? 's' : '' }}</span></p>
+          </div>
+          <div class="stat-cell">
+            <p class="stat-label">Meilleur détective</p>
+            <p v-if="bestDetective" class="stat-value">
+              {{ bestDetective.name }}
+              <span>({{ bestDetective.correctGuesses }} bonne{{ bestDetective.correctGuesses > 1 ? 's' : '' }} réponse{{ bestDetective.correctGuesses > 1 ? 's' : '' }})</span>
+            </p>
+            <p v-else class="stat-value faint">Aucun</p>
+          </div>
+          <div class="stat-cell">
+            <p class="stat-label">Le plus suspecté</p>
+            <p v-if="mostSuspected" class="stat-value">
+              {{ mostSuspected.name }}
+              <span>({{ mostSuspected.votesReceived }} vote{{ mostSuspected.votesReceived > 1 ? 's' : '' }} reçu{{ mostSuspected.votesReceived > 1 ? 's' : '' }})</span>
+            </p>
+            <p v-else class="stat-value faint">Aucun</p>
           </div>
         </section>
 
@@ -179,8 +180,6 @@
         </section>
       </div>
     </main>
-
-    <GamePlayersTracker />
 
     <!-- Export dialog -->
     <Transition name="fade">
@@ -225,7 +224,6 @@ import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useGameStore } from '../stores/gameStore';
 import GameHeader from './GameHeader.vue';
-import GamePlayersTracker from './GamePlayersTracker.vue';
 import AppIcon from './AppIcon.vue';
 
 const route = useRoute();
@@ -270,7 +268,7 @@ const getPlayerName = (id) => {
 };
 
 const avatarUrl = (seed) =>
-  `https://api.dicebear.com/9.x/notionists-neutral/svg?seed=${encodeURIComponent(seed)}&backgroundColor=f5d7b6,f2c7a1,ebd3ba`;
+  `https://api.dicebear.com/9.x/notionists-neutral/svg?seed=${encodeURIComponent(seed)}&backgroundColor=e6dcff,d9e8ff,f8d9ea`;
 
 const initials = (name) =>
   (name || '?')
@@ -286,8 +284,8 @@ const handleKeyDown = (e) => {
     return;
   }
   if (e.code === 'Space' && isHost.value && !showExportModal.value) {
-    const isTyping = ['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName);
-    if (!isTyping) {
+    const isInteractive = ['INPUT', 'TEXTAREA', 'BUTTON', 'A', 'SELECT'].includes(document.activeElement?.tagName);
+    if (!isInteractive) {
       e.preventDefault();
       replay();
     }
@@ -428,24 +426,24 @@ const exportImage = () => {
   const bgGrad = ctx.createRadialGradient(400, canvasHeight / 2, 50, 400, canvasHeight / 2, Math.max(600, canvasHeight));
   bgGrad.addColorStop(0, '#fff8ed');
   bgGrad.addColorStop(0.7, '#f6ead9');
-  bgGrad.addColorStop(1, '#eedcc5');
+  bgGrad.addColorStop(1, '#eadfe9');
   ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, 800, canvasHeight);
 
-  drawGlowBlob(ctx, 130, 140, 300, 'rgba(233, 163, 58, 0.16)');
-  drawGlowBlob(ctx, 670, canvasHeight - 140, 300, 'rgba(185, 61, 31, 0.06)');
+  drawGlowBlob(ctx, 130, 140, 300, 'rgba(107, 60, 224, 0.16)');
+  drawGlowBlob(ctx, 670, canvasHeight - 140, 300, 'rgba(228, 86, 159, 0.10)');
 
   // Header
-  ctx.fillStyle = '#332419';
+  ctx.fillStyle = '#2e1b3f';
   ctx.font = '800 38px Archivo, system-ui, -apple-system, sans-serif';
   ctx.fillText('CÉKIKILAMI', 50, 75);
 
-  ctx.fillStyle = '#6f5543';
+  ctx.fillStyle = '#644f72';
   ctx.font = '600 14px Archivo, system-ui, sans-serif';
   ctx.fillText(`Classement final — salon ${store.session?.code || ''}`, 50, 108);
 
   const dateStr = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  ctx.fillStyle = '#7d6553';
+  ctx.fillStyle = '#6f5b7a';
   ctx.font = '500 13px ui-monospace, monospace';
   ctx.textAlign = 'right';
   ctx.fillText(dateStr, 750, 108);
@@ -454,7 +452,7 @@ const exportImage = () => {
   ctx.beginPath();
   ctx.moveTo(50, 132);
   ctx.lineTo(750, 132);
-  ctx.strokeStyle = 'rgba(51, 36, 25, 0.16)';
+  ctx.strokeStyle = 'rgba(46, 27, 63, 0.16)';
   ctx.lineWidth = 1;
   ctx.stroke();
 
@@ -472,7 +470,7 @@ const exportImage = () => {
 
     ctx.beginPath();
     ctx.arc(x + w / 2, medalY, medalRadius + 3, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(51, 36, 25, 0.08)';
+    ctx.fillStyle = 'rgba(46, 27, 63, 0.08)';
     ctx.fill();
 
     const medalGrad = ctx.createLinearGradient(x + w / 2 - medalRadius, medalY - medalRadius, x + w / 2 + medalRadius, medalY + medalRadius);
@@ -506,17 +504,17 @@ const exportImage = () => {
       ctx.fillText('👑', x + w / 2, medalY - medalRadius - 8);
     }
 
-    ctx.fillStyle = '#332419';
+    ctx.fillStyle = '#2e1b3f';
     ctx.font = '700 14px Archivo, system-ui, sans-serif';
     ctx.textAlign = 'center';
     let displayName = player.name;
     displayName = truncateText(displayName, player.is_bot ? 10 : 12);
     ctx.fillText(displayName, x + w / 2, y + h - 90);
 
-    ctx.fillStyle = rankEmoji === '🥇' ? '#b8860b' : rankEmoji === '🥈' ? '#64748b' : '#9a3412';
+    ctx.fillStyle = rankEmoji === '🥇' ? '#6b3ce0' : rankEmoji === '🥈' ? '#2b8ed6' : '#b8315f';
     ctx.font = '700 22px ui-monospace, monospace';
     ctx.fillText(`${player.score}`, x + w / 2 - 10, y + h - 55);
-    ctx.fillStyle = '#6f5543';
+    ctx.fillStyle = '#644f72';
     ctx.font = '500 11px Archivo, sans-serif';
     ctx.fillText('pts', x + w / 2 + (player.score.toString().length * 6) + 4, y + h - 55);
 
@@ -529,70 +527,70 @@ const exportImage = () => {
     const bRad = 9;
     const startX = x + w / 2 - bW - 3;
 
-    drawRoundedRect(ctx, startX, statsY - 12, bW, bH, bRad, 'rgba(69, 109, 51, 0.06)', 'rgba(69, 109, 51, 0.2)', 1);
-    ctx.fillStyle = '#456d33';
+    drawRoundedRect(ctx, startX, statsY - 12, bW, bH, bRad, 'rgba(44, 122, 110, 0.06)', 'rgba(44, 122, 110, 0.2)', 1);
+    ctx.fillStyle = '#2c7a6e';
     ctx.font = '600 9px Archivo, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText(`🎯 ${correctVal}`, startX + bW / 2, statsY);
 
     const startX2 = x + w / 2 + 3;
-    drawRoundedRect(ctx, startX2, statsY - 12, bW, bH, bRad, 'rgba(185, 61, 31, 0.06)', 'rgba(185, 61, 31, 0.2)', 1);
-    ctx.fillStyle = '#9e3417';
+    drawRoundedRect(ctx, startX2, statsY - 12, bW, bH, bRad, 'rgba(107, 60, 224, 0.06)', 'rgba(107, 60, 224, 0.2)', 1);
+    ctx.fillStyle = '#5227c4';
     ctx.font = '600 9px Archivo, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText(`💜 ${votesVal}`, startX2 + bW / 2, statsY);
   };
 
   ctx.textAlign = 'center';
-  drawPodiumColumn(175, 260, 130, 160, 16, 'rgba(111, 85, 67, 0.10)', 'rgba(111, 85, 67, 0.25)', second, '🥈');
-  drawPodiumColumn(325, 220, 150, 200, 20, 'rgba(234, 179, 8, 0.14)', 'rgba(202, 138, 4, 0.4)', first, '🥇');
-  drawPodiumColumn(495, 290, 130, 130, 16, 'rgba(154, 52, 18, 0.08)', 'rgba(154, 52, 18, 0.22)', third, '🥉');
+  drawPodiumColumn(175, 260, 130, 160, 16, 'rgba(43, 142, 214, 0.10)', 'rgba(43, 142, 214, 0.28)', second, '🥈');
+  drawPodiumColumn(325, 220, 150, 200, 20, 'rgba(107, 60, 224, 0.12)', 'rgba(107, 60, 224, 0.40)', first, '🥇');
+  drawPodiumColumn(495, 290, 130, 130, 16, 'rgba(228, 86, 159, 0.08)', 'rgba(228, 86, 159, 0.25)', third, '🥉');
   ctx.textAlign = 'left';
 
-  drawRoundedRect(ctx, 50, 450, 700, panelHeight, 16, 'rgba(255, 248, 237, 0.9)', 'rgba(51, 36, 25, 0.12)', 1);
+  drawRoundedRect(ctx, 50, 450, 700, panelHeight, 16, 'rgba(255, 248, 237, 0.9)', 'rgba(46, 27, 63, 0.12)', 1);
 
-  ctx.fillStyle = '#7d6553';
+  ctx.fillStyle = '#6f5b7a';
   ctx.font = '600 11px ui-monospace, monospace';
   ctx.fillText('Classement', 70, 485);
 
   let yOffset = 515;
   if (ranking.length <= 3) {
-    ctx.fillStyle = '#7d6553';
+    ctx.fillStyle = '#6f5b7a';
     ctx.font = 'italic 13px Archivo, sans-serif';
     ctx.fillText('Aucun autre joueur', 70, 515);
   } else {
     for (let i = 3; i < ranking.length; i++) {
       const p = ranking[i];
 
-      drawRoundedRect(ctx, 70, yOffset - 16, 32, 22, 6, 'rgba(51, 36, 25, 0.04)', 'rgba(51, 36, 25, 0.1)', 1);
+      drawRoundedRect(ctx, 70, yOffset - 16, 32, 22, 6, 'rgba(46, 27, 63, 0.04)', 'rgba(46, 27, 63, 0.1)', 1);
 
-      ctx.fillStyle = '#6f5543';
+      ctx.fillStyle = '#644f72';
       ctx.font = '600 11px ui-monospace, monospace';
       ctx.textAlign = 'center';
       ctx.fillText(`#${i + 1}`, 86, yOffset - 1);
 
       ctx.beginPath();
       ctx.arc(122, yOffset - 5, 12, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(51, 36, 25, 0.06)';
+      ctx.fillStyle = 'rgba(46, 27, 63, 0.06)';
       ctx.fill();
-      ctx.strokeStyle = 'rgba(51, 36, 25, 0.12)';
+      ctx.strokeStyle = 'rgba(46, 27, 63, 0.12)';
       ctx.stroke();
 
-      ctx.fillStyle = '#6f5543';
+      ctx.fillStyle = '#644f72';
       ctx.font = '700 9px Archivo, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(p.name.substring(0, 2).toUpperCase(), 122, yOffset - 5);
       ctx.textBaseline = 'alphabetic';
 
-      ctx.fillStyle = '#332419';
+      ctx.fillStyle = '#2e1b3f';
       ctx.font = '600 13px Archivo, system-ui, sans-serif';
       ctx.textAlign = 'left';
       let displayName = p.name;
       if (p.is_bot) displayName += ' (Bot)';
       ctx.fillText(truncateText(displayName, 14), 146, yOffset);
 
-      ctx.fillStyle = '#9e3417';
+      ctx.fillStyle = '#5227c4';
       ctx.font = '600 13px ui-monospace, monospace';
       ctx.textAlign = 'right';
       ctx.fillText(`${p.score} pts`, 370, yOffset);
@@ -601,7 +599,7 @@ const exportImage = () => {
       ctx.beginPath();
       ctx.moveTo(70, yOffset + 12);
       ctx.lineTo(370, yOffset + 12);
-      ctx.strokeStyle = 'rgba(51, 36, 25, 0.07)';
+      ctx.strokeStyle = 'rgba(46, 27, 63, 0.07)';
       ctx.stroke();
 
       yOffset += 40;
@@ -611,11 +609,11 @@ const exportImage = () => {
   ctx.beginPath();
   ctx.moveTo(400, 470);
   ctx.lineTo(400, 450 + panelHeight - 25);
-  ctx.strokeStyle = 'rgba(51, 36, 25, 0.12)';
+  ctx.strokeStyle = 'rgba(46, 27, 63, 0.12)';
   ctx.lineWidth = 1;
   ctx.stroke();
 
-  ctx.fillStyle = '#7d6553';
+  ctx.fillStyle = '#6f5b7a';
   ctx.font = '600 11px ui-monospace, monospace';
   ctx.fillText('Statistiques', 430, 485);
 
@@ -645,44 +643,44 @@ const exportImage = () => {
     ctx.font = '22px system-ui';
     ctx.fillText(icon, 430, statsY - 2);
 
-    ctx.fillStyle = '#7d6553';
+    ctx.fillStyle = '#6f5b7a';
     ctx.font = '600 11px Archivo, sans-serif';
     ctx.fillText(title, 468, statsY - 10);
 
-    ctx.fillStyle = valColor || '#332419';
+    ctx.fillStyle = valColor || '#2e1b3f';
     ctx.font = '700 14px Archivo, system-ui, sans-serif';
     ctx.fillText(value, 468, statsY + 8);
 
     statsY += 52;
   };
 
-  drawStatItem('🎵', 'Morceaux joués', `${totalTracks} titres proposés`, '#6f5543');
+  drawStatItem('🎵', 'Morceaux joués', `${totalTracks} titres proposés`, '#644f72');
 
   if (bestDetective) {
-    drawStatItem('🎯', 'Meilleur détective', `${bestDetective} (${maxCorrect} correct${maxCorrect > 1 ? 's' : ''})`, '#456d33');
+    drawStatItem('🎯', 'Meilleur détective', `${bestDetective} (${maxCorrect} bonne${maxCorrect > 1 ? 's' : ''} réponse${maxCorrect > 1 ? 's' : ''})`, '#2c7a6e');
   } else {
-    drawStatItem('🎯', 'Meilleur détective', 'Aucune bonne réponse', '#7d6553');
+    drawStatItem('🎯', 'Meilleur détective', 'Aucune bonne réponse', '#6f5b7a');
   }
 
   if (mostSuspected) {
-    drawStatItem('💜', 'Le plus suspecté', `${mostSuspected} (${maxVotes} vote${maxVotes > 1 ? 's' : ''})`, '#9e3417');
+    drawStatItem('💜', 'Le plus suspecté', `${mostSuspected} (${maxVotes} vote${maxVotes > 1 ? 's' : ''} reçu${maxVotes > 1 ? 's' : ''})`, '#5227c4');
   } else {
-    drawStatItem('💜', 'Le plus suspecté', 'Aucun vote reçu', '#7d6553');
+    drawStatItem('💜', 'Le plus suspecté', 'Aucun vote reçu', '#6f5b7a');
   }
 
   ctx.beginPath();
   ctx.moveTo(50, 450 + panelHeight + 25);
   ctx.lineTo(750, 450 + panelHeight + 25);
-  ctx.strokeStyle = 'rgba(51, 36, 25, 0.12)';
+  ctx.strokeStyle = 'rgba(46, 27, 63, 0.12)';
   ctx.lineWidth = 1;
   ctx.stroke();
 
-  ctx.fillStyle = '#7d6553';
+  ctx.fillStyle = '#6f5b7a';
   ctx.font = '500 13px Archivo, system-ui, sans-serif';
   ctx.fillText('Cékikilami, jeu de musique en ligne', 50, 450 + panelHeight + 65);
 
   ctx.textAlign = 'right';
-  ctx.fillStyle = '#7d6553';
+  ctx.fillStyle = '#6f5b7a';
   ctx.font = '500 12px ui-monospace, monospace';
   ctx.fillText('cekikilami.lucasspitzer.fr', 750, 450 + panelHeight + 65);
   ctx.textAlign = 'left';

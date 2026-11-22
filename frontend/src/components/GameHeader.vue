@@ -8,13 +8,14 @@
       <span class="spacer"></span>
 
       <button
-        v-if="code"
+        v-if="code && showCode"
         type="button"
         class="code-chip"
         :aria-label="`Copier le lien d'invitation, code ${code}`"
         @click="copyCode"
       >
-        {{ code }}
+        <span class="code-chip-label">Salon</span>
+        <span class="code-chip-value">{{ code }}</span>
         <AppIcon :name="copied ? 'check' : 'copy'" :size="13" />
       </button>
 
@@ -31,16 +32,6 @@
   </header>
 
   <section class="shell game-header-content" aria-label="En-tête de la partie">
-    <div class="game-head">
-      <div>
-        <h1 class="game-title">{{ title }}</h1>
-        <p v-if="subtitle" class="game-sub">{{ subtitle }}</p>
-      </div>
-      <div v-if="$slots.actions" class="game-actions">
-        <slot name="actions" />
-      </div>
-    </div>
-
     <nav class="stepper" aria-label="Progression de la partie">
       <ol>
         <li
@@ -58,6 +49,16 @@
         </li>
       </ol>
     </nav>
+
+    <div class="game-head">
+      <div class="game-head-copy">
+        <h1 class="game-title">{{ title }}</h1>
+        <p v-if="subtitle" class="game-sub">{{ subtitle }}</p>
+      </div>
+      <div v-if="$slots.actions" class="game-actions">
+        <slot name="actions" />
+      </div>
+    </div>
   </section>
 </template>
 
@@ -67,10 +68,11 @@ import { useRoute } from 'vue-router';
 import { useGameStore } from '../stores/gameStore';
 import AppIcon from './AppIcon.vue';
 
-const props = defineProps({
+defineProps({
   title: { type: String, required: true },
   subtitle: { type: String, default: '' },
   step: { type: Number, default: 1 },
+  showCode: { type: Boolean, default: true },
 });
 
 const store = useGameStore();

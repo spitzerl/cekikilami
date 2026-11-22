@@ -5,7 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Cékikilami — Blind test entre amis</title>
     <meta name="description" content="Chacun glisse un morceau, tout le monde devine qui l'a choisi. Un blind test social à jouer entre amis, sans inscription." />
-    <meta name="theme-color" content="#f6ead9" />
+    <meta name="theme-color" content="#150f24" />
+    <script>
+      (() => {
+        try {
+          const theme = localStorage.getItem('cekikilami_theme') === 'light' ? 'light' : 'dark';
+          document.documentElement.dataset.theme = theme;
+          document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'light' ? '#f6ead9' : '#150f24');
+        } catch {
+          document.documentElement.dataset.theme = 'dark';
+        }
+      })();
+    </script>
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Cékikilami" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />

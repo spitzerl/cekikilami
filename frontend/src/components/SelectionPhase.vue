@@ -2,7 +2,7 @@
   <div class="game-layout">
     <GameHeader
       title="Sélection"
-      :subtitle="`Choisissez jusqu’à ${store.session?.max_musics_per_player || 2} morceau${(store.session?.max_musics_per_player || 2) > 1 ? 'x' : ''} sur le thème. Votre sélection reste secrète.`"
+      :subtitle="selectionSubtitle"
       :step="2"
     >
       <template #actions>
@@ -15,14 +15,15 @@
           {{ formatTime(remainingTime) }}
         </div>
         <button
-          v-if="isHost && allPlayersReady"
+          v-if="isHost"
           type="button"
           class="btn btn-primary"
-          title="Tous les joueurs ont choisi — passer au vote"
+          :disabled="!allPlayersReady"
+          :title="allPlayersReady ? 'Tous les joueurs ont choisi. Passer au vote.' : 'Tous les joueurs n’ont pas encore choisi.'"
           @click="forceStartVoting"
         >
           <AppIcon name="forward" :size="15" />
-          Passer au vote
+          Passer au vote ({{ readyCount }}/{{ activeCount }})
         </button>
       </template>
     </GameHeader>
@@ -52,14 +53,14 @@
           @click="activeTab = 'selected'"
         >
           <AppIcon name="music" :size="15" />
-          Votre sélection
+          Sélection
           <span class="count-pill">
-            {{ store.musics.length }}/{{ store.session?.max_musics_per_player || 2 }}
+            {{ store.musics.length }}/{{ maxMusics }}
           </span>
         </button>
       </div>
 
-      <div class="grid lg:grid-cols-2 gap-4 items-start">
+      <div class="selection-grid">
         <!-- Search -->
         <section
           id="panel-search"
@@ -75,12 +76,10 @@
               </h2>
               <p class="panel-sub">Artiste, titre ou les deux.</p>
             </div>
-            <span class="count-pill">
-              {{ store.musics.length }}/{{ store.session?.max_musics_per_player || 2 }}
-            </span>
+            <span v-if="remainingPicks" class="tag panel-hint">Encore {{ remainingPicks }} à choisir</span>
           </div>
 
-          <div v-if="store.musics.length < (store.session?.max_musics_per_player || 2)">
+          <div v-if="remainingPicks > 0">
             <div class="input-wrap" style="margin-bottom: 12px">
               <label for="music-search" class="sr-only">Rechercher un artiste ou un titre</label>
               <input
@@ -166,7 +165,7 @@
             <span class="status-dot is-online"></span>
             <strong>Sélection complète</strong>
             <p>
-              Vous avez proposé {{ store.session?.max_musics_per_player || 2 }} morceaux.
+              Vous avez proposé {{ maxMusics }} morceau{{ maxMusics > 1 ? 'x' : '' }}.
               Attendez la fin du chrono ou la validation de l’hôte.
             </p>
           </div>
@@ -175,7 +174,7 @@
         <!-- Selection -->
         <section
           id="panel-selected"
-          class="panel panel-pad"
+          class="panel panel-pad selection-side"
           :class="activeTab === 'selected' ? 'block' : 'hidden lg:block'"
           aria-labelledby="selected-heading"
         >
@@ -185,11 +184,15 @@
                 <AppIcon name="music" :size="16" />
                 Votre sélection
               </h2>
-              <p class="panel-sub">Elle restera invisible jusqu’à la révélation.</p>
+              <p class="panel-sub">Elle reste secrète jusqu’à la révélation.</p>
             </div>
-            <div class="progress-dots" aria-hidden="true">
+            <div
+              class="progress-dots"
+              role="img"
+              :aria-label="`${store.musics.length} morceau${store.musics.length > 1 ? 'x' : ''} sur ${maxMusics}`"
+            >
               <span
-                v-for="i in (store.session?.max_musics_per_player || 2)"
+                v-for="i in maxMusics"
                 :key="i"
                 :class="['progress-dot', i <= store.musics.length ? 'is-filled' : '']"
               ></span>
@@ -279,15 +282,30 @@ const updateTimer = () => {
 
 const isHost = computed(() => store.player && store.session && store.player.name === store.session.host_name);
 
-const allPlayersReady = computed(() => {
-  if (!store.players || !store.musicCounts || !store.session) return false;
-  const max = store.session.max_musics_per_player || 2;
-  const active = store.players.filter(p => p.is_connected && !p.is_observer);
-  return active.length > 0 && active.every(p => (store.musicCounts[p.id] || 0) >= max);
-});
+const maxMusics = computed(() => store.session?.max_musics_per_player || 2);
+
+const remainingPicks = computed(() => Math.max(0, maxMusics.value - store.musics.length));
+
+const selectionSubtitle = computed(
+  () => `Choisissez jusqu’à ${maxMusics.value} morceau${maxMusics.value > 1 ? 'x' : ''}. Votre sélection reste secrète.`
+);
+
+const activePlayers = computed(() =>
+  (store.players || []).filter((p) => p.is_connected && !p.is_observer)
+);
+
+const readyCount = computed(() =>
+  activePlayers.value.filter((p) => (store.musicCounts?.[p.id] || 0) >= maxMusics.value).length
+);
+
+const activeCount = computed(() => activePlayers.value.length);
+
+const allPlayersReady = computed(
+  () => activeCount.value > 0 && readyCount.value >= activeCount.value
+);
 
 const handleKeyDown = (e) => {
-  if (e.code === 'Space' && isHost.value && !['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) {
+  if (e.code === 'Space' && isHost.value && allPlayersReady.value && !['INPUT', 'TEXTAREA', 'BUTTON', 'A', 'SELECT'].includes(document.activeElement?.tagName)) {
     e.preventDefault(); forceStartVoting();
   }
 };
@@ -357,6 +375,9 @@ const chooseTrack = async (track) => {
     });
     await store.loadSession(route.params.code);
     searchQuery.value = '';
+    if (store.musics.length >= maxMusics.value) {
+      activeTab.value = 'selected';
+    }
   } catch (err) { console.error('Failed to add music:', err); }
 };
 

@@ -15,12 +15,13 @@
         Cékikilami
       </span>
       <span class="spacer"></span>
+      <ThemeToggle />
       <RouterLink to="/" class="text-link">Accueil</RouterLink>
     </header>
 
     <main class="home-main shell" style="align-items: center">
       <div class="panel panel-pad reveal" style="width: 100%; max-width: 420px">
-        <h1 class="console-title">Rejoindre la partie</h1>
+        <h1 class="console-title">Rejoindre le salon</h1>
         <p class="console-sub">
           Salon <span class="mono" style="color: var(--ink)">{{ route.params.code }}</span>. Choisissez le pseudo que verront les autres joueurs.
         </p>
@@ -40,7 +41,7 @@
           </div>
           <button type="submit" class="btn btn-primary btn-block btn-lg" style="margin-top: 16px" :disabled="!directPseudo.trim()">
             <AppIcon name="log-in" :size="16" />
-            Rejoindre
+            Rejoindre le salon
           </button>
         </form>
 
@@ -56,181 +57,155 @@
   <div v-else class="game-layout">
     <GameHeader
       title="Salon d’attente"
-      subtitle="Partagez le code, puis lancez la sélection quand tout le monde est là."
+      :subtitle="headerSubtitle"
       :step="1"
-    >
-      <template #actions>
-        <span class="status">
-          <span class="status-dot is-live"></span>
-          En attente
-        </span>
-      </template>
-    </GameHeader>
+      :show-code="false"
+    />
 
-    <main class="game-shell game-body">
-      <div class="waiting-grid">
-        <!-- Players -->
-        <section class="panel" aria-labelledby="players-heading">
-          <div class="panel-pad" style="padding-bottom: 10px">
-            <div class="panel-head" style="margin-bottom: 0">
-              <div>
-                <h2 id="players-heading" class="panel-title">
-                  Joueurs
-                  <span class="count-pill">{{ store.players.length }}/{{ store.session?.max_players || 8 }}</span>
-                </h2>
-                <p class="panel-sub">Le salon est ouvert. Les joueurs peuvent rejoindre à tout moment.</p>
-              </div>
-              <div class="roster-actions">
-                <button type="button" class="btn btn-secondary btn-sm" @click="copyCode">
-                  <AppIcon name="copy" :size="14" />
-                  <span class="hidden sm:inline">Copier le lien</span>
-                </button>
-              </div>
-            </div>
-            <Transition name="fade">
-              <p v-if="copied" class="hint" style="color: var(--success); margin-top: 6px">
-                Lien d’invitation copié.
-              </p>
-            </Transition>
-          </div>
+    <main class="game-shell game-body lobby">
+      <!-- Invitation -->
+      <section class="lobby-hero reveal" aria-labelledby="invite-heading">
+        <div class="lobby-hero-copy">
+          <p id="invite-heading" class="lobby-kicker">Code du salon</p>
+          <p class="lobby-code">{{ route.params.code }}</p>
+          <p class="hint">Vos amis ouvrent le lien d’invitation ou saisissent ce code.</p>
+        </div>
+        <button type="button" class="btn btn-secondary" @click="copyCode">
+          <AppIcon :name="copied ? 'check' : 'copy'" :size="15" />
+          {{ copied ? 'Lien copié' : 'Copier le lien' }}
+        </button>
+        <span class="sr-only" role="status">{{ copied ? 'Lien d’invitation copié.' : '' }}</span>
+      </section>
 
-          <div class="row-list" style="padding: 0 clamp(16px, 2.6vw, 24px) 4px">
-            <TransitionGroup name="list" tag="div">
-              <div
-                v-for="player in store.players"
-                :key="player.id"
-                class="row row-static"
-                :class="{ 'is-offline-row': !player.is_connected }"
-              >
-                <div class="media-row">
-                  <div style="position: relative; flex-shrink: 0">
-                    <img
-                      v-if="player.avatar_seed"
-                      :src="avatarUrl(player.avatar_seed)"
-                      class="avatar"
-                      :alt="`Avatar de ${player.name}`"
-                      loading="lazy"
-                    />
-                    <span v-else class="avatar avatar-fallback">{{ initials(player.name) }}</span>
-                    <span
-                      :class="['status-dot', player.is_connected ? 'is-online' : 'is-offline']"
-                      role="img"
-                      style="position: absolute; right: -1px; bottom: -1px; border: 2px solid var(--surface); width: 10px; height: 10px"
-                      :aria-label="player.is_connected ? 'En ligne' : 'Hors ligne'"
-                    ></span>
-                  </div>
+      <!-- Players -->
+      <section class="lobby-section" aria-labelledby="players-heading">
+        <div class="lobby-section-head">
+          <h2 id="players-heading" class="lobby-title">
+            Joueurs
+            <span class="count-pill">{{ store.players.length }}/{{ maxPlayers }}</span>
+          </h2>
+          <span class="status">
+            <span :class="['status-dot', store.players.length > 1 ? 'is-online' : 'is-live']"></span>
+            {{ store.players.length > 1 ? 'Salon ouvert' : 'En attente' }}
+          </span>
+        </div>
 
-                  <div class="media-text">
-                    <div class="media-title" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap">
-                      {{ player.name }}
-                      <span v-if="player.id === store.player?.id" class="tag tag-accent">Vous</span>
-                      <span v-if="player.name === store.session?.host_name" class="tag">Hôte</span>
-                      <span v-if="player.is_bot" class="tag">Bot</span>
-                    </div>
-                    <p class="media-sub">{{ player.is_connected ? 'En ligne' : 'Hors ligne' }}</p>
-                  </div>
-                </div>
-
-                <div style="display: flex; align-items: center; gap: 4px">
-                  <button
-                    v-if="player.id === store.player?.id"
-                    type="button"
-                    class="btn btn-ghost btn-icon btn-sm"
-                    title="Générer un nouvel avatar"
-                    aria-label="Générer un nouvel avatar"
-                    @click="regenerateAvatar(player.id)"
-                  >
-                    <AppIcon name="refresh-cw" :size="14" />
-                  </button>
-
-                  <div v-if="isHost && player.id !== store.player?.id" class="player-row-actions">
-                    <button
-                      v-if="!player.is_bot"
-                      type="button"
-                      class="btn btn-secondary btn-icon btn-sm"
-                      title="Transférer les droits d’hôte"
-                      :aria-label="`Promouvoir ${player.name} comme hôte`"
-                      @click="promotePlayer(player.id)"
-                    >
-                      <AppIcon name="crown" :size="14" />
-                    </button>
-                    <button
-                      type="button"
-                      class="btn btn-danger btn-icon btn-sm"
-                      title="Exclure du salon"
-                      :aria-label="`Exclure ${player.name} du salon`"
-                      @click="kickPlayer(player.id)"
-                    >
-                      <AppIcon name="user-x" :size="14" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </TransitionGroup>
-
-            <div v-if="!store.players.length" class="empty-state" style="margin: 8px 0 16px">
-              <AppIcon name="users" :size="20" />
-              <strong>Personne pour l’instant</strong>
-              <p>Partagez le code {{ route.params.code }} pour inviter les premiers joueurs.</p>
-            </div>
-          </div>
-
-          <div class="rule-top" style="padding: 14px clamp(16px, 2.6vw, 24px)">
-            <template v-if="isHost">
-              <div class="hidden md:flex" style="gap: 8px">
-                <button type="button" class="btn btn-secondary" @click="addBot">
-                  <AppIcon name="robot" :size="15" />
-                  Ajouter un bot
-                </button>
-                <button type="button" class="btn btn-primary" style="flex: 1" @click="startSelection">
-                  <AppIcon name="play" :size="15" />
-                  Lancer la sélection
-                </button>
-              </div>
-              <p class="hidden md:block hint" style="margin-top: 10px">
-                Astuce : la barre d’espace lance aussi la sélection.
-              </p>
-            </template>
-            <p v-else class="hint">
-              En attente de l’hôte <strong style="color: var(--ink)">{{ store.session?.host_name }}</strong> pour lancer la partie.
-            </p>
-          </div>
-        </section>
-
-        <!-- Settings -->
-        <aside class="panel" aria-labelledby="config-heading">
-          <div class="panel-pad">
-            <div class="panel-head">
-              <div>
-                <h2 id="config-heading" class="panel-title">
-                  Paramètres
-                  <AppIcon name="sliders" :size="15" style="color: var(--ink-3)" />
-                </h2>
-                <p class="panel-sub">
-                  {{ isHost ? 'Réglez la partie selon votre groupe.' : 'Seul l’hôte peut modifier ces réglages.' }}
-                </p>
-              </div>
-              <button
-                type="button"
-                class="btn btn-ghost btn-icon md:hidden"
-                :aria-expanded="showConfigOnMobile"
-                aria-controls="config-body"
-                :aria-label="showConfigOnMobile ? 'Masquer les paramètres' : 'Afficher les paramètres'"
-                @click="toggleConfigMobile"
-              >
-                <AppIcon
-                  name="chevron-down"
-                  :size="17"
-                  :style="{ transform: showConfigOnMobile ? 'rotate(180deg)' : 'none', transition: 'transform .2s ease' }"
-                />
-              </button>
-            </div>
-
-            <div
-              id="config-body"
-              :class="['settings-body', showConfigOnMobile ? '' : 'settings-collapsed']"
-              style="margin-top: 18px"
+        <TransitionGroup name="list" tag="ul" class="player-grid">
+          <li
+            v-for="player in store.players"
+            :key="player.id"
+            :class="['player-tile', {
+              'is-local': player.id === store.player?.id,
+              'is-offline': !player.is_connected,
+            }]"
+          >
+            <span
+              class="player-avatar"
+              role="img"
+              :aria-label="player.is_connected ? 'En ligne' : 'Hors ligne'"
             >
+              <img
+                v-if="player.avatar_seed"
+                :src="avatarUrl(player.avatar_seed)"
+                alt=""
+                loading="lazy"
+              />
+              <span v-else class="player-avatar-fallback">{{ initials(player.name) }}</span>
+              <span
+                :class="['status-dot', player.is_connected ? 'is-online' : 'is-offline']"
+                aria-hidden="true"
+              ></span>
+            </span>
+
+            <span class="player-copy">
+              <span class="player-name">
+                {{ player.name }}
+                <AppIcon
+                  v-if="player.name === store.session?.host_name"
+                  name="crown"
+                  :size="12"
+                  class="player-crown"
+                />
+              </span>
+              <span v-if="playerRole(player)" class="player-role">{{ playerRole(player) }}</span>
+            </span>
+
+            <button
+              v-if="player.id === store.player?.id"
+              type="button"
+              class="btn btn-ghost btn-icon btn-sm player-refresh"
+              title="Générer un nouvel avatar"
+              aria-label="Générer un nouvel avatar"
+              @click="regenerateAvatar(player.id)"
+            >
+              <AppIcon name="refresh-cw" :size="14" />
+            </button>
+          </li>
+        </TransitionGroup>
+      </section>
+
+      <!-- Settings summary + start -->
+      <section class="lobby-footer" aria-label="Réglages et lancement">
+        <div class="lobby-settings">
+          <button type="button" class="btn btn-ghost btn-sm" @click="openSettings">
+            <AppIcon name="sliders" :size="15" />
+            Réglages
+          </button>
+          <p class="hint">{{ settingsSummary }}</p>
+        </div>
+
+        <div v-if="isHost" class="lobby-actions">
+          <button type="button" class="btn btn-secondary" @click="addBot">
+            <AppIcon name="robot" :size="15" />
+            Ajouter un bot
+          </button>
+          <button type="button" class="btn btn-primary btn-lg" @click="startSelection">
+            <AppIcon name="play" :size="16" />
+            Lancer la sélection
+          </button>
+        </div>
+        <p v-else class="lobby-wait">
+          En attente de <strong>{{ store.session?.host_name }}</strong> pour lancer la sélection.
+        </p>
+      </section>
+    </main>
+
+    <!-- Mobile host actions -->
+    <div v-if="isHost" class="mobile-bar md:hidden">
+      <button type="button" class="btn btn-ghost btn-icon mobile-settings" aria-label="Ouvrir les réglages" @click="openSettings">
+        <AppIcon name="sliders" :size="18" />
+      </button>
+      <button type="button" class="btn btn-secondary" @click="addBot">
+        <AppIcon name="robot" :size="15" />
+        Bot
+      </button>
+      <button type="button" class="btn btn-primary" style="flex: 1" @click="startSelection">
+        <AppIcon name="play" :size="15" />
+        Lancer la sélection
+      </button>
+    </div>
+
+    <!-- Settings dialog -->
+    <Transition name="fade">
+      <div v-if="showSettings" class="overlay" @click.self="showSettings = false">
+        <div class="dialog settings-dialog" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+          <div class="dialog-head">
+            <div>
+              <p class="dialog-kicker">{{ isHost ? 'Hôte' : 'Lecture seule' }}</p>
+              <h2 id="settings-title" class="dialog-title">Réglages de la partie</h2>
+              <p class="panel-sub">
+                {{ isHost ? 'Ajustez le rythme et les options.' : 'Seul l’hôte peut modifier ces réglages.' }}
+              </p>
+            </div>
+            <button type="button" class="btn btn-ghost btn-icon btn-sm" aria-label="Fermer les réglages" @click="showSettings = false">
+              <AppIcon name="x" :size="16" />
+            </button>
+          </div>
+
+          <div class="settings-body">
+            <div class="settings-group">
+              <p class="settings-group-title">Déroulement</p>
+
               <div class="setting">
                 <p class="setting-label">Musiques par joueur</p>
                 <div class="seg">
@@ -262,7 +237,7 @@
               </div>
 
               <div class="setting">
-                <p class="setting-label">Durée d’extrait</p>
+                <p class="setting-label">Durée de l’extrait</p>
                 <div class="seg">
                   <button
                     v-for="val in [10, 15, 20, 30]"
@@ -290,6 +265,10 @@
                   >{{ val }} s</button>
                 </div>
               </div>
+            </div>
+
+            <div class="settings-group">
+              <p class="settings-group-title">Salon</p>
 
               <div class="setting">
                 <p class="setting-label">Limite de joueurs</p>
@@ -305,50 +284,47 @@
                   >{{ val }}</button>
                 </div>
               </div>
+            </div>
 
-              <div>
-                <div
-                  v-for="toggle in toggleOptions"
-                  :key="toggle.key"
-                  class="toggle-row"
-                >
-                  <div class="toggle-copy">
-                    <p class="toggle-name">
-                      {{ toggle.label }}
-                      <span v-if="toggle.key === 'enableBlindTest'" class="tag tag-accent" style="margin-left: 4px; height: 18px; font-size: 10px">+1 pt</span>
-                    </p>
-                    <p class="toggle-desc">{{ toggle.desc }}</p>
-                  </div>
-                  <label class="switch">
-                    <input
-                      :id="`toggle-${toggle.key}`"
-                      v-model="config[toggle.key]"
-                      type="checkbox"
-                      :disabled="!isHost"
-                      :aria-label="toggle.label"
-                      @change="saveConfig"
-                    />
-                    <span class="switch-track"><span class="switch-thumb"></span></span>
-                  </label>
+            <div class="settings-group">
+              <p class="settings-group-title">Options</p>
+
+              <div
+                v-for="toggle in toggleOptions"
+                :key="toggle.key"
+                class="toggle-row"
+              >
+                <div class="toggle-copy">
+                  <p class="toggle-name">
+                    {{ toggle.label }}
+                    <span v-if="toggle.key === 'enableBlindTest'" class="tag tag-accent" style="margin-left: 4px; height: 18px; font-size: 10px">+1 pt</span>
+                  </p>
+                  <p class="toggle-desc">{{ toggle.desc }}</p>
                 </div>
+                <label class="switch">
+                  <input
+                    :id="`toggle-${toggle.key}`"
+                    v-model="config[toggle.key]"
+                    type="checkbox"
+                    :disabled="!isHost"
+                    :aria-label="toggle.label"
+                    @change="saveConfig"
+                  />
+                  <span class="switch-track"><span class="switch-thumb"></span></span>
+                </label>
               </div>
             </div>
           </div>
-        </aside>
-      </div>
-    </main>
 
-    <!-- Mobile host actions -->
-    <div v-if="isHost" class="mobile-bar md:hidden">
-      <button type="button" class="btn btn-secondary" @click="addBot">
-        <AppIcon name="robot" :size="15" />
-        Bot
-      </button>
-      <button type="button" class="btn btn-primary" style="flex: 1" @click="startSelection">
-        <AppIcon name="play" :size="15" />
-        Lancer la sélection
-      </button>
-    </div>
+          <div class="dialog-actions">
+            <button type="button" class="btn btn-primary btn-block" @click="showSettings = false">
+              <AppIcon name="check" :size="15" />
+              Terminé
+            </button>
+          </div>
+        </div>
+      </div>
+    </Transition>
   </div>
 </template>
 
@@ -358,6 +334,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useGameStore } from '../stores/gameStore';
 import GameHeader from './GameHeader.vue';
 import AppIcon from './AppIcon.vue';
+import ThemeToggle from './ThemeToggle.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -366,19 +343,15 @@ const store = useGameStore();
 const directPseudo = ref('');
 const errorMsg = ref(null);
 const isLoading = ref(true);
-const showConfigOnMobile = ref(false);
+const showSettings = ref(false);
 const copied = ref(false);
 
 const toggleOptions = [
+  { key: 'enableBlindTest', label: 'Blind test', desc: 'Devinez aussi le titre pendant l’écoute. Une bonne réponse rapporte un point.' },
+  { key: 'showVoteCount', label: 'Afficher les votes en direct', desc: 'Montre le nombre de votes reçus pendant le vote.' },
   { key: 'showAnswers', label: 'Révéler les réponses', desc: 'Affiche l’auteur du morceau au moment de la révélation.' },
   { key: 'autoAdvance', label: 'Enchaîner les manches', desc: 'Passe à la manche suivante sans action de l’hôte.' },
-  { key: 'showVoteCount', label: 'Afficher les votes en direct', desc: 'Montre le nombre de votes reçus pendant le vote.' },
-  { key: 'enableBlindTest', label: 'Blind test', desc: 'Devinez aussi le titre. Une bonne réponse rapporte un point.' },
 ];
-
-const toggleConfigMobile = () => {
-  if (window.innerWidth < 768) showConfigOnMobile.value = !showConfigOnMobile.value;
-};
 
 const copyCode = async () => {
   try {
@@ -389,7 +362,7 @@ const copyCode = async () => {
 };
 
 const avatarUrl = (seed) =>
-  `https://api.dicebear.com/9.x/notionists-neutral/svg?seed=${encodeURIComponent(seed)}&backgroundColor=f5d7b6,f2c7a1,ebd3ba`;
+  `https://api.dicebear.com/9.x/notionists-neutral/svg?seed=${encodeURIComponent(seed)}&backgroundColor=e6dcff,d9e8ff,f8d9ea`;
 
 const initials = (name) =>
   (name || '?')
@@ -415,6 +388,34 @@ const isHost = computed(() =>
   store.player && store.session && store.player.name === store.session.host_name
 );
 
+const maxPlayers = computed(() => store.session?.max_players || 8);
+
+const headerSubtitle = computed(() => {
+  if (isHost.value) return 'Tout le monde est là ? Lancez la sélection.';
+  return 'L’hôte lancera la sélection.';
+});
+
+const formatDuration = (seconds) => (seconds >= 60 ? `${seconds / 60} min` : `${seconds} s`);
+
+const settingsSummary = computed(() => {
+  const musics = `${config.maxMusicsPerPlayer} morceau${config.maxMusicsPerPlayer > 1 ? 'x' : ''} par joueur`;
+  return `${musics}, ${formatDuration(config.selectionDuration)} de sélection, ${config.extractDuration} s d’extrait, ${config.votingDuration} s de vote`;
+});
+
+const playerRole = (player) => {
+  if (!player.is_connected) return 'Hors ligne';
+  if (player.is_bot) return 'Bot';
+  const isPlayerHost = player.name === store.session?.host_name;
+  const isLocal = player.id === store.player?.id;
+  if (isPlayerHost) return isLocal ? 'Hôte, vous' : 'Hôte';
+  if (isLocal) return 'Vous';
+  return '';
+};
+
+const openSettings = () => {
+  showSettings.value = true;
+};
+
 const syncConfig = (s) => {
   if (!s) return;
   config.maxMusicsPerPlayer = s.max_musics_per_player;
@@ -434,11 +435,18 @@ const loadAndSyncConfig = async () => {
 };
 
 const handleKeyDown = (e) => {
+  if (showSettings.value) return;
   if (e.code === 'Space' && isHost.value) {
-    if (!['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) {
+    if (!['INPUT', 'TEXTAREA', 'BUTTON', 'A', 'SELECT'].includes(document.activeElement?.tagName)) {
       e.preventDefault();
       startSelection();
     }
+  }
+};
+
+const handleSettingsKeyDown = (e) => {
+  if (e.key === 'Escape' && showSettings.value) {
+    showSettings.value = false;
   }
 };
 
@@ -449,6 +457,7 @@ onMounted(async () => {
       store.connectSocket(route.params.code);
     }
     window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keydown', handleSettingsKeyDown);
   } catch (err) {
     console.error('Failed to load waiting room:', err);
   } finally {
@@ -458,6 +467,8 @@ onMounted(async () => {
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeyDown);
+  window.removeEventListener('keydown', handleSettingsKeyDown);
+  document.body.style.overflow = '';
 });
 
 watch(() => store.session, (s) => {
@@ -467,6 +478,10 @@ watch(() => store.session, (s) => {
   else if (s.phase === 'voting') router.push(`/game/${route.params.code}/voting`);
   else if (s.phase === 'results') router.push(`/game/${route.params.code}/results`);
 }, { deep: true });
+
+watch(showSettings, (open) => {
+  document.body.style.overflow = open ? 'hidden' : '';
+});
 
 const joinDirectly = async () => {
   errorMsg.value = null;
@@ -489,7 +504,5 @@ const saveConfig = async () => {
 
 const addBot = async () => { if (isHost.value) try { await store.addBot(); } catch { /* noop */ } };
 const startSelection = async () => { if (isHost.value) try { await store.startSelection(); } catch { /* noop */ } };
-const promotePlayer = async (id) => { try { await store.promotePlayer(id); } catch { /* noop */ } };
-const kickPlayer = async (id) => { try { await store.kickPlayer(id); } catch { /* noop */ } };
 const regenerateAvatar = async (id) => { try { await store.regenerateAvatar(id); } catch { /* noop */ } };
 </script>

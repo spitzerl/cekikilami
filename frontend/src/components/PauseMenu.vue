@@ -2,13 +2,14 @@
   <div v-if="isVisible">
     <Transition name="fade">
       <div v-if="isOpen" class="overlay" @click.self="closeMenu">
-        <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="pause-title">
+        <div class="dialog" role="dialog" aria-modal="true" :aria-labelledby="currentTab === 'main' ? 'pause-title' : 'players-title'">
           <template v-if="currentTab === 'main'">
             <div class="dialog-head">
               <div>
-                <h2 id="pause-title" class="dialog-title">Partie en pause</h2>
-                <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px; flex-wrap: wrap">
-                  <span class="hint">Code</span>
+                <p class="dialog-kicker">{{ phaseLabel }}</p>
+                <h2 id="pause-title" class="dialog-title">Menu de la partie</h2>
+                <div class="dialog-code">
+                  <span class="hint">Code du salon</span>
                   <button
                     type="button"
                     class="code-chip"
@@ -33,9 +34,20 @@
               </button>
             </div>
 
+            <div class="dialog-actions">
+              <button type="button" class="btn btn-primary btn-block" @click="closeMenu">
+                <AppIcon :name="isWaitingRoom || isFinished ? 'x' : 'play'" :size="15" />
+                {{ resumeLabel }}
+              </button>
+              <button type="button" class="btn btn-secondary btn-block" @click="currentTab = 'players'">
+                <AppIcon name="users" :size="15" />
+                Gérer les joueurs ({{ store.players.length }})
+              </button>
+            </div>
+
             <div class="dialog-section">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px">
-                <span class="label" style="margin: 0">Volume de la musique</span>
+              <div class="dialog-section-head">
+                <span class="label" style="margin: 0">Son</span>
                 <span class="mono" style="font-size: 12px; color: var(--ink-2)">{{ Math.round(store.volume * 100) }} %</span>
               </div>
               <div class="volume-row">
@@ -60,28 +72,47 @@
               </div>
             </div>
 
-            <div class="dialog-actions">
-              <button type="button" class="btn btn-primary btn-block" @click="closeMenu">
-                <AppIcon name="play" :size="15" />
-                Reprendre la partie
-              </button>
-              <button type="button" class="btn btn-secondary btn-block" @click="currentTab = 'players'">
-                <AppIcon name="users" :size="15" />
-                Gérer les joueurs ({{ store.players.length }})
-              </button>
-              <button
-                v-if="isHost && isNotInWaitingRoom"
-                type="button"
-                class="btn btn-warning btn-block"
-                @click="confirmReset"
-              >
+            <div class="dialog-section">
+              <div class="dialog-section-head">
+                <span class="label" style="margin: 0">Apparence</span>
+              </div>
+              <div class="seg" role="group" aria-label="Thème de l’interface">
+                <button
+                  type="button"
+                  :class="['seg-btn', theme === 'dark' ? 'is-active' : '']"
+                  :aria-pressed="theme === 'dark'"
+                  @click="setTheme('dark')"
+                >Sombre</button>
+                <button
+                  type="button"
+                  :class="['seg-btn', theme === 'light' ? 'is-active' : '']"
+                  :aria-pressed="theme === 'light'"
+                  @click="setTheme('light')"
+                >Clair</button>
+              </div>
+            </div>
+
+            <div v-if="isHost && !isWaitingRoom" class="dialog-section">
+              <div class="dialog-section-head">
+                <span class="label" style="margin: 0">Hôte</span>
+              </div>
+              <p class="hint" style="margin-bottom: 10px">
+                {{ isFinished
+                  ? 'Revenir au salon efface les morceaux et les scores de cette partie.'
+                  : 'Revenir au salon efface la manche en cours et les morceaux proposés.' }}
+              </p>
+              <button type="button" class="btn btn-warning btn-block" @click="confirmReset">
                 <AppIcon name="rotate-ccw" :size="15" />
                 Retourner au salon d’attente
               </button>
+            </div>
+
+            <div class="dialog-footer">
               <button type="button" class="btn btn-danger btn-block" @click="confirmLeave">
                 <AppIcon name="log-out" :size="15" />
                 Quitter la partie
               </button>
+              <p class="hint">Vous pourrez revenir avec le code du salon.</p>
             </div>
           </template>
 
@@ -97,7 +128,7 @@
                   <AppIcon name="chevron-left" :size="16" />
                 </button>
                 <div>
-                  <h2 class="dialog-title" style="font-size: 18px">Gérer les joueurs</h2>
+                  <h2 id="players-title" class="dialog-title" style="font-size: 18px">Gérer les joueurs</h2>
                   <p class="panel-sub">{{ store.players.length }} personne{{ store.players.length > 1 ? 's' : '' }} dans ce salon.</p>
                 </div>
               </div>
@@ -164,6 +195,7 @@
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useGameStore } from '../stores/gameStore';
+import { theme, setTheme } from '../services/themeService';
 import AppIcon from './AppIcon.vue';
 
 const route = useRoute();
@@ -183,12 +215,25 @@ const isHost = computed(() => {
   return store.player && store.session && store.player.name === store.session.host_name;
 });
 
-const isNotInWaitingRoom = computed(() => {
-  return route.path !== `/game/${store.session?.code}`;
+const isWaitingRoom = computed(() => {
+  return route.path === `/game/${store.session?.code}`;
 });
 
+const isFinished = computed(() => route.path.endsWith('/results'));
+
+const phaseLabel = computed(() => {
+  if (route.path.endsWith('/results')) return 'Résultats';
+  if (route.path.endsWith('/voting')) return 'Écoute & vote';
+  if (route.path.endsWith('/selection')) return 'Sélection';
+  return 'Salon d’attente';
+});
+
+const resumeLabel = computed(() => (
+  isWaitingRoom.value || isFinished.value ? 'Fermer le menu' : 'Reprendre la partie'
+));
+
 const avatarUrl = (seed) =>
-  `https://api.dicebear.com/9.x/notionists-neutral/svg?seed=${encodeURIComponent(seed)}&backgroundColor=f5d7b6,f2c7a1,ebd3ba`;
+  `https://api.dicebear.com/9.x/notionists-neutral/svg?seed=${encodeURIComponent(seed)}&backgroundColor=e6dcff,d9e8ff,f8d9ea`;
 
 const initials = (name) =>
   (name || '?')
@@ -209,6 +254,7 @@ const closeMenu = () => {
 
 const handleKeyDown = (e) => {
   if (e.key === 'Escape' && isVisible.value) {
+    if (document.querySelector('.settings-dialog')) return;
     if (isOpen.value) {
       if (currentTab.value === 'players') {
         currentTab.value = 'main';

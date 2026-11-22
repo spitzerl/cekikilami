@@ -1,13 +1,13 @@
 <template>
   <div class="game-layout">
     <GameHeader
-      :title="status === 'revelation' ? 'Révélation' : 'Écoute & vote'"
-      :subtitle="status === 'idle' ? 'La première manche va commencer.' : `Morceau ${(store.session?.current_music_index || 0) + 1}. Écoutez, puis dénoncez.`"
+      :title="headerTitle"
+      :subtitle="headerSubtitle"
       :step="3"
     >
       <template #actions>
         <div
-          v-if="status !== 'idle'"
+          v-if="showTimer"
           :class="['timer', remainingTime < 10 ? 'is-urgent' : '']"
           role="timer"
           :aria-label="`Temps restant : ${remainingTime} secondes`"
@@ -23,7 +23,7 @@
           @click="advanceSubphase"
         >
           <AppIcon name="eye" :size="15" />
-          Révéler ({{ totalVotesCast }}/{{ totalEligibleVoters }})
+          Révéler ({{ votesSummary.cast }}/{{ votesSummary.total }})
         </button>
 
         <button
@@ -68,16 +68,16 @@
     </main>
 
     <main v-else class="game-shell game-body">
-      <div class="voting-grid">
+      <div :class="['voting-grid', { 'is-single': !showSidePanel }]">
         <!-- Stage -->
         <section class="panel stage" aria-live="polite">
           <!-- Listening -->
           <template v-if="status === 'listening'">
-            <div class="mystery-record" aria-hidden="true"></div>
             <span class="stage-kicker">
               <span class="status-dot is-live"></span>
               Écoute en cours
             </span>
+            <div class="mystery-record" aria-hidden="true"></div>
             <h2 class="stage-title">Écoutez bien</h2>
             <p class="stage-text pretty">
               L’extrait tourne. Les votes ouvriront dès la fin de la lecture.
@@ -114,7 +114,6 @@
             </div>
             <h2 class="stage-title">{{ store.currentMusic?.title }}</h2>
             <p class="stage-text">{{ store.currentMusic?.artist }}</p>
-            <p class="stage-question">Qui a proposé ce morceau ?</p>
 
             <div v-if="audioError" class="callout callout-danger" style="margin-top: 14px; width: 100%; max-width: 380px" role="alert">
               <AppIcon name="alert-triangle" :size="15" style="flex-shrink: 0; margin-top: 1px" />
@@ -136,7 +135,7 @@
           <template v-else-if="status === 'revelation'">
             <span class="stage-kicker">
               <span class="status-dot is-live"></span>
-              Révélation
+              Manche terminée
             </span>
             <div class="artwork">
               <img v-if="store.currentMusic?.cover_url" :src="store.currentMusic.cover_url" :alt="`Pochette de ${store.currentMusic?.title}`" />
@@ -161,17 +160,17 @@
 
             <div v-if="!isObserver" class="result-tags">
               <span v-if="store.session?.enable_blind_test && myBlindTestResult" :class="myBlindTestResult.statusClass">
-                Blind test : {{ myBlindTestResult.statusLabel }}
+                Blind test : {{ myBlindTestResult.statusLabel.toLowerCase() }}
               </span>
               <span v-if="myVoteResult" :class="myVoteResult.statusClass">
-                Vote : {{ myVoteResult.statusLabel }}
+                Votre vote : {{ myVoteResult.statusLabel.toLowerCase() }}
               </span>
             </div>
           </template>
         </section>
 
         <!-- Ballot / details -->
-        <section class="panel panel-pad">
+        <section v-if="showSidePanel" class="panel panel-pad">
           <!-- Voting ballot -->
           <template v-if="status === 'voting'">
             <div v-if="isObserver" class="callout">
@@ -179,15 +178,21 @@
               Vous êtes spectateur de cette partie. Observez les votes en direct.
             </div>
             <template v-else>
+              <div class="panel-head">
+                <div>
+                  <h2 class="panel-title">Qui a proposé ce morceau ?</h2>
+                  <p class="panel-sub">Vous pouvez changer de suspect jusqu’à la révélation.</p>
+                </div>
+              </div>
+
               <div v-if="isProposer" class="callout callout-accent" style="margin-bottom: 16px">
                 <AppIcon name="info" :size="15" style="flex-shrink: 0; margin-top: 1px" />
                 Vous avez proposé ce morceau. Votre vote sert uniquement à brouiller les pistes.
               </div>
 
-              <p class="ballot-title">Votre suspect</p>
               <TransitionGroup name="list" tag="div" class="ballot-list">
                 <button
-                  v-for="target in eligiblePlayers"
+                  v-for="target in ballotTargets"
                   :key="target.id"
                   type="button"
                   :class="['ballot-btn', selectedVoteId === target.id ? 'is-selected' : '']"
@@ -223,20 +228,22 @@
 
           <!-- Listening: blind test -->
           <template v-else-if="status === 'listening'">
-            <div v-if="!store.session?.enable_blind_test" class="callout">
-              <AppIcon name="clock" :size="15" style="flex-shrink: 0; margin-top: 1px" />
-              Les options de vote apparaîtront dès la fin de l’écoute.
-            </div>
-            <div v-else-if="isObserver" class="callout">
+            <div v-if="isObserver" class="callout">
               <AppIcon name="eye" :size="15" style="flex-shrink: 0; margin-top: 1px" />
               Blind test en cours pour les joueurs.
             </div>
             <template v-else>
+              <div class="panel-head">
+                <div>
+                  <h2 class="panel-title">Blind test</h2>
+                  <p class="panel-sub">Devinez le titre pendant l’écoute.</p>
+                </div>
+              </div>
+
               <div v-if="isProposer" class="callout callout-accent" style="margin-bottom: 16px">
                 <AppIcon name="info" :size="15" style="flex-shrink: 0; margin-top: 1px" />
                 C’est votre morceau : vous ne participez pas au blind test.
               </div>
-              <p class="ballot-title">Blind test : quel est ce morceau ?</p>
               <div class="option-grid">
                 <button
                   v-for="(option, index) in blindTestOptions"
@@ -261,7 +268,7 @@
             <div class="panel-head">
               <div>
                 <h2 class="panel-title">Détail des votes</h2>
-                <p class="panel-sub">Ce que chacun pensait, et ce que ça rapporte.</p>
+                <p class="panel-sub">Ce que chacun a répondu pour cette manche.</p>
               </div>
             </div>
 
@@ -285,7 +292,7 @@
                   </span>
                   <span v-else class="what">n’a pas voté</span>
                 </div>
-                <span :class="result.statusClass">{{ result.statusLabel }}</span>
+                <span v-if="result.vote" :class="result.statusClass">{{ result.statusLabel }}</span>
               </div>
             </div>
 
@@ -361,14 +368,42 @@ const getBlindTestOptionClass = (option) => {
   const isSelected = answeredBlindTestOption.value?.title === option.title
     && answeredBlindTestOption.value?.artist === option.artist;
   if (!isSelected) return 'option-btn';
-  if (blindTestResult.value?.is_correct) return 'option-btn is-correct';
-  if (blindTestResult.value) return 'option-btn is-wrong';
+  // Keep the answer neutral until the reveal: the interface promises the
+  // result at the end of the round, so don't leak it during listening.
+  if (status.value === 'revelation' && blindTestResult.value?.is_correct) return 'option-btn is-correct';
+  if (status.value === 'revelation' && blindTestResult.value) return 'option-btn is-wrong';
   return 'option-btn is-chosen';
 };
 
 let audio = null;
 
 const status = computed(() => store.session?.voting_status || 'listening');
+
+const headerTitle = computed(() => (status.value === 'revelation' ? 'Révélation' : 'Écoute & vote'));
+
+const headerSubtitle = computed(() => {
+  if (status.value === 'idle') return 'La première manche va commencer.';
+
+  const index = (store.session?.current_music_index ?? 0) + 1;
+  const total = store.currentMusic?.round_total;
+  const round = total ? `Morceau ${index} sur ${total}.` : `Morceau ${index}.`;
+
+  if (status.value === 'listening') return `${round} Écoutez l’extrait.`;
+  if (status.value === 'voting') return `${round} À vous de dénoncer.`;
+  if (status.value === 'revelation') return `${round} La manche est terminée.`;
+  return round;
+});
+
+const showTimer = computed(
+  () => status.value === 'listening' || status.value === 'voting'
+);
+
+const showSidePanel = computed(() => {
+  if (status.value === 'listening') {
+    return !!store.session?.enable_blind_test && !isObserver.value;
+  }
+  return status.value === 'voting' || status.value === 'revelation';
+});
 
 const isHost = computed(() => {
   return store.player && store.session && store.player.name === store.session.host_name;
@@ -417,12 +452,17 @@ const everyoneHasVoted = computed(() => {
   return voters > 0 && totalVotesCast.value >= voters;
 });
 
+const votesSummary = computed(() => ({
+  cast: Math.min(totalVotesCast.value, totalEligibleVoters.value),
+  total: totalEligibleVoters.value,
+}));
+
 const handleSpaceAdvance = async () => {
   if (!isHost.value) return;
   try {
     if (status.value === 'idle') {
       await store.startRound();
-    } else {
+    } else if (status.value === 'voting' || status.value === 'revelation') {
       await store.advanceRound();
     }
   } catch (err) {
@@ -432,8 +472,8 @@ const handleSpaceAdvance = async () => {
 
 const handleKeyDown = (e) => {
   if (e.code === 'Space' && isHost.value) {
-    const isTyping = ['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName);
-    if (!isTyping) {
+    const isInteractive = ['INPUT', 'TEXTAREA', 'BUTTON', 'A', 'SELECT'].includes(document.activeElement?.tagName);
+    if (!isInteractive) {
       e.preventDefault();
       handleSpaceAdvance();
     }
@@ -458,6 +498,14 @@ const eligiblePlayers = computed(() => {
     .sort((a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' }));
 });
 
+// Yourself is never a valid target, so it goes last instead of splitting the list.
+const ballotTargets = computed(() => {
+  const selfId = store.player?.id;
+  const others = eligiblePlayers.value.filter((p) => p.id !== selfId);
+  const self = eligiblePlayers.value.find((p) => p.id === selfId);
+  return self ? [...others, self] : others;
+});
+
 const voteResults = computed(() => {
   if (!eligiblePlayers.value) return [];
   const currentVotes = Array.isArray(store.votes) ? store.votes : [];
@@ -467,12 +515,12 @@ const voteResults = computed(() => {
     let statusLabel = '';
     let statusClass = '';
 
-    if (isProposerPlayer) {
-      statusLabel = 'Bluff';
-      statusClass = 'tag';
-    } else if (!vote) {
+    if (!vote) {
       statusLabel = 'N’a pas voté';
       statusClass = 'tag tag-danger';
+    } else if (isProposerPlayer) {
+      statusLabel = 'Bluff';
+      statusClass = 'tag';
     } else if (vote.guessed_player_id === store.currentMusic?.player_id) {
       statusLabel = 'Correct';
       statusClass = 'tag tag-success';
@@ -536,7 +584,7 @@ const getVoteCountForPlayer = (playerId) => {
 };
 
 const avatarUrl = (seed) =>
-  `https://api.dicebear.com/9.x/notionists-neutral/svg?seed=${encodeURIComponent(seed)}&backgroundColor=f5d7b6,f2c7a1,ebd3ba`;
+  `https://api.dicebear.com/9.x/notionists-neutral/svg?seed=${encodeURIComponent(seed)}&backgroundColor=e6dcff,d9e8ff,f8d9ea`;
 
 const initials = (name) =>
   (name || '?')

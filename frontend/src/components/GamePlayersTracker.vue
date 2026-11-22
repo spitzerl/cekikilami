@@ -50,33 +50,33 @@
           <span v-else class="dock-score">{{ player.score || 0 }}<span class="faint"> pt</span></span>
         </button>
       </div>
-    </div>
 
-    <Transition name="pop">
-      <div v-if="activePlayer" class="dock-detail">
-        <img
-          v-if="activePlayer.avatar_seed"
-          :src="avatarUrl(activePlayer.avatar_seed)"
-          class="avatar avatar-lg"
-          alt=""
-        />
-        <span v-else class="avatar avatar-lg avatar-fallback">{{ initials(activePlayer.name) }}</span>
-        <div style="min-width: 0">
-          <p class="dock-detail-name">
-            {{ activePlayer.name }}
-            <span v-if="isLocalPlayer(activePlayer)" class="tag tag-accent" style="margin-left: 4px">Vous</span>
-          </p>
-          <div class="dock-detail-stats">
-            <span v-if="activePlayer.is_bot">Bot</span>
-            <span v-if="activePlayer.name === store.session?.host_name">Hôte</span>
-            <span v-if="!isSelectionPhase">🎯 {{ activePlayer.correctGuesses || 0 }} correct</span>
-            <span v-if="!isSelectionPhase">💜 {{ activePlayer.votesReceived || 0 }} votes</span>
-            <span v-if="isSelectionPhase">{{ getMusicCount(activePlayer) }} / {{ maxMusics }} morceaux</span>
-            <span>{{ activePlayer.is_connected ? 'En ligne' : 'Hors ligne' }}</span>
+      <Transition name="pop">
+        <div v-if="activePlayer" class="dock-detail">
+          <img
+            v-if="activePlayer.avatar_seed"
+            :src="avatarUrl(activePlayer.avatar_seed)"
+            class="avatar avatar-lg"
+            alt=""
+          />
+          <span v-else class="avatar avatar-lg avatar-fallback">{{ initials(activePlayer.name) }}</span>
+          <div style="min-width: 0">
+            <p class="dock-detail-name">
+              {{ activePlayer.name }}
+              <span v-if="isLocalPlayer(activePlayer)" class="tag tag-accent" style="margin-left: 4px">Vous</span>
+            </p>
+            <div class="dock-detail-stats">
+              <span v-if="activePlayer.is_bot">Bot</span>
+              <span v-if="activePlayer.name === store.session?.host_name">Hôte</span>
+              <span v-if="!isSelectionPhase">🎯 {{ activePlayer.correctGuesses || 0 }} bonne{{ (activePlayer.correctGuesses || 0) > 1 ? 's' : '' }} réponse{{ (activePlayer.correctGuesses || 0) > 1 ? 's' : '' }}</span>
+              <span v-if="!isSelectionPhase">💜 {{ activePlayer.votesReceived || 0 }} vote{{ (activePlayer.votesReceived || 0) > 1 ? 's' : '' }} reçu{{ (activePlayer.votesReceived || 0) > 1 ? 's' : '' }}</span>
+              <span v-if="isSelectionPhase">{{ getMusicCount(activePlayer) }} / {{ maxMusics }} morceaux</span>
+              <span>{{ activePlayer.is_connected ? 'En ligne' : 'Hors ligne' }}</span>
+            </div>
           </div>
         </div>
-      </div>
-    </Transition>
+      </Transition>
+    </div>
   </div>
 </template>
 
@@ -116,7 +116,7 @@ const initials = (name) =>
     .toUpperCase();
 
 const avatarUrl = (seed) =>
-  `https://api.dicebear.com/9.x/notionists-neutral/svg?seed=${encodeURIComponent(seed)}&backgroundColor=f5d7b6,f2c7a1,ebd3ba`;
+  `https://api.dicebear.com/9.x/notionists-neutral/svg?seed=${encodeURIComponent(seed)}&backgroundColor=e6dcff,d9e8ff,f8d9ea`;
 
 const toggleActive = (playerId) => {
   activePlayerId.value = activePlayerId.value === playerId ? null : playerId;
@@ -137,6 +137,7 @@ const sortedPlayers = computed(() => {
 
   if (isSelectionPhase.value) {
     return playersCopy.filter((p) => !p.is_observer).sort((a, b) => {
+      if (isLocalPlayer(a) !== isLocalPlayer(b)) return isLocalPlayer(a) ? -1 : 1;
       if (a.is_connected !== b.is_connected) return a.is_connected ? -1 : 1;
       const aReady = isReady(a) ? 1 : 0;
       const bReady = isReady(b) ? 1 : 0;

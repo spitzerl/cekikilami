@@ -922,6 +922,8 @@ export default class GameService {
         currentMusic = { ...currentTrack };
         
         currentMusic.is_proposer = parsedPlayerId === currentTrack.player_id;
+        // Total number of tracks in the round, so the client can show "Morceau 2 sur 5".
+        currentMusic.round_total = rawMusics.filter(m => m.play_order >= 0).length;
         
         // Hide proposer (player_id) unless we are in the revelation subphase AND show_answers is true
         const isReveal = session.voting_status === 'revelation' && session.show_answers;

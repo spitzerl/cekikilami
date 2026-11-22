@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cekikilami-v3';
+const CACHE_NAME = 'cekikilami-v4';
 const ASSETS = [
   '/',
   '/index.html',

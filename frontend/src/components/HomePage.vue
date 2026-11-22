@@ -6,6 +6,7 @@
         Cékikilami
       </span>
       <span class="spacer"></span>
+      <ThemeToggle />
       <button
         v-if="isAppInstallable"
         type="button"
@@ -31,12 +32,6 @@
           <p class="hero-tagline balance">
             Chacun glisse un morceau. Tout le monde devine qui l’a choisi.
           </p>
-
-          <p class="hero-note pretty">
-            <strong>Un thème, une playlist que personne n’a vue venir.</strong>
-            Écoutez, accusez, marquez. Le blind test est optionnel ; le bluff,
-            beaucoup moins.
-          </p>
         </div>
 
         <div class="console reveal-late">
@@ -50,7 +45,7 @@
               :class="['console-tab', activeAction === 'create' ? 'is-active' : '']"
               @click="activeAction = 'create'"
             >
-              Créer un salon
+              Créer
             </button>
             <button
               id="tab-join"
@@ -65,18 +60,19 @@
             </button>
           </div>
 
-          <Transition name="pop" mode="out-in">
+          <div class="console-panel-stack">
             <div
-              v-if="activeAction === 'create'"
               id="panel-create"
-              key="create"
+              class="console-panel"
+              :class="{ 'is-active': activeAction === 'create' }"
               role="tabpanel"
               aria-labelledby="tab-create"
+              :aria-hidden="activeAction !== 'create'"
             >
-              <h2 class="console-title">Nouvelle partie</h2>
+              <h2 class="console-title">Créer un salon</h2>
               <p class="console-sub">Choisissez un pseudo. Vous serez l’hôte du salon.</p>
 
-              <form @submit.prevent="onCreate" novalidate>
+              <form class="console-form console-form-create" @submit.prevent="onCreate" novalidate>
                 <div class="field">
                   <label for="create-name" class="label">Votre pseudo</label>
                   <input
@@ -90,30 +86,30 @@
                     maxlength="32"
                   />
                 </div>
+                <p class="console-note">Un code à 6 caractères sera généré pour inviter vos amis.</p>
                 <button
                   type="submit"
                   class="btn btn-primary btn-block btn-lg"
-                  style="margin-top: 16px"
                   :disabled="!createName.trim()"
                 >
                   <AppIcon name="play" :size="16" />
                   Créer le salon
                 </button>
-                <p class="console-note">Un code à 6 caractères sera généré pour inviter vos amis.</p>
               </form>
             </div>
 
             <div
-              v-else
               id="panel-join"
-              key="join"
+              class="console-panel"
+              :class="{ 'is-active': activeAction === 'join' }"
               role="tabpanel"
               aria-labelledby="tab-join"
+              :aria-hidden="activeAction !== 'join'"
             >
-              <h2 class="console-title">Rejoindre une partie</h2>
+              <h2 class="console-title">Rejoindre un salon</h2>
               <p class="console-sub">Entrez le code partagé par l’hôte, puis votre pseudo.</p>
 
-              <form @submit.prevent="onJoin" novalidate>
+              <form class="console-form console-form-join" @submit.prevent="onJoin" novalidate>
                 <div class="field">
                   <label for="join-code" class="label">Code du salon</label>
                   <input
@@ -144,15 +140,14 @@
                 <button
                   type="submit"
                   class="btn btn-primary btn-block btn-lg"
-                  style="margin-top: 16px"
                   :disabled="!joinCode.trim() || !joinName.trim()"
                 >
                   <AppIcon name="log-in" :size="16" />
-                  Rejoindre la partie
+                  Rejoindre le salon
                 </button>
               </form>
             </div>
-          </Transition>
+          </div>
 
           <Transition name="fade">
             <div v-if="error" class="form-error" role="alert">
@@ -161,6 +156,12 @@
             </div>
           </Transition>
         </div>
+
+        <p class="hero-note pretty">
+          <strong>Une playlist que personne n’a vue venir.</strong>
+          Écoutez, accusez, marquez. Le blind test est optionnel ; le bluff,
+          beaucoup moins.
+        </p>
       </section>
 
       <section class="home-steps" aria-labelledby="steps-title">
@@ -177,14 +178,6 @@
             <AppIcon :name="showHelp ? 'chevron-down' : 'arrow-right'" :size="13" />
           </button>
         </div>
-
-        <ol class="steps-grid">
-          <li v-for="(step, index) in rules" :key="step.id" class="step-card">
-            <span class="num">{{ String(index + 1).padStart(2, '0') }}</span>
-            <h3>{{ step.title }}</h3>
-            <p>{{ step.desc }}</p>
-          </li>
-        </ol>
 
         <Transition name="drop">
           <div v-if="showHelp" id="demo-panel" class="demo">
@@ -207,7 +200,7 @@
               </button>
 
               <div style="min-width: 0">
-                <p class="hint" style="margin-bottom: 3px">Démo : thème « chanson de la honte »</p>
+                <p class="hint" style="margin-bottom: 3px">Démo : le morceau surprise</p>
                 <p class="media-title">{{ mockTrack?.title || 'Morceau mystère' }}</p>
                 <p class="media-sub">{{ mockTrack?.artist || 'Extrait de démonstration' }}</p>
                 <div class="eq" :class="{ 'is-playing': mockPlaying }" aria-hidden="true">
@@ -257,6 +250,14 @@
             </div>
           </div>
         </Transition>
+
+        <ol class="steps-grid">
+          <li v-for="(step, index) in rules" :key="step.id" class="step-card">
+            <span class="num">{{ String(index + 1).padStart(2, '0') }}</span>
+            <h3>{{ step.title }}</h3>
+            <p>{{ step.desc }}</p>
+          </li>
+        </ol>
       </section>
     </main>
   </div>
@@ -268,6 +269,7 @@ import { useRouter } from 'vue-router';
 import { useGameStore } from '../stores/gameStore';
 import api from '../services/apiService';
 import AppIcon from './AppIcon.vue';
+import ThemeToggle from './ThemeToggle.vue';
 
 const store = useGameStore();
 const router = useRouter();
@@ -294,7 +296,7 @@ const installPWA = async () => {
 };
 
 const rules = [
-  { id: 1, title: 'Chacun propose', desc: 'Un thème tombe. Chaque joueur glisse un morceau, en secret.' },
+  { id: 1, title: 'Chacun propose', desc: 'Chaque joueur glisse un morceau, en secret.' },
   { id: 2, title: 'On écoute', desc: 'Les extraits défilent. Personne ne sait qui a choisi quoi.' },
   { id: 3, title: 'On dénonce', desc: 'Votez pour le joueur que vous soupçonnez d’avoir proposé le titre.' },
   { id: 4, title: 'On révèle', desc: 'Les auteurs sont démasqués. Bonnes accusations et blind test rapportent des points.' },
