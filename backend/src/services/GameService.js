@@ -700,6 +700,15 @@ export default class GameService {
       throw httpError(400, 'Musique invalide');
     }
 
+    if (music.play_order !== session.current_music_index) {
+      throw httpError(400, 'Cette musique n\'est pas en cours de vote');
+    }
+
+    const target = players.find(p => p.id === guessedPlayerId && !p.is_observer);
+    if (!target) {
+      throw httpError(400, 'Le joueur ciblé est invalide');
+    }
+
     // Check if timer expired
     if (session.timer_ends_at && new Date() > new Date(session.timer_ends_at)) {
       throw httpError(409, 'Le temps est écoulé pour ce vote');
@@ -740,6 +749,9 @@ export default class GameService {
     
     const music = await Music.findById(musicId);
     if (!music || music.session_id !== session.id) throw httpError(404, 'Musique introuvable');
+    if (music.play_order !== session.current_music_index) {
+      throw httpError(400, 'Cette musique n\'est pas en cours de lecture');
+    }
     if (music.player_id === playerId) {
       throw httpError(400, 'Vous ne pouvez pas participer au blind test pour votre propre musique');
     }
