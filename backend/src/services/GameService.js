@@ -209,6 +209,11 @@ export default class GameService {
       throw httpError(409, 'La phase de sélection n\'est pas active');
     }
 
+    const players = await Player.findBySession(session.id);
+    if (!players.some(p => p.id === payload.playerId)) {
+      throw httpError(400, 'Joueur invalide pour cette session');
+    }
+
     // Check count of player's musics
     const musics = await Music.findBySession(session.id);
     const playerMusics = musics.filter(m => m.player_id === payload.playerId);
