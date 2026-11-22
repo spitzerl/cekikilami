@@ -349,6 +349,7 @@ const rankings = computed(() => getPlayersRankings(store.ranking));
 const getPlayerRank = (player) => rankings.value[player?.id];
 const getRankBadgeEmoji = (player) => {
   const rank = getPlayerRank(player);
+  if (rank == null) return '—';
   if (rank === 1) return '🥇';
   if (rank === 2) return '🥈';
   if (rank === 3) return '🥉';
