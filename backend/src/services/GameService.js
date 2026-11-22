@@ -181,6 +181,19 @@ export default class GameService {
       throw httpError(409, 'La session est complète');
     }
 
+    const normalizedName = playerName.trim().toLowerCase();
+    const existingPlayer = players.find(p => p.name.trim().toLowerCase() === normalizedName);
+    if (existingPlayer) {
+      if (existingPlayer.is_connected) {
+        throw httpError(409, 'Ce pseudo est déjà utilisé dans cette session');
+      }
+
+      // Un joueur déconnecté peut reprendre sa place avec le même pseudo.
+      const player = await Player.updateConnectionStatus(existingPlayer.id, true);
+      this.log(code, `Player reconnected: ${playerName}`);
+      return { session, player };
+    }
+
     const player = await Player.create({ sessionId: session.id, name: playerName });
     this.log(code, `Player joined: ${playerName}`);
     return { session, player };
