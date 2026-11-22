@@ -424,6 +424,7 @@ const advanceSubphase = async () => {
 
 const totalVotesCast = computed(() => {
   if (!store.votes) return 0;
+  if (Array.isArray(store.votes)) return store.votes.length;
   return Object.values(store.votes).reduce((sum, count) => sum + count, 0);
 });
 
@@ -485,8 +486,9 @@ const eligiblePlayers = computed(() => {
 
 const voteResults = computed(() => {
   if (!eligiblePlayers.value) return [];
+  const currentVotes = Array.isArray(store.votes) ? store.votes : [];
   return eligiblePlayers.value.map(player => {
-    const vote = store.votes?.find(v => v.voter_id === player.id);
+    const vote = currentVotes.find(v => v.voter_id === player.id);
     const isProposer = player.id === store.currentMusic?.player_id;
     let statusLabel = '';
     let statusClass = '';

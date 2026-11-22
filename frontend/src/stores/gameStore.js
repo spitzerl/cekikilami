@@ -23,6 +23,20 @@ export const useGameStore = defineStore('game', {
     }
   },
   actions: {
+    applyState(data) {
+      if (!data) return;
+      if (data.serverTime) this.updateServerTimeOffset(data.serverTime);
+      if (data.session) this.session = data.session;
+      if (data.players) this.players = data.players;
+      if (data.musics !== undefined) this.musics = data.musics || [];
+      if (data.currentMusic !== undefined) this.currentMusic = data.currentMusic || null;
+      if (data.votes !== undefined) this.votes = data.votes || null;
+      if (data.musicCounts !== undefined) this.musicCounts = data.musicCounts || null;
+      if (data.player) {
+        this.player = data.player;
+        localStorage.setItem('music_game_player', JSON.stringify(data.player));
+      }
+    },
     async createSession(hostName) {
       const { data } = await apiService.createSession(hostName);
       this.session = data.session;
@@ -32,73 +46,49 @@ export const useGameStore = defineStore('game', {
     },
     async joinSession(code, playerName) {
       const { data } = await apiService.joinSession(code, playerName);
-      this.session = data.session;
-      this.player = data.player;
-      localStorage.setItem('music_game_player', JSON.stringify(data.player));
+      this.applyState(data);
       return data;
     },
     async loadSession(code) {
       const playerId = this.player?.id || null;
       const { data } = await apiService.getSession(code, playerId);
-      if (data && data.serverTime) {
-        this.updateServerTimeOffset(data.serverTime);
-      }
-      this.session = data.session;
-      this.players = data.players;
-      this.musics = data.musics || [];
-      this.currentMusic = data.currentMusic || null;
-      this.votes = data.votes || null;
-      this.musicCounts = data.musicCounts || null;
-      // Sync the current player object from the server (keeps id/session_id accurate after refresh)
-      if (data.player) {
-        this.player = data.player;
-        localStorage.setItem('music_game_player', JSON.stringify(data.player));
-      }
+      this.applyState(data);
       return data;
     },
     async updateConfig(config) {
       if (!this.session) return;
       const { data } = await apiService.updateConfig(this.session.code, config);
-      this.session = data.session;
-      this.players = data.players;
+      this.applyState(data);
       return data;
     },
     async addBot() {
       if (!this.session) return;
       const { data } = await apiService.addBot(this.session.code);
-      this.session = data.session;
-      this.players = data.players;
+      this.applyState(data);
       return data;
     },
     async startSelection() {
       if (!this.session) return;
       const { data } = await apiService.startSelection(this.session.code);
-      this.session = data.session;
-      this.players = data.players;
-      this.musics = data.musics || [];
+      this.applyState(data);
       return data;
     },
     async startRound() {
       if (!this.session) return;
       const { data } = await apiService.startRound(this.session.code);
-      this.session = data.session;
-      this.players = data.players;
-      this.musics = data.musics || [];
+      this.applyState(data);
       return data;
     },
     async deleteMusic(musicId) {
       if (!this.session || !this.player) return;
       const { data } = await apiService.deleteMusic(this.session.code, musicId, this.player.id);
-      this.session = data.session;
-      this.players = data.players;
-      this.musics = data.musics || [];
+      this.applyState(data);
       return data;
     },
     async startVoting() {
       if (!this.session) return;
       const { data } = await apiService.startVoting(this.session.code);
-      this.session = data.session;
-      this.players = data.players;
+      this.applyState(data);
       return data;
     },
     async submitVote(musicId, guessedPlayerId) {
@@ -108,10 +98,7 @@ export const useGameStore = defineStore('game', {
         musicId,
         guessedPlayerId,
       });
-      this.session = data.session;
-      this.players = data.players;
-      this.currentMusic = data.currentMusic || null;
-      this.votes = data.votes || null;
+      this.applyState(data);
       return data;
     },
     async submitBlindTestAnswer(musicId, answerTitle, answerArtist) {
@@ -122,57 +109,47 @@ export const useGameStore = defineStore('game', {
         answerTitle,
         answerArtist,
       });
-      this.session = data.session;
-      this.players = data.players;
-      this.currentMusic = data.currentMusic || null;
-      this.votes = data.votes || null;
+      this.applyState(data);
       return data;
     },
     async loadResults(code) {
       const { data } = await apiService.getResults(code);
       this.ranking = data.ranking;
-      this.players = data.players;
-      this.musics = data.musics || [];
-      this.session = data.session;
-      this.votes = data.votes || null;
+      this.applyState(data);
       return data;
     },
     async resetSession() {
       if (!this.session) return;
       const { data } = await apiService.resetSession(this.session.code);
-      this.session = data.session;
-      this.players = data.players;
+      this.applyState(data);
       this.musics = [];
       this.currentMusic = null;
       this.votes = null;
+      this.musicCounts = null;
       return data;
     },
     async promotePlayer(targetPlayerId) {
       if (!this.session || !this.player) return;
       const { data } = await apiService.promotePlayer(this.session.code, this.player.id, targetPlayerId);
-      this.session = data.session;
-      this.players = data.players;
+      this.applyState(data);
       return data;
     },
     async kickPlayer(targetPlayerId) {
       if (!this.session || !this.player) return;
       const { data } = await apiService.kickPlayer(this.session.code, this.player.id, targetPlayerId);
-      this.session = data.session;
-      this.players = data.players;
+      this.applyState(data);
       return data;
     },
     async advanceRound() {
       if (!this.session) return;
       const { data } = await apiService.advanceRound(this.session.code);
-      this.session = data.session;
-      this.players = data.players;
+      this.applyState(data);
       return data;
     },
     async regenerateAvatar(playerId) {
       if (!this.session || !this.player) return;
       const { data } = await apiService.regenerateAvatar(this.session.code, playerId);
-      this.session = data.session;
-      this.players = data.players;
+      this.applyState(data);
       return data;
     },
     addNotification(message, type = 'info') {
