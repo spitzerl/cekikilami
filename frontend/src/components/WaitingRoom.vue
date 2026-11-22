@@ -391,7 +391,7 @@ const joinDirectly = async () => {
     store.connectSocket(code);
     await loadAndSyncConfig();
   } catch (err) {
-    errorMsg.value = err.response?.data?.message || err.message || 'Erreur de connexion';
+    errorMsg.value = err.response?.data?.error || err.response?.data?.message || err.message || 'Erreur de connexion';
   }
 };
 

@@ -387,7 +387,7 @@ const onCreate = async () => {
     store.connectSocket(session.code);
     router.push(`/game/${session.code}`);
   } catch (err) {
-    error.value = err.response?.data?.message || err.message || 'Erreur de création';
+    error.value = err.response?.data?.error || err.response?.data?.message || err.message || 'Erreur de création';
   }
 };
 
@@ -399,7 +399,7 @@ const onJoin = async () => {
     store.connectSocket(code);
     router.push(`/game/${code}`);
   } catch (err) {
-    error.value = err.response?.data?.message || err.message || 'Impossible de rejoindre';
+    error.value = err.response?.data?.error || err.response?.data?.message || err.message || 'Impossible de rejoindre';
   }
 };
 </script>
