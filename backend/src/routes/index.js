@@ -30,6 +30,16 @@ function requireNonEmptyString(value, fieldName) {
   return value.trim();
 }
 
+function requirePositiveInteger(value, fieldName) {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    const error = new Error(`Le champ ${fieldName} doit être un entier positif`);
+    error.status = 400;
+    throw error;
+  }
+  return parsed;
+}
+
 function requireHttpUrl(value, fieldName) {
   try {
     const parsed = new URL(requireNonEmptyString(value, fieldName));
@@ -156,7 +166,7 @@ export default function buildRoutes(gameService, ioNamespace) {
   router.post('/sessions/:code/musics', upload.single('audio'), async (req, res, next) => {
     try {
       const code = requireNonEmptyString(req.params.code, 'code').toUpperCase();
-      const playerId = Number.parseInt(requireNonEmptyString(req.body?.playerId, 'playerId'), 10);
+      const playerId = requirePositiveInteger(req.body?.playerId, 'playerId');
       const title = requireNonEmptyString(req.body?.title, 'title');
       const artist = requireNonEmptyString(req.body?.artist, 'artist');
 
