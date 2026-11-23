@@ -1553,12 +1553,22 @@ img { display: block; }
   flex: 1;
   min-width: 0;
   overflow-x: auto;
-  scrollbar-width: none;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
 }
-.dock-scroll::-webkit-scrollbar { display: none; }
+.dock-scroll::-webkit-scrollbar { height: 6px; }
+.dock-scroll::-webkit-scrollbar-track { background: transparent; }
+.dock-scroll::-webkit-scrollbar-thumb {
+  border-radius: 99px;
+  background: var(--line-strong);
+}
 .dock-player {
   position: relative;
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
   gap: 7px;
   min-width: 0;
@@ -1596,15 +1606,14 @@ img { display: block; }
   font-weight: 700;
 }
 .dock-name {
-  max-width: 76px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  flex-shrink: 0;
   white-space: nowrap;
   font-size: 12px;
   font-weight: 550;
   color: var(--ink-2);
 }
 .dock-score {
+  flex-shrink: 0;
   font-family: var(--font-mono);
   font-size: 12px;
   font-weight: 600;
@@ -1640,9 +1649,7 @@ img { display: block; }
 }
 
 @media (max-width: 479px) {
-  .dock-name { display: none; }
   .dock-label { display: none; }
-  .dock-player { padding-right: 6px; }
 }
 
 
