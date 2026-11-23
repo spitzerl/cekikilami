@@ -42,7 +42,7 @@
               <div style="min-width: 0">
                 <p class="winner-name">{{ podium[0].name }}</p>
                 <p class="winner-meta">
-                  {{ podium[0].correctGuesses || 0 }} bonnes réponses, {{ podium[0].votesReceived || 0 }} votes reçus
+                  {{ scoreDetails(podium[0]) }}
                 </p>
               </div>
             </div>
@@ -57,7 +57,7 @@
               :key="player.id"
               class="runner"
             >
-              <span class="runner-rank">{{ String(index + 2).padStart(2, '0') }}</span>
+              <span class="runner-rank">{{ String(player.rank ?? (index + 2)).padStart(2, '0') }}</span>
               <img
                 v-if="player.avatar_seed"
                 :src="avatarUrl(player.avatar_seed)"
@@ -67,10 +67,7 @@
               <span v-else class="avatar avatar-sm avatar-fallback">{{ initials(player.name) }}</span>
               <div style="min-width: 0">
                 <p class="rank-name">{{ player.name }}</p>
-                <p class="rank-sub">
-                  {{ player.correctGuesses || 0 }} bonne{{ (player.correctGuesses || 0) > 1 ? 's' : '' }} réponse{{ (player.correctGuesses || 0) > 1 ? 's' : '' }},
-                  {{ player.votesReceived || 0 }} vote{{ (player.votesReceived || 0) > 1 ? 's' : '' }} reçu{{ (player.votesReceived || 0) > 1 ? 's' : '' }}
-                </p>
+                <p class="rank-sub">{{ scoreDetails(player) }}</p>
               </div>
               <p class="runner-score">{{ player.score }}<small class="faint"> pts</small></p>
             </div>
@@ -85,13 +82,16 @@
                 <AppIcon name="bar-chart" :size="16" />
                 Classement complet
               </h2>
-              <p class="panel-sub">{{ store.ranking.length }} joueur{{ store.ranking.length > 1 ? 's' : '' }} classé{{ store.ranking.length > 1 ? 's' : '' }}, du premier au dernier.</p>
+              <p class="panel-sub">
+                {{ store.ranking.length }} joueur{{ store.ranking.length > 1 ? 's' : '' }} classé{{ store.ranking.length > 1 ? 's' : '' }},
+                du premier au dernier · mode {{ scoringModeLabel }}.
+              </p>
             </div>
           </div>
 
           <div>
             <div v-for="(player, idx) in store.ranking" :key="player.id" class="rank-row">
-              <span class="rank-index">{{ String(idx + 1).padStart(2, '0') }}</span>
+              <span class="rank-index">{{ String(player.rank ?? (idx + 1)).padStart(2, '0') }}</span>
               <div class="rank-main">
                 <img
                   v-if="player.avatar_seed"
@@ -108,10 +108,7 @@
                     <span v-if="player.is_bot" class="tag" style="margin-left: 4px">Bot</span>
                     <span v-if="player.is_observer" class="tag" style="margin-left: 4px">Spectateur</span>
                   </p>
-                  <p class="rank-sub">
-                    {{ player.correctGuesses || 0 }} bonne{{ (player.correctGuesses || 0) > 1 ? 's' : '' }} réponse{{ (player.correctGuesses || 0) > 1 ? 's' : '' }},
-                    {{ player.votesReceived || 0 }} vote{{ (player.votesReceived || 0) > 1 ? 's' : '' }} reçu{{ (player.votesReceived || 0) > 1 ? 's' : '' }}
-                  </p>
+                  <p class="rank-sub">{{ scoreDetails(player) }}</p>
                 </div>
               </div>
               <p class="rank-score">{{ player.score }}<small> pts</small></p>
@@ -129,7 +126,7 @@
             <p class="stat-label">Meilleur détective</p>
             <p v-if="bestDetective" class="stat-value">
               {{ bestDetective.name }}
-              <span>({{ bestDetective.correctGuesses }} bonne{{ bestDetective.correctGuesses > 1 ? 's' : '' }} réponse{{ bestDetective.correctGuesses > 1 ? 's' : '' }})</span>
+              <span>({{ bestDetective.correctAccusations }} accusation{{ bestDetective.correctAccusations > 1 ? 's' : '' }})</span>
             </p>
             <p v-else class="stat-value faint">Aucun</p>
           </div>
@@ -235,14 +232,32 @@ const isHost = computed(() => store.isHost);
 
 const podium = computed(() => store.ranking.slice(0, 3));
 
+const scoringModeLabel = computed(() => ({
+  detective: 'Détective',
+  balanced: 'Équilibré',
+  bluff: 'Bluff',
+}[store.session?.scoring_mode] || 'Équilibré'));
+
 const totalTracks = computed(() => store.musics.length);
+
+const scoreDetails = (player) => {
+  if (!player) return '';
+  const accusations = player.correctAccusations || 0;
+  const bluff = player.bluffPoints || 0;
+  const blind = player.blindTestCorrect || 0;
+  const parts = [`${accusations} accusation${accusations > 1 ? 's' : ''}`];
+  if (bluff > 0) parts.push(`${bluff} pt${bluff > 1 ? 's' : ''} de bluff`);
+  if (blind > 0) parts.push(`${blind} blind test${blind > 1 ? 's' : ''}`);
+  return parts.join(' · ');
+};
 
 const bestDetective = computed(() => {
   let best = null;
   let maxCorrect = -1;
   store.ranking.forEach(p => {
-    if (p.correctGuesses > maxCorrect) {
-      maxCorrect = p.correctGuesses;
+    const correct = p.correctAccusations || 0;
+    if (correct > maxCorrect) {
+      maxCorrect = correct;
       best = p;
     }
   });
@@ -291,11 +306,11 @@ const handleKeyDown = (e) => {
 onMounted(async () => {
   if (route.path === '/test-export') {
     store.ranking = [
-      { id: '1', name: 'Lucas', score: 120, correctGuesses: 5, votesReceived: 2, is_bot: false },
-      { id: '2', name: 'Sophie (Bot)', score: 95, correctGuesses: 4, votesReceived: 3, is_bot: true },
-      { id: '3', name: 'Alex', score: 80, correctGuesses: 3, votesReceived: 4, is_bot: false },
-      { id: '4', name: 'Thomas', score: 65, correctGuesses: 2, votesReceived: 1, is_bot: false },
-      { id: '5', name: 'Emma', score: 40, correctGuesses: 1, votesReceived: 5, is_bot: false },
+      { id: '1', name: 'Lucas', score: 120, correctAccusations: 5, bluffPoints: 3, blindTestCorrect: 1, votesReceived: 2, is_bot: false },
+      { id: '2', name: 'Sophie (Bot)', score: 95, correctAccusations: 4, bluffPoints: 2, blindTestCorrect: 1, votesReceived: 3, is_bot: true },
+      { id: '3', name: 'Alex', score: 80, correctAccusations: 3, bluffPoints: 2, blindTestCorrect: 0, votesReceived: 4, is_bot: false },
+      { id: '4', name: 'Thomas', score: 65, correctAccusations: 2, bluffPoints: 1, blindTestCorrect: 0, votesReceived: 1, is_bot: false },
+      { id: '5', name: 'Emma', score: 40, correctAccusations: 1, bluffPoints: 1, blindTestCorrect: 0, votesReceived: 5, is_bot: false },
     ];
     store.players = [
       { id: '1', name: 'Lucas', is_connected: true, is_bot: false },
@@ -619,8 +634,9 @@ const exportImage = () => {
   let bestDetective = null;
   let maxCorrect = 0;
   ranking.forEach(p => {
-    if (p.correctGuesses > maxCorrect) {
-      maxCorrect = p.correctGuesses;
+    const correct = p.correctAccusations || 0;
+    if (correct > maxCorrect) {
+      maxCorrect = correct;
       bestDetective = p.name;
     }
   });
@@ -654,9 +670,9 @@ const exportImage = () => {
   drawStatItem('🎵', 'Morceaux joués', `${totalTracks} titres proposés`, '#644f72');
 
   if (bestDetective) {
-    drawStatItem('🎯', 'Meilleur détective', `${bestDetective} (${maxCorrect} bonne${maxCorrect > 1 ? 's' : ''} réponse${maxCorrect > 1 ? 's' : ''})`, '#2c7a6e');
+    drawStatItem('🎯', 'Meilleur détective', `${bestDetective} (${maxCorrect} accusation${maxCorrect > 1 ? 's' : ''})`, '#2c7a6e');
   } else {
-    drawStatItem('🎯', 'Meilleur détective', 'Aucune bonne réponse', '#6f5b7a');
+    drawStatItem('🎯', 'Meilleur détective', 'Aucune accusation réussie', '#6f5b7a');
   }
 
   if (mostSuspected) {

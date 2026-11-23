@@ -1,5 +1,5 @@
 <template>
-  <div class="game-layout">
+  <div :class="{ 'game-layout': true, 'no-dock': !showScoreboard }">
     <GameHeader
       :title="headerTitle"
       :subtitle="headerSubtitle"
@@ -237,6 +237,10 @@
                   <h2 class="panel-title">Blind test</h2>
                   <p class="panel-sub">Devinez le titre pendant l’écoute.</p>
                 </div>
+                <div class="timer" role="timer" :aria-label="`Temps restant pour le blind test : ${remainingTime} secondes`">
+                  <AppIcon name="clock" :size="14" />
+                  {{ remainingTime }} s
+                </div>
               </div>
 
               <div v-if="isProposer" class="callout callout-accent" style="margin-bottom: 16px">
@@ -249,7 +253,7 @@
                   :key="index"
                   type="button"
                   :class="getBlindTestOptionClass(option)"
-                  :disabled="hasAnsweredBlindTest || isProposer"
+                  :disabled="isProposer || remainingTime <= 0"
                   @click="submitBlindTestAnswer(option)"
                 >
                   <span class="title">{{ option.title }}</span>
@@ -257,7 +261,7 @@
                 </button>
               </div>
               <p v-if="hasAnsweredBlindTest" class="hint" style="margin-top: 12px">
-                Réponse enregistrée. Résultat à la révélation.
+                Réponse enregistrée. Vous pouvez encore la modifier jusqu’à la fin du chrono.
               </p>
             </template>
           </template>
@@ -320,6 +324,8 @@ const route = useRoute();
 const router = useRouter();
 const store = useGameStore();
 
+const showScoreboard = computed(() => store.session?.show_scoreboard !== false);
+
 const remainingTime = ref(0);
 let timerInterval = null;
 
@@ -327,6 +333,7 @@ const selectedVoteId = ref(null);
 const audioError = ref(false);
 
 const blindTestSelectedAnswer = ref(null);
+const blindTestSubmitting = ref(false);
 
 const blindTestOptions = computed(() => {
   if (!store.currentMusic || !store.currentMusic.blind_test_options) return [];
@@ -353,13 +360,21 @@ const answeredBlindTestOption = computed(() => {
 const hasAnsweredBlindTest = computed(() => answeredBlindTestOption.value !== null);
 
 const submitBlindTestAnswer = async (option) => {
-  if (isObserver.value || status.value !== 'listening' || hasAnsweredBlindTest.value) return;
+  if (isObserver.value
+    || isProposer.value
+    || blindTestSubmitting.value
+    || status.value !== 'listening'
+    || remainingTime.value <= 0) return;
+  const previous = blindTestSelectedAnswer.value;
   blindTestSelectedAnswer.value = option;
+  blindTestSubmitting.value = true;
   try {
     await store.submitBlindTestAnswer(store.currentMusic.id, option.title, option.artist);
   } catch (err) {
     console.error('Failed to submit blind test answer:', err);
-    blindTestSelectedAnswer.value = null;
+    blindTestSelectedAnswer.value = previous;
+  } finally {
+    blindTestSubmitting.value = false;
   }
 };
 

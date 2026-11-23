@@ -9,6 +9,7 @@ import {
   mockDeezerAudioFetch,
   resetDatabase,
 } from '../helpers/app.js';
+import pool from '../../src/config/database.js';
 
 let context;
 let restoreFetch;
@@ -147,6 +148,120 @@ test('blind answers hide correctness until the revelation', async () => {
   assert.ok(revelation.body.currentMusic.player_id);
   assert.equal(revelation.body.currentMusic.blind_test_answers.length, 1);
   assert.equal(typeof revelation.body.currentMusic.blind_test_answers[0].is_correct, 'boolean');
+});
+
+test('blind-test answers can be changed until the listening timer expires', async () => {
+  const game = await createBlindGame();
+  const listening = game.listening.body;
+  const answerToken = listening.currentMusic.is_proposer ? game.guest.token : game.host.token;
+  const [first, second] = listening.currentMusic.blind_test_options;
+
+  const firstAnswer = await context.request
+    .post(`/api/sessions/${game.code}/blind-test-answers`)
+    .set(auth(answerToken))
+    .send({
+      musicId: listening.currentMusic.id,
+      answerTitle: first.title,
+      answerArtist: first.artist,
+    })
+    .expect(200);
+  assert.equal(firstAnswer.body.currentMusic.blind_test_answers.length, 1);
+  assert.equal(firstAnswer.body.currentMusic.blind_test_answers[0].answer_title, first.title);
+
+  const secondAnswer = await context.request
+    .post(`/api/sessions/${game.code}/blind-test-answers`)
+    .set(auth(answerToken))
+    .send({
+      musicId: listening.currentMusic.id,
+      answerTitle: second.title,
+      answerArtist: second.artist,
+    })
+    .expect(200);
+  assert.equal(secondAnswer.body.currentMusic.blind_test_answers.length, 1);
+  assert.equal(secondAnswer.body.currentMusic.blind_test_answers[0].answer_title, second.title);
+
+  await pool.query(
+    "UPDATE sessions SET timer_ends_at = NOW() - INTERVAL '1 second' WHERE code = $1",
+    [game.code]
+  );
+
+  await context.request
+    .post(`/api/sessions/${game.code}/blind-test-answers`)
+    .set(auth(answerToken))
+    .send({
+      musicId: listening.currentMusic.id,
+      answerTitle: first.title,
+      answerArtist: first.artist,
+    })
+    .expect(409);
+});
+
+test('live scores only show completed rounds', async () => {
+  const game = await createBlindGame();
+  const listening = game.listening.body;
+
+  await context.request
+    .post(`/api/sessions/${game.code}/advance-round`)
+    .set(auth(game.host.token))
+    .expect(200);
+
+  const proposerResult = await pool.query(
+    `SELECT player_id FROM musics
+     WHERE session_id = (SELECT id FROM sessions WHERE code = $1)
+       AND play_order = $2`,
+    [game.code, 0]
+  );
+  const proposerId = proposerResult.rows[0].player_id;
+  const voterToken = proposerId === game.host.host.id ? game.guest.token : game.host.token;
+
+  await context.request
+    .post(`/api/sessions/${game.code}/votes`)
+    .set(auth(voterToken))
+    .send({ musicId: listening.currentMusic.id, guessedPlayerId: proposerId })
+    .expect(200);
+
+  const revelation = await context.request
+    .post(`/api/sessions/${game.code}/advance-round`)
+    .set(auth(game.host.token))
+    .expect(200);
+  assert.equal(revelation.body.session.voting_status, 'revelation');
+
+  const revealedScores = Object.fromEntries(
+    revelation.body.players.map((player) => [player.id, player.score])
+  );
+  assert.ok(Object.values(revealedScores).some((score) => score > 0));
+
+  await context.request
+    .post(`/api/sessions/${game.code}/advance-round`)
+    .set(auth(game.host.token))
+    .expect(200);
+  const nextListening = await context.request
+    .post(`/api/sessions/${game.code}/start-round`)
+    .set(auth(game.host.token))
+    .expect(200);
+  assert.equal(nextListening.body.session.voting_status, 'listening');
+
+  const liveScores = Object.fromEntries(
+    nextListening.body.players.map((player) => [player.id, player.score])
+  );
+  assert.deepEqual(liveScores, revealedScores);
+
+  const answerToken = nextListening.body.currentMusic.is_proposer ? game.guest.token : game.host.token;
+  const option = nextListening.body.currentMusic.blind_test_options[0];
+  const afterAnswer = await context.request
+    .post(`/api/sessions/${game.code}/blind-test-answers`)
+    .set(auth(answerToken))
+    .send({
+      musicId: nextListening.body.currentMusic.id,
+      answerTitle: option.title,
+      answerArtist: option.artist,
+    })
+    .expect(200);
+
+  const scoresAfterAnswer = Object.fromEntries(
+    afterAnswer.body.players.map((player) => [player.id, player.score])
+  );
+  assert.deepEqual(scoresAfterAnswer, revealedScores);
 });
 
 test('results only expose scores after the host finishes the game', async () => {

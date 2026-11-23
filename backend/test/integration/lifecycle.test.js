@@ -45,6 +45,8 @@ test('configuration values are bounded server-side', async () => {
     { extractDuration: 5 },
     { votingDuration: 300 },
     { showAnswers: 'yes' },
+    { scoringMode: 'unknown' },
+    { showScoreboard: 'yes' },
   ]) {
     await context.request
       .post(`/api/sessions/${code}/config`)
@@ -56,10 +58,20 @@ test('configuration values are bounded server-side', async () => {
   const valid = await context.request
     .post(`/api/sessions/${code}/config`)
     .set(auth(created.token))
-    .send({ maxPlayers: 4, maxMusicsPerPlayer: 5, selectionDuration: 300, extractDuration: 30, votingDuration: 60 })
+    .send({
+      maxPlayers: 4,
+      maxMusicsPerPlayer: 5,
+      selectionDuration: 300,
+      extractDuration: 30,
+      votingDuration: 60,
+      scoringMode: 'detective',
+      showScoreboard: false,
+    })
     .expect(200);
   assert.equal(valid.body.session.max_players, 4);
   assert.equal(valid.body.session.max_musics_per_player, 5);
+  assert.equal(valid.body.session.scoring_mode, 'detective');
+  assert.equal(valid.body.session.show_scoreboard, false);
 });
 
 test('maxPlayers cannot fall below the current player count', async () => {

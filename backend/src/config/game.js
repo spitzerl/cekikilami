@@ -39,6 +39,29 @@ export const CONFIG_BOUNDS = {
   votingDuration: { min: 20, max: 60 },
 };
 
+export const SCORING_MODES = ['detective', 'balanced', 'bluff'];
+
+export const SCORING = {
+  detective: {
+    correctAccusation: 1,
+    proposerMode: 'none',
+    proposerMax: 0,
+    blindTest: 1,
+  },
+  balanced: {
+    correctAccusation: 3,
+    proposerMode: 'threeMinusFound',
+    proposerMax: 3,
+    blindTest: 1,
+  },
+  bluff: {
+    correctAccusation: 3,
+    proposerMode: 'perMiss',
+    proposerMax: 3,
+    blindTest: 1,
+  },
+};
+
 export const UPLOAD_LIMITS = {
   maxFileBytes: integerEnv('UPLOAD_MAX_FILE_BYTES', 10 * 1024 * 1024),
   maxTotalBytes: integerEnv('UPLOAD_MAX_TOTAL_BYTES', 2 * 1024 * 1024 * 1024),

@@ -1,6 +1,6 @@
 <template>
   <div
-    v-if="store.session && store.session.phase !== 'waiting'"
+    v-if="showScoreboard && store.session && store.session.phase !== 'waiting'"
     class="dock"
     role="region"
     aria-label="Joueurs et scores"
@@ -68,7 +68,9 @@
             <div class="dock-detail-stats">
               <span v-if="activePlayer.is_bot">Bot</span>
               <span v-if="activePlayer.id === store.session?.host_player_id">Hôte</span>
-              <span v-if="!isSelectionPhase">🎯 {{ activePlayer.correctGuesses || 0 }} bonne{{ (activePlayer.correctGuesses || 0) > 1 ? 's' : '' }} réponse{{ (activePlayer.correctGuesses || 0) > 1 ? 's' : '' }}</span>
+              <span v-if="!isSelectionPhase">🎯 {{ activePlayer.correctAccusations || 0 }} accusation{{ (activePlayer.correctAccusations || 0) > 1 ? 's' : '' }}</span>
+              <span v-if="!isSelectionPhase && activePlayer.bluffPoints">🕵️ {{ activePlayer.bluffPoints }} pt{{ activePlayer.bluffPoints > 1 ? 's' : '' }} de bluff</span>
+              <span v-if="!isSelectionPhase && store.session?.enable_blind_test">🧠 {{ activePlayer.blindTestCorrect || 0 }} blind test{{ (activePlayer.blindTestCorrect || 0) > 1 ? 's' : '' }}</span>
               <span v-if="!isSelectionPhase">💜 {{ activePlayer.votesReceived || 0 }} vote{{ (activePlayer.votesReceived || 0) > 1 ? 's' : '' }} reçu{{ (activePlayer.votesReceived || 0) > 1 ? 's' : '' }}</span>
               <span v-if="isSelectionPhase">{{ getMusicCount(activePlayer) }} / {{ maxMusics }} morceaux</span>
               <span>{{ activePlayer.is_connected ? 'En ligne' : 'Hors ligne' }}</span>
@@ -83,16 +85,15 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useGameStore } from '../stores/gameStore';
-import { getPlayersRankings } from '../utils/ranking';
 import { avatarUrl } from '../utils/avatar';
 import AppIcon from './AppIcon.vue';
 
 const store = useGameStore();
 const activePlayerId = ref(null);
 
+const showScoreboard = computed(() => store.session?.show_scoreboard !== false);
 const isSelectionPhase = computed(() => store.session?.phase === 'selection');
-const rankings = computed(() => getPlayersRankings(store.players));
-const getPlayerRank = (player) => rankings.value[player.id];
+const getPlayerRank = (player) => (player.score > 0 ? player.rank : null);
 const isLocalPlayer = (player) => store.player && player.id === store.player.id;
 
 const maxMusics = computed(() => store.session?.max_musics_per_player || 2);

@@ -259,7 +259,7 @@
               </div>
 
               <div class="setting">
-                <p class="setting-label">Durée de l’extrait</p>
+                <p class="setting-label">Durée d’écoute / blind test</p>
                 <div class="seg">
                   <button
                     v-for="val in [10, 15, 20, 30]"
@@ -271,6 +271,9 @@
                     @click="isHost && (config.extractDuration = val) && saveConfig()"
                   >{{ val }} s</button>
                 </div>
+                <p v-if="config.enableBlindTest" class="hint" style="margin-top: 6px">
+                  Le blind test reste ouvert pendant toute cette durée.
+                </p>
               </div>
 
               <div class="setting">
@@ -287,6 +290,43 @@
                   >{{ val }} s</button>
                 </div>
               </div>
+            </div>
+
+            <div class="settings-group">
+              <p class="settings-group-title">Système de points</p>
+
+              <div class="scoring-list">
+                <div
+                  v-for="mode in scoringModes"
+                  :key="mode.value"
+                  :class="[
+                    'scoring-card',
+                    config.scoringMode === mode.value ? 'is-active' : '',
+                    !isHost ? 'is-disabled' : '',
+                  ]"
+                >
+                  <button
+                    type="button"
+                    class="scoring-card-btn"
+                    :disabled="!isHost"
+                    :aria-pressed="config.scoringMode === mode.value"
+                    @click="selectScoringMode(mode.value)"
+                  >
+                    <span class="scoring-card-name">{{ mode.label }}</span>
+                    <span class="scoring-card-summary">{{ mode.summary }}</span>
+                  </button>
+                  <span
+                    class="info-tip"
+                    tabindex="0"
+                    role="note"
+                    :aria-label="mode.detail"
+                  >
+                    <AppIcon name="info" :size="13" />
+                    <span class="info-tooltip" role="tooltip">{{ mode.detail }}</span>
+                  </span>
+                </div>
+              </div>
+              <p class="hint">Le blind test rapporte 1 point dans tous les modes.</p>
             </div>
 
             <div class="settings-group">
@@ -369,11 +409,33 @@ const errorMsg = ref(null);
 const isLoading = ref(true);
 const showSettings = ref(false);
 
+const scoringModes = [
+  {
+    value: 'detective',
+    label: 'Détective',
+    summary: '1 point par bonne accusation',
+    detail: 'Chaque bonne accusation rapporte 1 point. Le proposeur ne marque aucun point pour son morceau.',
+  },
+  {
+    value: 'balanced',
+    label: 'Équilibré',
+    summary: '3 points par bonne accusation · bluff jusqu’à 3',
+    detail: 'Chaque bonne accusation rapporte 3 points. Sur votre morceau, vous marquez 3, 2, 1 ou 0 point selon le nombre de joueurs qui vous démasquent.',
+  },
+  {
+    value: 'bluff',
+    label: 'Bluff',
+    summary: '3 points par bonne accusation · +1 par personne trompée',
+    detail: 'Chaque bonne accusation rapporte 3 points. Sur votre morceau, chaque joueur trompé rapporte 1 point, jusqu’à 3.',
+  },
+];
+
 const toggleOptions = [
   { key: 'enableBlindTest', label: 'Blind test', desc: 'Devinez aussi le titre pendant l’écoute. Une bonne réponse rapporte un point.' },
   { key: 'showVoteCount', label: 'Afficher les votes en direct', desc: 'Montre le nombre de votes reçus pendant le vote.' },
   { key: 'showAnswers', label: 'Révéler les réponses', desc: 'Affiche l’auteur du morceau au moment de la révélation.' },
   { key: 'autoAdvance', label: 'Enchaîner les manches', desc: 'Passe à la manche suivante sans action de l’hôte.' },
+  { key: 'showScoreboard', label: 'Afficher le scoreboard en bas', desc: 'Affiche la barre des joueurs et des scores pendant la partie.' },
 ];
 
 const initials = (name) =>
@@ -394,6 +456,8 @@ const config = reactive({
   autoAdvance: false,
   showVoteCount: true,
   enableBlindTest: false,
+  scoringMode: 'balanced',
+  showScoreboard: true,
 });
 
 const isHost = computed(() => store.isHost);
@@ -407,9 +471,13 @@ const headerSubtitle = computed(() => {
 
 const formatDuration = (seconds) => (seconds >= 60 ? `${seconds / 60} min` : `${seconds} s`);
 
+const scoringModeLabel = computed(
+  () => scoringModes.find((mode) => mode.value === config.scoringMode)?.label || ''
+);
+
 const settingsSummary = computed(() => {
   const musics = `${config.maxMusicsPerPlayer} morceau${config.maxMusicsPerPlayer > 1 ? 'x' : ''} par joueur`;
-  return `${musics}, ${formatDuration(config.selectionDuration)} de sélection, ${config.extractDuration} s d’extrait, ${config.votingDuration} s de vote`;
+  return `${musics}, ${formatDuration(config.selectionDuration)} de sélection, ${config.extractDuration} s d’écoute, ${config.votingDuration} s de vote · Points : ${scoringModeLabel.value}`;
 });
 
 const playerRole = (player) => {
@@ -437,6 +505,8 @@ const syncConfig = (s) => {
   config.autoAdvance = s.auto_advance;
   config.showVoteCount = s.show_vote_count;
   config.enableBlindTest = s.enable_blind_test;
+  config.scoringMode = s.scoring_mode || 'balanced';
+  config.showScoreboard = s.show_scoreboard !== false;
 };
 
 const loadAndSyncConfig = async () => {
@@ -512,6 +582,12 @@ const saveConfig = async () => {
   try {
     await store.updateConfig({ ...config, maxMusicsPerPlayer: config.maxMusicsPerPlayer });
   } catch (err) { console.error('Failed to update config:', err); }
+};
+
+const selectScoringMode = (value) => {
+  if (!isHost.value || config.scoringMode === value) return;
+  config.scoringMode = value;
+  saveConfig();
 };
 
 const addBot = async () => { if (isHost.value) try { await store.addBot(); } catch { /* noop */ } };
