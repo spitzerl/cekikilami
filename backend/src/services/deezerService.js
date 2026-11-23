@@ -2,6 +2,7 @@ import { BOT_TRACKS, GENRE_QUERIES } from '../data/botCatalog.js';
 import { DEEZER } from '../config/game.js';
 import { normalizeTitle, shuffle, uniqueBy } from '../utils/normalize.js';
 import { requireAudioUrl, requireCoverUrl } from '../security/media.js';
+import { detectAudioExtension, saveUpload } from './uploadService.js';
 
 const cache = new Map();
 
@@ -91,6 +92,40 @@ export async function searchTracks(query = '', { limit = 25 } = {}) {
 
   writeCache(cacheKey, tracks);
   return tracks;
+}
+
+export async function downloadTrackPreview(previewUrl) {
+  const safeUrl = requireAudioUrl(previewUrl, 'preview');
+  const response = await fetch(safeUrl, {
+    signal: AbortSignal.timeout(DEEZER.timeoutMs),
+    headers: { Accept: 'audio/mpeg, audio/*;q=0.9' },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Deezer audio a répondu ${response.status}`);
+  }
+
+  const contentLength = Number(response.headers.get('content-length') || 0);
+  if (contentLength > DEEZER.previewMaxBytes) {
+    throw new Error('Extrait Deezer trop volumineux');
+  }
+
+  const buffer = Buffer.from(await response.arrayBuffer());
+  if (buffer.length === 0 || buffer.length > DEEZER.previewMaxBytes) {
+    throw new Error('Extrait Deezer invalide');
+  }
+  return buffer;
+}
+
+// Deezer preview links are short-lived signed URLs; copy the audio locally so
+// a game session can keep playing long after the search that produced it.
+export async function saveTrackPreview(previewUrl) {
+  const buffer = await downloadTrackPreview(previewUrl);
+  const extension = await detectAudioExtension(buffer);
+  if (!extension) {
+    throw new Error('Format de l’extrait Deezer non supporté');
+  }
+  return saveUpload(buffer, extension);
 }
 
 export async function getBotTracks(genre, limit, deadline = Infinity) {

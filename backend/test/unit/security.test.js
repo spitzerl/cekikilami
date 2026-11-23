@@ -59,8 +59,12 @@ test('config integers are bounded', () => {
 test('media allowlist accepts Deezer CDN URLs only', () => {
   const audio = 'https://cdns-preview-e.dzcdn.net/stream/c-abc-6.mp3';
   const cover = 'https://e-cdns-images.dzcdn.net/images/cover/abc/250x250.jpg';
+  const signedAudio = 'https://cdnt-preview.dzcdn.net/api/1/1/d/6/b/0/abc.mp3?hdnea=exp=1795451443~acl=/api/1/1/d/6/b/0/abc.mp3*~data=user_id=0,application_id=42~hmac=abc';
+  const signedCover = 'https://cdn-images.dzcdn.net/images/cover/abc/250x250.jpg';
   assert.equal(requireAudioUrl(audio), audio);
   assert.equal(requireCoverUrl(cover), cover);
+  assert.equal(requireAudioUrl(signedAudio), signedAudio);
+  assert.equal(requireCoverUrl(signedCover), signedCover);
 
   assert.throws(() => requireAudioUrl('http://cdns-preview-e.dzcdn.net/a.mp3'), /HTTPS/);
   assert.throws(() => requireAudioUrl('https://evil.example/a.mp3'), /extrait Deezer/);

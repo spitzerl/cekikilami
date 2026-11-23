@@ -27,7 +27,12 @@ import {
   UPLOAD_LIMITS,
 } from '../config/game.js';
 import { BOT_NAMES_POOL, GENRE_QUERIES } from '../data/botCatalog.js';
-import { buildBlindTestOptions, getBotTracks, mapWithConcurrency } from './deezerService.js';
+import {
+  buildBlindTestOptions,
+  getBotTracks,
+  mapWithConcurrency,
+  saveTrackPreview,
+} from './deezerService.js';
 import { cleanupOrphanUploads, deleteUpload, deleteUploadsForMusics } from './uploadService.js';
 import { shuffle } from '../utils/normalize.js';
 
@@ -691,22 +696,41 @@ export default class GameService {
       }
     });
 
-    for (const { bot, genre, tracks } of generated) {
-      for (const track of tracks.slice(0, limit)) {
+    const botTracks = generated.flatMap(({ bot, genre, tracks }) => tracks
+      .slice(0, limit)
+      .map((track) => ({ bot, genre, track })));
+
+    const materialized = await mapWithConcurrency(
+      botTracks,
+      DEEZER.botConcurrency,
+      async ({ bot, genre, track }) => {
         try {
-          await Music.create({
-            sessionId: session.id,
-            playerId: bot.id,
-            title: track.title,
-            artist: track.artist,
-            filePath: requireMusicSource(track.file_path, 'filePath'),
-            coverUrl: track.cover_url ? requireCoverUrl(track.cover_url, 'coverUrl') : null,
-            fileSize: 0,
-          });
-          this.log(code, `Bot ${bot.name} (${genre}) submitted: ${track.title} by ${track.artist}`);
+          const saved = await saveTrackPreview(requireMusicSource(track.file_path, 'filePath'));
+          return { bot, genre, track, filePath: saved.filePath, fileSize: saved.fileSize };
         } catch (error) {
-          console.warn(`Unable to save bot track ${track.title}:`, error.message);
+          console.warn(`Unable to download bot track ${track.title}:`, error.message);
+          return null;
         }
+      }
+    );
+
+    for (const entry of materialized) {
+      if (!entry) continue;
+      const { bot, genre, track, filePath, fileSize } = entry;
+      try {
+        await Music.create({
+          sessionId: session.id,
+          playerId: bot.id,
+          title: track.title,
+          artist: track.artist,
+          filePath,
+          coverUrl: track.cover_url ? requireCoverUrl(track.cover_url, 'coverUrl') : null,
+          fileSize,
+        });
+        this.log(code, `Bot ${bot.name} (${genre}) submitted: ${track.title} by ${track.artist}`);
+      } catch (error) {
+        await deleteUpload(filePath);
+        console.warn(`Unable to save bot track ${track.title}:`, error.message);
       }
     }
 

@@ -53,6 +53,7 @@ export const DEEZER = {
   cacheMaxEntries: integerEnv('DEEZER_CACHE_MAX_ENTRIES', 500),
   botConcurrency: integerEnv('DEEZER_BOT_CONCURRENCY', 4),
   botGenerationBudgetMs: integerEnv('DEEZER_BOT_BUDGET_MS', 10_000),
+  previewMaxBytes: integerEnv('DEEZER_PREVIEW_MAX_BYTES', 5 * 1024 * 1024),
 };
 
 export const AVATAR = {

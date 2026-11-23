@@ -7,6 +7,7 @@ import {
   createTestServer,
   joinSession,
   resetDatabase,
+  testAudioBuffer,
 } from '../helpers/app.js';
 import pool from '../../src/config/database.js';
 import { clearDeezerCache } from '../../src/services/deezerService.js';
@@ -134,18 +135,24 @@ test('bot generation is bounded and uses the cached Deezer helper', async () => 
     .expect(200);
 
   const originalFetch = globalThis.fetch;
-  let calls = 0;
-  globalThis.fetch = async () => {
-    calls += 1;
-    return new Response(JSON.stringify({
-      data: [{
-        id: 123,
-        title: 'Bot Track',
-        artist: { name: 'Bot Artist' },
-        preview: 'https://cdns-preview-e.dzcdn.net/stream/bot.mp3',
-        album: { cover_medium: 'https://e-cdns-images.dzcdn.net/images/cover/bot.jpg' },
-      }],
-    }), { status: 200, headers: { 'content-type': 'application/json' } });
+  let searchCalls = 0;
+  globalThis.fetch = async (url) => {
+    if (String(url).startsWith('https://api.deezer.com/')) {
+      searchCalls += 1;
+      return new Response(JSON.stringify({
+        data: [{
+          id: 123,
+          title: 'Bot Track',
+          artist: { name: 'Bot Artist' },
+          preview: 'https://cdns-preview-e.dzcdn.net/stream/bot.mp3',
+          album: { cover_medium: 'https://e-cdns-images.dzcdn.net/images/cover/bot.jpg' },
+        }],
+      }), { status: 200, headers: { 'content-type': 'application/json' } });
+    }
+    return new Response(testAudioBuffer(), {
+      status: 200,
+      headers: { 'content-type': 'audio/mpeg' },
+    });
   };
 
   try {
@@ -154,7 +161,7 @@ test('bot generation is bounded and uses the cached Deezer helper', async () => 
       .post(`/api/sessions/${created.session.code}/start-selection`)
       .set(auth(created.token))
       .expect(200);
-    assert.ok(calls <= 2);
+    assert.ok(searchCalls <= 2);
   } finally {
     globalThis.fetch = originalFetch;
     clearDeezerCache();

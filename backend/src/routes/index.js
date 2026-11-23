@@ -22,7 +22,7 @@ import {
   detectAudioExtension,
   saveUpload,
 } from '../services/uploadService.js';
-import { searchTracks } from '../services/deezerService.js';
+import { saveTrackPreview, searchTracks } from '../services/deezerService.js';
 import { getAvatar } from '../services/avatarService.js';
 
 const upload = multer({
@@ -196,7 +196,15 @@ export default function buildRoutes(gameService, ioNamespace) {
           fileSize = saved.fileSize;
           storedPath = saved.filePath;
         } else if (req.body?.deezerPreviewUrl) {
-          filePath = requireAudioUrl(req.body.deezerPreviewUrl, 'deezerPreviewUrl');
+          const previewUrl = requireAudioUrl(req.body.deezerPreviewUrl, 'deezerPreviewUrl');
+          try {
+            const saved = await saveTrackPreview(previewUrl);
+            filePath = saved.filePath;
+            fileSize = saved.fileSize;
+            storedPath = saved.filePath;
+          } catch {
+            throw httpError(502, 'Extrait Deezer indisponible, relancez la recherche');
+          }
         }
 
         if (!filePath) throw httpError(400, 'Le fichier audio est requis');

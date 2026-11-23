@@ -6,16 +6,20 @@ import {
   createSession,
   createTestServer,
   joinSession,
+  mockDeezerAudioFetch,
   resetDatabase,
 } from '../helpers/app.js';
 
 let context;
+let restoreFetch;
 
 before(async () => {
   context = await createTestServer();
+  restoreFetch = mockDeezerAudioFetch();
 });
 
 after(async () => {
+  restoreFetch?.();
   await closeTestServer(context);
 });
 

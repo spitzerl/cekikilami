@@ -7,8 +7,10 @@ import {
   closeTestServer,
   createSession,
   createTestServer,
+  mockDeezerAudioFetch,
   resetDatabase,
   testAudioBuffer,
+  testTinyAudioBuffer,
   uploadDir,
 } from '../helpers/app.js';
 
@@ -107,6 +109,52 @@ test('valid uploads are written, served and removed with the music row', async (
     .expect(200);
 
   assert.equal(fs.existsSync(path.join(uploadDir(), filename)), false);
+  assert.equal(listUploads().length, 0);
+});
+
+test('Deezer previews are copied locally and no longer rely on expiring URLs', async () => {
+  const created = await startSelectionSession();
+  const restoreFetch = mockDeezerAudioFetch(testTinyAudioBuffer());
+
+  try {
+    const response = await context.request
+      .post(`/api/sessions/${created.session.code}/musics`)
+      .set(auth(created.token))
+      .send({
+        title: 'Deezer Track',
+        artist: 'Deezer Artist',
+        deezerPreviewUrl: 'https://cdnt-preview.dzcdn.net/api/1/1/d/6/b/0/abc.mp3?hdnea=exp=1795451443~acl=/api/1/1/d/6/b/0/abc.mp3*~data=user_id=0,application_id=42~hmac=abc',
+        coverUrl: 'https://cdn-images.dzcdn.net/images/cover/abc/250x250.jpg',
+      })
+      .expect(201);
+
+    assert.match(response.body.file_path, /^\/uploads\/[a-f0-9]{32}\.mp3$/);
+    assert.equal(Number(response.body.file_size), testTinyAudioBuffer().length);
+    assert.equal(listUploads().includes(path.basename(response.body.file_path)), true);
+  } finally {
+    restoreFetch();
+  }
+});
+
+test('an unavailable Deezer preview is rejected without keeping a file', async () => {
+  const created = await startSelectionSession();
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response('gone', { status: 403 });
+
+  try {
+    await context.request
+      .post(`/api/sessions/${created.session.code}/musics`)
+      .set(auth(created.token))
+      .send({
+        title: 'Expired Track',
+        artist: 'Deezer Artist',
+        deezerPreviewUrl: 'https://cdnt-preview.dzcdn.net/api/1/1/d/6/b/0/expired.mp3',
+      })
+      .expect(502);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
   assert.equal(listUploads().length, 0);
 });
 

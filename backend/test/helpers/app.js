@@ -117,6 +117,36 @@ export function testAudioBuffer() {
   ]);
 }
 
+export function testTinyAudioBuffer() {
+  return Buffer.concat([
+    Buffer.from('ID3\x04\x00\x00\x00\x00\x00\x00', 'binary'),
+    Buffer.from([0xff, 0xfb, 0x90, 0x64]),
+    Buffer.alloc(32, 0),
+  ]);
+}
+
+export function mockDeezerAudioFetch(buffer = testTinyAudioBuffer()) {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input, init) => {
+    let hostname = '';
+    try {
+      hostname = new URL(String(input)).hostname;
+    } catch {
+      // Not an absolute URL; let the original implementation decide.
+    }
+    if (hostname.endsWith('.dzcdn.net')) {
+      return new Response(buffer, {
+        status: 200,
+        headers: { 'content-type': 'audio/mpeg' },
+      });
+    }
+    return originalFetch(input, init);
+  };
+  return () => {
+    globalThis.fetch = originalFetch;
+  };
+}
+
 export function testUploadPath(filename) {
   return path.join(UPLOAD_DIR, filename);
 }
