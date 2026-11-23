@@ -1,128 +1,163 @@
+import { hashToken } from '../security/tokens.js';
+import { RATE_LIMITS, TRUST_PROXY } from '../config/game.js';
 import Player from '../models/Player.js';
 import Session from '../models/Session.js';
-import { query } from '../config/database.js';
 
-const hostDisconnectTimeouts = new Map();
+const connectionAttempts = new Map();
+
+function socketIp(socket) {
+  if (TRUST_PROXY) {
+    const forwarded = socket.handshake.headers['x-forwarded-for'];
+    if (typeof forwarded === 'string' && forwarded.trim()) {
+      return forwarded.split(',')[0].trim();
+    }
+  }
+  return socket.handshake.address || 'unknown';
+}
+
+function allowAttempt(map, key, limit, windowMs) {
+  const now = Date.now();
+  const attempts = (map.get(key) || []).filter((timestamp) => now - timestamp < windowMs);
+  if (attempts.length >= limit) {
+    map.set(key, attempts);
+    return false;
+  }
+  attempts.push(now);
+  map.set(key, attempts);
+
+  if (map.size > 10_000) {
+    for (const [entryKey, entryAttempts] of map) {
+      if (entryAttempts.every((timestamp) => now - timestamp >= windowMs)) {
+        map.delete(entryKey);
+      }
+    }
+  }
+  return true;
+}
 
 export default function registerGameSocket(ioNamespace, gameService) {
+  ioNamespace.use(async (socket, next) => {
+    try {
+      const ip = socketIp(socket);
+      if (!allowAttempt(connectionAttempts, ip, RATE_LIMITS.socketConnectionsPerMinute, 60_000)) {
+        next(new Error('Trop de connexions. Réessayez dans une minute.'));
+        return;
+      }
+
+      const token = socket.handshake.auth?.token;
+      if (typeof token !== 'string' || !token || token.length > 200) {
+        next(new Error('Authentification requise'));
+        return;
+      }
+
+      const player = await Player.findByTokenHash(hashToken(token));
+      if (!player) {
+        next(new Error('Jeton joueur invalide'));
+        return;
+      }
+
+      socket.playerId = player.id;
+      socket.sessionId = player.session_id;
+      next();
+    } catch (error) {
+      console.error('Socket authentication failed:', error);
+      next(new Error('Authentification impossible'));
+    }
+  });
+
   ioNamespace.on('connection', (socket) => {
+    socket.joinAttempts = [];
+
     socket.on('join', async (payload) => {
       try {
-        const { code, playerId } = payload && typeof payload === 'object' ? payload : {};
-
+        const { code } = payload && typeof payload === 'object' ? payload : {};
         if (!code || typeof code !== 'string' || code.length > 12) {
           socket.emit('game:error', { message: 'Requête de connexion invalide' });
           return;
         }
 
+        const now = Date.now();
+        socket.joinAttempts = socket.joinAttempts.filter((timestamp) => now - timestamp < 60_000);
+        if (socket.joinAttempts.length >= RATE_LIMITS.socketJoinsPerMinute) {
+          socket.emit('game:error', { message: 'Trop de tentatives de connexion au salon' });
+          return;
+        }
+        socket.joinAttempts.push(now);
+
         const sessionCode = code.trim().toUpperCase();
+        const session = await Session.findByCode(sessionCode);
+        if (!session || session.id !== socket.sessionId) {
+          socket.emit('game:error', { message: 'Session introuvable' });
+          return;
+        }
+
         socket.join(sessionCode);
-        
-        if (playerId) {
-          const parsedPlayerId = Number.parseInt(playerId, 10);
-          socket.playerId = parsedPlayerId;
-          socket.code = sessionCode;
+        socket.code = sessionCode;
 
-          // Check if there's already another socket for this player in the room
-          const sockets = await ioNamespace.in(sessionCode).fetchSockets();
-          const anotherSocketExists = sockets.some(s => s.playerId === parsedPlayerId && s.id !== socket.id);
+        const sockets = await ioNamespace.in(sessionCode).fetchSockets();
+        const anotherSocketExists = sockets.some(
+          (entry) => entry.playerId === socket.playerId && entry.id !== socket.id
+        );
 
-          // Update connection status to connected
-          const player = await Player.updateConnectionStatus(parsedPlayerId, true);
-          gameService.log(sessionCode, `Socket connected for player ${parsedPlayerId}`);
-
-          // Notify room of player status change if this is their first/only socket connection
-          if (!anotherSocketExists && player) {
+        const player = await Player.updateConnectionStatus(socket.playerId, true, session.id);
+        if (player) {
+          gameService.log(sessionCode, `Socket connected for player ${socket.playerId}`);
+          if (!anotherSocketExists) {
             ioNamespace.to(sessionCode).emit('player:status', {
-              playerId: parsedPlayerId,
+              playerId: socket.playerId,
               playerName: player.name,
-              isConnected: true
+              isConnected: true,
             });
           }
-
-          // Cancel host disconnect deletion timer if this player is the host
-          if (player) {
-            const session = await Session.findByCode(sessionCode);
-            if (session && player.name === session.host_name) {
-              if (hostDisconnectTimeouts.has(sessionCode)) {
-                gameService.log(sessionCode, `Host reconnected, cancelling deletion timer`);
-                clearTimeout(hostDisconnectTimeouts.get(sessionCode));
-                hostDisconnectTimeouts.delete(sessionCode);
-              }
-            }
+          if (session.host_player_id === player.id) {
+            gameService.cancelHostDisconnect(sessionCode);
           }
         }
 
-        // Send state to this client
-        const state = await gameService.getState(sessionCode, playerId);
+        const state = await gameService.getState(sessionCode, socket.playerId);
         socket.emit('state:update', state);
-
-        // Broadcast updated players list to everyone else
         await gameService.broadcastState(sessionCode);
       } catch (error) {
-        socket.emit('game:error', { message: error.message });
+        console.error('Socket join failed:', error);
+        socket.emit('game:error', { message: 'Connexion au salon impossible' });
       }
     });
 
     socket.on('disconnect', async () => {
       const code = socket.code;
       const playerId = socket.playerId;
+      const sessionId = socket.sessionId;
 
-      if (code && playerId) {
-        try {
-          // Check if there are other sockets for this player in the same room
-          const sockets = await ioNamespace.in(code).fetchSockets();
-          const anotherSocketExists = sockets.some(s => s.playerId === playerId && s.id !== socket.id);
+      if (!code || !playerId) return;
 
-          if (!anotherSocketExists) {
-            // No other socket, player disconnected!
-            const player = await Player.updateConnectionStatus(playerId, false);
-            gameService.log(code, `Player ${playerId} marked as disconnected`);
+      try {
+        const sockets = await ioNamespace.in(code).fetchSockets();
+        const anotherSocketExists = sockets.some(
+          (entry) => entry.playerId === playerId && entry.id !== socket.id
+        );
 
-            if (player) {
-              ioNamespace.to(code).emit('player:status', {
-                playerId,
-                playerName: player.name,
-                isConnected: false
-              });
-            }
+        if (!anotherSocketExists) {
+          const player = await Player.updateConnectionStatus(playerId, false, sessionId);
+          gameService.log(code, `Player ${playerId} marked as disconnected`);
 
-            const session = await Session.findByCode(code);
-            if (session && player && player.name === session.host_name) {
-              gameService.log(code, `Host disconnected, starting deletion grace period (15s)`);
-              
-              if (hostDisconnectTimeouts.has(code)) {
-                clearTimeout(hostDisconnectTimeouts.get(code));
-              }
-
-              const timeoutId = setTimeout(async () => {
-                try {
-                  const freshSession = await Session.findByCode(code);
-                  if (freshSession) {
-                    const players = await Player.findBySession(freshSession.id);
-                    const hostPlayer = players.find(p => p.name === freshSession.host_name);
-                    if (!hostPlayer || !hostPlayer.is_connected) {
-                      gameService.log(code, `Host remained disconnected, deleting session`);
-                      await query('DELETE FROM sessions WHERE id = $1', [freshSession.id]);
-                      ioNamespace.to(code).emit('session:deleted');
-                      gameService.clearTimer(code);
-                    }
-                  }
-                } catch (err) {
-                  console.error('Error in host disconnect timeout:', err);
-                } finally {
-                  hostDisconnectTimeouts.delete(code);
-                }
-              }, 15000); // 15 seconds grace period is perfect for a refresh!
-
-              hostDisconnectTimeouts.set(code, timeoutId);
-            }
-
-            await gameService.broadcastState(code);
+          if (player) {
+            ioNamespace.to(code).emit('player:status', {
+              playerId,
+              playerName: player.name,
+              isConnected: false,
+            });
           }
-        } catch (error) {
-          console.error('Error handling disconnect:', error);
+
+          const session = await Session.findByCode(code);
+          if (session?.phase === 'waiting' && player && session.host_player_id === player.id) {
+            gameService.log(code, 'Host disconnected, starting deletion grace period');
+            gameService.scheduleHostDisconnect(code);
+          }
+
+          await gameService.broadcastState(code);
         }
+      } catch (error) {
+        console.error('Error handling disconnect:', error);
       }
     });
   });

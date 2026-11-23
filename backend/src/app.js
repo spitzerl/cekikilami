@@ -2,27 +2,65 @@ import cors from 'cors';
 import express from 'express';
 import helmet from 'helmet';
 import morgan from 'morgan';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import { CORS_ORIGIN, TRUST_PROXY } from './config/game.js';
 import buildRoutes from './routes/index.js';
+import { UPLOAD_DIR } from './services/uploadService.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+morgan.token('safe-url', (req) => String(req.originalUrl || '')
+  .replace(/\/sessions\/[A-Za-z0-9]{6}(?=\/|\?|$)/g, '/sessions/<redacted>'));
+
+function buildCorsOrigin() {
+  const allowed = CORS_ORIGIN.split(',').map((origin) => origin.trim()).filter(Boolean);
+  return (origin, callback) => {
+    callback(null, !origin || allowed.includes(origin));
+  };
+}
 
 export default function createApp(gameService, ioNamespace) {
   const app = express();
+  app.disable('x-powered-by');
+
+  if (TRUST_PROXY) {
+    app.set('trust proxy', /^\d+$/.test(TRUST_PROXY) ? Number(TRUST_PROXY) : TRUST_PROXY);
+  }
 
   app.use(
     cors({
-      origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
-      credentials: true,
+      origin: buildCorsOrigin(),
+      credentials: false,
+      methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization'],
+      maxAge: 600,
     })
   );
-  app.use(helmet());
-  app.use(morgan('dev'));
-  app.use(express.json());
+  app.use(
+    helmet({
+      hsts: process.env.NODE_ENV === 'production' ? undefined : false,
+      crossOriginEmbedderPolicy: false,
+    })
+  );
+  if (process.env.NODE_ENV !== 'test') {
+    app.use(morgan(
+      process.env.NODE_ENV === 'production'
+        ? ':remote-addr - :remote-user [:date[clf]] ":method :safe-url HTTP/:http-version" :status :res[content-length] ":referrer" ":user-agent"'
+        : ':method :safe-url :status :response-time ms - :res[content-length]'
+    ));
+  }
+  app.use(express.json({ limit: '100kb' }));
 
-  app.use('/uploads', express.static(path.resolve(__dirname, '../uploads')));
+  app.use(
+    '/uploads',
+    express.static(UPLOAD_DIR, {
+      dotfiles: 'deny',
+      index: false,
+      fallthrough: false,
+      setHeaders: (res) => {
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+        res.setHeader('Cache-Control', 'public, max-age=3600');
+      },
+    })
+  );
+
   app.get('/health', (_req, res) => {
     res.json({ ok: true });
   });
