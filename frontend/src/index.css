@@ -2349,7 +2349,19 @@ img { display: block; }
   height: 156px;
   margin-bottom: 24px;
   border-radius: 50%;
-  background: var(--disc);
+  background-color: var(--disc);
+  background-image:
+    conic-gradient(
+      from 220deg,
+      transparent 0 64%,
+      rgba(255, 248, 237, 0.12) 76%,
+      transparent 90%
+    ),
+    repeating-radial-gradient(
+      circle at center,
+      transparent 0 7px,
+      rgba(255, 248, 237, 0.08) 7px 8px
+    );
   box-shadow: 0 0 0 1px var(--line);
 }
 .mystery-record::before {
@@ -2372,6 +2384,29 @@ img { display: block; }
   font-family: var(--font-display);
   font-size: 26px;
   font-weight: 700;
+}
+.mystery-record.is-playing {
+  animation:
+    record-spin 3.2s linear infinite,
+    record-beat 1.5s ease-in-out infinite;
+  will-change: transform;
+}
+.mystery-record.is-playing::after {
+  animation: record-counter-spin 3.2s linear infinite;
+}
+@keyframes record-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes record-counter-spin {
+  to { transform: rotate(-360deg); }
+}
+@keyframes record-beat {
+  0%, 100% { box-shadow: 0 0 0 1px var(--line), 0 0 0 0 transparent; }
+  50% { box-shadow: 0 0 0 1px var(--line), 0 0 34px -8px var(--accent); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mystery-record.is-playing,
+  .mystery-record.is-playing::after { animation: none; }
 }
 @media (max-width: 899px) {
   .artwork { width: min(100%, 190px); margin-bottom: 16px; }

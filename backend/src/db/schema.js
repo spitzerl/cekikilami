@@ -21,6 +21,7 @@ export async function initSchema(pool) {
       enable_blind_test BOOLEAN DEFAULT FALSE,
       scoring_mode VARCHAR(20) NOT NULL DEFAULT 'balanced',
       show_scoreboard BOOLEAN NOT NULL DEFAULT TRUE,
+      track_info_mode VARCHAR(20) NOT NULL DEFAULT 'after',
       created_at TIMESTAMP NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMP NOT NULL DEFAULT NOW()
     )
@@ -100,6 +101,7 @@ export async function initSchema(pool) {
     ADD COLUMN IF NOT EXISTS enable_blind_test BOOLEAN DEFAULT FALSE,
     ADD COLUMN IF NOT EXISTS scoring_mode VARCHAR(20) NOT NULL DEFAULT 'balanced',
     ADD COLUMN IF NOT EXISTS show_scoreboard BOOLEAN NOT NULL DEFAULT TRUE,
+    ADD COLUMN IF NOT EXISTS track_info_mode VARCHAR(20) NOT NULL DEFAULT 'after',
     ADD COLUMN IF NOT EXISTS host_player_id INTEGER,
     ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP
   `);
@@ -151,6 +153,13 @@ export async function initSchema(pool) {
     SET scoring_mode = 'balanced'
     WHERE scoring_mode IS NULL
        OR scoring_mode NOT IN ('detective', 'balanced', 'bluff')
+  `);
+
+  await pool.query(`
+    UPDATE sessions
+    SET track_info_mode = 'after'
+    WHERE track_info_mode IS NULL
+       OR track_info_mode NOT IN ('before', 'after', 'results')
   `);
 
   await pool.query('CREATE INDEX IF NOT EXISTS sessions_phase_timer_idx ON sessions (phase, timer_ends_at)');

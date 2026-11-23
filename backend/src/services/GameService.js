@@ -26,6 +26,7 @@ import {
   SCORING,
   SCORING_MODES,
   SESSION_TTLS,
+  TRACK_INFO_MODES,
   UPLOAD_LIMITS,
 } from '../config/game.js';
 import { BOT_NAMES_POOL, GENRE_QUERIES } from '../data/botCatalog.js';
@@ -367,6 +368,10 @@ export default class GameService {
       });
       const currentTrack = musics.find((music) => music.play_order === session.current_music_index);
       const isReveal = status === 'revelation' && session.show_answers;
+      const trackInfoMode = session.track_info_mode || 'after';
+      const revealTrackInfo = trackInfoMode === 'before'
+        ? (status === 'voting' || status === 'revelation')
+        : trackInfoMode === 'after' && status === 'revelation';
       let currentMusic = null;
       let votesForCurrentMusic = null;
 
@@ -382,11 +387,14 @@ export default class GameService {
           if (session.enable_blind_test) {
             currentMusic.blind_test_options = currentTrack.blind_test_options || [];
           }
-        } else if (status === 'revelation') {
+        } else if (revealTrackInfo) {
           currentMusic.title = currentTrack.title;
           currentMusic.artist = currentTrack.artist;
           currentMusic.cover_url = currentTrack.cover_url;
-          if (isReveal) currentMusic.player_id = currentTrack.player_id;
+        }
+
+        if (status === 'revelation' && isReveal) {
+          currentMusic.player_id = currentTrack.player_id;
         }
 
         if (session.enable_blind_test) {
@@ -610,6 +618,12 @@ export default class GameService {
     }
     if (Object.hasOwn(config, 'showScoreboard')) {
       sanitized.showScoreboard = requireBoolean(config.showScoreboard, 'showScoreboard');
+    }
+    if (Object.hasOwn(config, 'trackInfoMode')) {
+      if (!TRACK_INFO_MODES.includes(config.trackInfoMode)) {
+        throw httpError(400, 'Moment de révélation du morceau invalide');
+      }
+      sanitized.trackInfoMode = config.trackInfoMode;
     }
 
     return sanitized;

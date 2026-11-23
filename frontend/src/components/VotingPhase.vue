@@ -77,14 +77,11 @@
               <span class="status-dot is-live"></span>
               Écoute en cours
             </span>
-            <div class="mystery-record" aria-hidden="true"></div>
+            <div :class="['mystery-record', isAudioPlaying ? 'is-playing' : '']" aria-hidden="true"></div>
             <h2 class="stage-title">Écoutez bien</h2>
             <p class="stage-text pretty">
               L’extrait tourne. Les votes ouvriront dès la fin de la lecture.
             </p>
-            <div class="eq is-playing" style="margin-top: 18px" aria-hidden="true">
-              <span></span><span></span><span></span><span></span><span></span>
-            </div>
 
             <div v-if="audioError" class="callout callout-danger" style="margin-top: 18px; width: 100%; max-width: 380px" role="alert">
               <AppIcon name="alert-triangle" :size="15" style="flex-shrink: 0; margin-top: 1px" />
@@ -108,10 +105,25 @@
               <span class="status-dot is-live"></span>
               Vote ouvert
             </span>
-            <div class="mystery-record" aria-hidden="true"></div>
-            <h2 class="stage-title">À vous de dénoncer</h2>
+            <template v-if="hasTrackInfo">
+              <div class="artwork artwork-compact">
+                <img
+                  v-if="store.currentMusic?.cover_url"
+                  :src="store.currentMusic.cover_url"
+                  :alt="`Pochette de ${store.currentMusic?.title}`"
+                />
+                <span v-else class="artwork-fallback">
+                  <AppIcon name="music" :size="34" :stroke-width="1.25" />
+                </span>
+              </div>
+              <h2 class="stage-title">{{ store.currentMusic.title }}</h2>
+              <p class="stage-text">{{ store.currentMusic.artist }}</p>
+            </template>
+            <div v-else class="mystery-record" aria-hidden="true"></div>
+            <h2 v-if="!hasTrackInfo" class="stage-title">À vous de dénoncer</h2>
             <p class="stage-text pretty">
-              Désignez le joueur qui a proposé cet extrait. Le titre sera révélé à la fin de la manche.
+              Désignez le joueur qui a proposé cet extrait.
+              <template v-if="!hasTrackInfo">Le titre sera révélé à la fin de la manche.</template>
             </p>
 
             <div v-if="audioError" class="callout callout-danger" style="margin-top: 14px; width: 100%; max-width: 380px" role="alert">
@@ -136,16 +148,20 @@
               <span class="status-dot is-live"></span>
               Manche terminée
             </span>
-            <div class="artwork">
-              <img v-if="store.currentMusic?.cover_url" :src="store.currentMusic.cover_url" :alt="`Pochette de ${store.currentMusic?.title}`" />
-              <span v-else class="artwork-fallback"><AppIcon name="music" :size="40" :stroke-width="1.25" /></span>
-            </div>
-            <h2 class="stage-title">{{ store.currentMusic?.title }}</h2>
-            <p class="stage-text">{{ store.currentMusic?.artist }}</p>
+            <template v-if="hasTrackInfo">
+              <div class="artwork">
+                <img v-if="store.currentMusic?.cover_url" :src="store.currentMusic.cover_url" :alt="`Pochette de ${store.currentMusic?.title}`" />
+                <span v-else class="artwork-fallback"><AppIcon name="music" :size="40" :stroke-width="1.25" /></span>
+              </div>
+              <h2 class="stage-title">{{ store.currentMusic.title }}</h2>
+              <p class="stage-text">{{ store.currentMusic.artist }}</p>
+            </template>
+            <div v-else class="mystery-record" aria-hidden="true"></div>
+            <p v-if="!hasTrackInfo" class="hint">Titre, artiste et pochette restent masqués jusqu’aux résultats.</p>
 
-            <div class="reveal-proposer">
+            <div v-if="proposerPlayer" class="reveal-proposer">
               <img
-                v-if="proposerPlayer?.avatar_seed"
+                v-if="proposerPlayer.avatar_seed"
                 :src="avatarUrl(proposerPlayer.avatar_seed)"
                 class="avatar avatar-sm"
                 alt=""
@@ -331,6 +347,7 @@ let timerInterval = null;
 
 const selectedVoteId = ref(null);
 const audioError = ref(false);
+const isAudioPlaying = ref(false);
 
 const blindTestSelectedAnswer = ref(null);
 const blindTestSubmitting = ref(false);
@@ -393,6 +410,7 @@ const getBlindTestOptionClass = (option) => {
 let audio = null;
 
 const status = computed(() => store.session?.voting_status || 'listening');
+const hasTrackInfo = computed(() => Boolean(store.currentMusic?.title));
 
 const headerTitle = computed(() => (status.value === 'revelation' ? 'Révélation' : 'Écoute & vote'));
 
@@ -611,40 +629,82 @@ const formatAudioUrl = (path) => {
   return path;
 };
 
+const isIgnorablePlayError = (error) => ['NotAllowedError', 'AbortError'].includes(error?.name);
+
+const stopAudio = () => {
+  if (!audio) return;
+  const previous = audio;
+  audio = null;
+  previous.onerror = null;
+  previous.onplaying = null;
+  previous.onpause = null;
+  previous.onended = null;
+  previous.pause();
+  isAudioPlaying.value = false;
+};
+
 watch(() => store.volume, (newVol) => {
   if (audio) audio.volume = newVol;
 });
 
 const startAudio = () => {
   audioError.value = false;
-  if (audio) audio.pause();
+  isAudioPlaying.value = false;
+  stopAudio();
 
-  if (store.currentMusic?.file_path) {
-    const url = formatAudioUrl(store.currentMusic.file_path);
-    audio = new Audio(url);
-    audio.volume = store.volume;
+  if (!store.currentMusic?.file_path) return;
 
-    audio.onerror = () => { audioError.value = true; };
+  const current = new Audio(formatAudioUrl(store.currentMusic.file_path));
+  audio = current;
+  current.volume = store.volume;
 
-    if (status.value === 'listening') {
-      audio.play().catch(err => {
-        console.warn('Autoplay was blocked or audio failed:', err);
-        if (err.name !== 'NotAllowedError') audioError.value = true;
-      });
-    }
+  current.onerror = () => {
+    if (audio !== current || status.value !== 'listening') return;
+    audioError.value = true;
+    isAudioPlaying.value = false;
+  };
+  current.onplaying = () => {
+    if (audio !== current) return;
+    audioError.value = false;
+    isAudioPlaying.value = true;
+  };
+  current.onpause = () => {
+    if (audio === current) isAudioPlaying.value = false;
+  };
+  current.onended = () => {
+    if (audio === current) isAudioPlaying.value = false;
+  };
+
+  if (status.value === 'listening') {
+    current.play().then(() => {
+      if (audio !== current) return;
+      audioError.value = false;
+      isAudioPlaying.value = true;
+    }).catch(err => {
+      if (audio !== current) return;
+      console.warn('Autoplay was blocked or audio failed:', err);
+      if (!isIgnorablePlayError(err)) audioError.value = true;
+    });
   }
 };
 
 const retryAudio = () => {
   audioError.value = false;
-  if (audio) {
-    audio.play().catch(err => {
-      console.error('Manual replay failed:', err);
-      audioError.value = true;
-    });
-  } else {
+  if (!audio || audio.error) {
     startAudio();
+    return;
   }
+
+  const current = audio;
+  current.play().then(() => {
+    if (audio !== current) return;
+    audioError.value = false;
+    isAudioPlaying.value = true;
+  }).catch(err => {
+    if (audio !== current) return;
+    console.error('Manual replay failed:', err);
+    if (!isIgnorablePlayError(err)) audioError.value = true;
+  });
 };
 
 const castVote = async (targetId) => {
@@ -685,26 +745,22 @@ onMounted(async () => {
 
 onUnmounted(() => {
   if (timerInterval) clearInterval(timerInterval);
-  if (audio) audio.pause();
+  stopAudio();
   window.removeEventListener('keydown', handleKeyDown);
 });
 
 watch(() => store.currentMusic?.id, () => {
   selectedVoteId.value = null;
   blindTestSelectedAnswer.value = null;
-  startAudio();
 });
 
-watch(() => status.value, (newStatus) => {
+watch([status, () => store.currentMusic?.id], ([newStatus]) => {
   if (newStatus === 'listening') {
-    if (audio) {
-      audio.currentTime = 0;
-      audio.play().catch(e => console.warn(e));
-    } else {
-      startAudio();
-    }
-  } else if (audio) {
-    audio.pause();
+    startAudio();
+  } else {
+    if (audio) audio.pause();
+    isAudioPlaying.value = false;
+    audioError.value = false;
   }
 });
 

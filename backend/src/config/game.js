@@ -39,6 +39,8 @@ export const CONFIG_BOUNDS = {
   votingDuration: { min: 20, max: 60 },
 };
 
+export const TRACK_INFO_MODES = ['before', 'after', 'results'];
+
 export const SCORING_MODES = ['detective', 'balanced', 'bluff'];
 
 export const SCORING = {

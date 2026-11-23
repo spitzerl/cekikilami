@@ -47,6 +47,7 @@ test('configuration values are bounded server-side', async () => {
     { showAnswers: 'yes' },
     { scoringMode: 'unknown' },
     { showScoreboard: 'yes' },
+    { trackInfoMode: 'sometimes' },
   ]) {
     await context.request
       .post(`/api/sessions/${code}/config`)
@@ -66,12 +67,14 @@ test('configuration values are bounded server-side', async () => {
       votingDuration: 60,
       scoringMode: 'detective',
       showScoreboard: false,
+      trackInfoMode: 'before',
     })
     .expect(200);
   assert.equal(valid.body.session.max_players, 4);
   assert.equal(valid.body.session.max_musics_per_player, 5);
   assert.equal(valid.body.session.scoring_mode, 'detective');
   assert.equal(valid.body.session.show_scoreboard, false);
+  assert.equal(valid.body.session.track_info_mode, 'before');
 });
 
 test('maxPlayers cannot fall below the current player count', async () => {
