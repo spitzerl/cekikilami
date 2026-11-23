@@ -58,3 +58,7 @@ docker compose up --build
 - `VITE_SOCKET_URL=http://localhost:3001` (dev local)
 
 En Docker, les variables sont injectées via `compose.yaml`.
+
+## Sécurité
+
+Le résumé de l'audit de sécurité et les priorités de correction sont dans [SECURITY.md](SECURITY.md).
