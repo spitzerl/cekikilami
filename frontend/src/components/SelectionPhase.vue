@@ -6,24 +6,30 @@
       :step="2"
     >
       <template #actions>
-        <div
-          :class="['timer', remainingTime < 20 ? 'is-urgent' : '']"
-          role="timer"
-          :aria-label="`Temps restant : ${formatTime(remainingTime)}`"
-        >
-          <AppIcon name="clock" :size="15" />
-          {{ formatTime(remainingTime) }}
+        <div class="header-status">
+          <div
+            :class="['timer', remainingTime < 20 ? 'is-urgent' : '']"
+            role="timer"
+            :aria-label="`Temps restant : ${formatTime(remainingTime)}`"
+          >
+            <AppIcon name="clock" :size="14" />
+            {{ formatTime(remainingTime) }}
+          </div>
+          <span :class="['header-readiness', allPlayersReady ? 'is-ready' : '']">
+            <span :class="['status-dot', allPlayersReady ? 'is-online' : '']" aria-hidden="true"></span>
+            {{ readyCount }}/{{ activeCount }} prêts
+          </span>
         </div>
         <button
           v-if="isHost"
           type="button"
-          class="btn btn-primary"
+          class="btn btn-primary btn-waiting"
           :disabled="!allPlayersReady"
           :title="allPlayersReady ? 'Tous les joueurs ont choisi. Passer au vote.' : 'Tous les joueurs n’ont pas encore choisi.'"
           @click="forceStartVoting"
         >
           <AppIcon name="forward" :size="15" />
-          Passer au vote ({{ readyCount }}/{{ activeCount }})
+          Passer au vote
         </button>
       </template>
     </GameHeader>
@@ -64,21 +70,10 @@
         <!-- Search -->
         <section
           id="panel-search"
-          class="panel panel-pad"
+          class="selection-search"
           :class="activeTab === 'search' ? 'block' : 'hidden lg:block'"
-          aria-labelledby="search-heading"
+          aria-label="Rechercher un morceau"
         >
-          <div class="panel-head">
-            <div>
-              <h2 id="search-heading" class="panel-title">
-                <AppIcon name="search" :size="16" />
-                Chercher un morceau
-              </h2>
-              <p class="panel-sub">Artiste, titre ou les deux.</p>
-            </div>
-            <span v-if="remainingPicks" class="tag panel-hint">Encore {{ remainingPicks }} à choisir</span>
-          </div>
-
           <div v-if="remainingPicks > 0">
             <div class="input-wrap" style="margin-bottom: 12px">
               <label for="music-search" class="sr-only">Rechercher un artiste ou un titre</label>
@@ -86,7 +81,7 @@
                 id="music-search"
                 v-model="searchQuery"
                 class="input input-search"
-                placeholder="Ex. Daft Punk, Billie Jean…"
+                placeholder="Rechercher un artiste ou un titre…"
                 autocomplete="off"
                 autocorrect="off"
                 spellcheck="false"
@@ -111,10 +106,13 @@
 
             <TransitionGroup
               v-if="tracks.length"
+              ref="trackListRef"
               name="list"
               tag="div"
               class="track-list"
+              :class="{ 'has-fade-top': canScrollUp, 'has-fade-bottom': canScrollDown }"
               aria-label="Résultats de recherche"
+              @scroll="updateTrackFades"
             >
               <div v-for="track in tracks" :key="track.id" class="track-row">
                 <div class="media-row">
@@ -161,42 +159,28 @@
             </div>
           </div>
 
-          <div v-else class="empty-state">
-            <span class="status-dot is-online"></span>
-            <strong>Sélection complète</strong>
-            <p>
-              Vous avez proposé {{ maxMusics }} morceau{{ maxMusics > 1 ? 'x' : '' }}.
-              Attendez la fin du chrono ou la validation de l’hôte.
-            </p>
+          <div v-else class="selection-note">
+            <AppIcon name="check-circle" :size="17" />
+            <div>
+              <strong>Sélection complète</strong>
+              <p>Vous avez proposé {{ maxMusics }} morceau{{ maxMusics > 1 ? 'x' : '' }}. Attendez la fin du chrono ou la validation de l’hôte.</p>
+            </div>
           </div>
         </section>
 
         <!-- Selection -->
         <section
           id="panel-selected"
-          class="panel panel-pad selection-side"
+          class="selection-side"
           :class="activeTab === 'selected' ? 'block' : 'hidden lg:block'"
           aria-labelledby="selected-heading"
         >
-          <div class="panel-head">
-            <div>
-              <h2 id="selected-heading" class="panel-title">
-                <AppIcon name="music" :size="16" />
-                Votre sélection
-              </h2>
-              <p class="panel-sub">Elle reste secrète jusqu’à la révélation.</p>
-            </div>
-            <div
-              class="progress-dots"
-              role="img"
+          <div class="selection-side-head">
+            <h2 id="selected-heading" class="selection-side-title">Votre sélection</h2>
+            <span
+              class="count-pill"
               :aria-label="`${store.musics.length} morceau${store.musics.length > 1 ? 'x' : ''} sur ${maxMusics}`"
-            >
-              <span
-                v-for="i in maxMusics"
-                :key="i"
-                :class="['progress-dot', i <= store.musics.length ? 'is-filled' : '']"
-              ></span>
-            </div>
+            >{{ store.musics.length }}/{{ maxMusics }}</span>
           </div>
 
           <TransitionGroup v-if="store.musics.length" name="list" tag="div" class="row-list">
@@ -229,10 +213,9 @@
             </div>
           </TransitionGroup>
 
-          <div v-else class="empty-state">
-            <AppIcon name="music" :size="20" />
-            <strong>Aucune musique pour l’instant</strong>
-            <p>Cherchez un morceau et ajoutez-le. Vous pouvez encore changer d’avis.</p>
+          <div v-else class="selection-empty">
+            <p>Aucun morceau pour l’instant.</p>
+            <p class="hint">Ajoutez-en un depuis les résultats.</p>
           </div>
         </section>
       </div>
@@ -243,7 +226,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
+import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import apiService from '../services/apiService';
 import { useGameStore } from '../stores/gameStore';
@@ -261,6 +244,9 @@ const isSearching = ref(false);
 const searchError = ref('');
 const activeTab = ref('search');
 const remainingTime = ref(0);
+const trackListRef = ref(null);
+const canScrollUp = ref(false);
+const canScrollDown = ref(false);
 let timerInterval = null;
 
 const previewUrl = ref(null);
@@ -279,6 +265,18 @@ const updateTimer = () => {
     remainingTime.value = 0;
   }
 };
+
+const updateTrackFades = () => {
+  const el = trackListRef.value?.$el || trackListRef.value;
+  if (!el) return;
+  canScrollUp.value = el.scrollTop > 2;
+  canScrollDown.value = el.scrollTop + el.clientHeight < el.scrollHeight - 2;
+};
+
+watch([tracks, isSearching], async () => {
+  await nextTick();
+  updateTrackFades();
+});
 
 const isHost = computed(() => store.player && store.session && store.player.name === store.session.host_name);
 
@@ -317,6 +315,7 @@ onMounted(async () => {
   updateTimer();
   timerInterval = setInterval(updateTimer, 1000);
   window.addEventListener('keydown', handleKeyDown);
+  window.addEventListener('resize', updateTrackFades);
   searchTracks();
 });
 
@@ -324,6 +323,7 @@ onUnmounted(() => {
   if (timerInterval) clearInterval(timerInterval);
   if (audioObject) audioObject.pause();
   window.removeEventListener('keydown', handleKeyDown);
+  window.removeEventListener('resize', updateTrackFades);
 });
 
 watch(() => store.session?.phase, (p) => {

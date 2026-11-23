@@ -7,17 +7,7 @@
       </span>
       <span class="spacer"></span>
 
-      <button
-        v-if="code && showCode"
-        type="button"
-        class="code-chip"
-        :aria-label="`Copier le lien d'invitation, code ${code}`"
-        @click="copyCode"
-      >
-        <span class="code-chip-label">Salon</span>
-        <span class="code-chip-value">{{ code }}</span>
-        <AppIcon :name="copied ? 'check' : 'copy'" :size="13" />
-      </button>
+      <RoomCode v-if="code && showCode" :code="code" size="sm" />
 
       <button
         type="button"
@@ -27,7 +17,6 @@
       >
         <AppIcon name="menu" :size="19" />
       </button>
-      <span class="sr-only" aria-live="polite">{{ copied ? 'Lien d’invitation copié' : '' }}</span>
     </div>
   </header>
 
@@ -44,8 +33,7 @@
           ]"
           :aria-current="index + 1 === step ? 'step' : undefined"
         >
-          <span class="step-num">{{ String(index + 1).padStart(2, '0') }}</span>
-          <span class="step-label">{{ label }}</span>
+          <span class="sr-only">{{ label }}</span>
         </li>
       </ol>
     </nav>
@@ -63,10 +51,11 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { useGameStore } from '../stores/gameStore';
 import AppIcon from './AppIcon.vue';
+import RoomCode from './RoomCode.vue';
 
 defineProps({
   title: { type: String, required: true },
@@ -77,21 +66,10 @@ defineProps({
 
 const store = useGameStore();
 const route = useRoute();
-const copied = ref(false);
 
 const steps = ['Salon', 'Sélection', 'Écoute & vote', 'Résultats'];
 
 const code = computed(() => store.session?.code || route.params.code || '');
-
-const copyCode = async () => {
-  try {
-    await navigator.clipboard.writeText(`${window.location.origin}/game/${code.value}`);
-    copied.value = true;
-    window.setTimeout(() => { copied.value = false; }, 2000);
-  } catch {
-    /* clipboard unavailable — no-op */
-  }
-};
 
 const openMenu = () => {
   window.dispatchEvent(new CustomEvent('open-pause-menu'));

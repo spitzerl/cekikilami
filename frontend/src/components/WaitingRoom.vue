@@ -64,32 +64,7 @@
       <template #actions>
         <div class="lobby-invite reveal-late">
           <p class="lobby-kicker">Code du salon</p>
-          <div :class="['lobby-code', { 'is-revealed': codeRevealed }]">
-            <span class="lobby-code-text">{{ route.params.code }}</span>
-            <span class="lobby-code-actions">
-              <button
-                type="button"
-                class="lobby-code-btn"
-                :aria-label="codeRevealed ? 'Masquer le code' : 'Afficher le code'"
-                :title="codeRevealed ? 'Masquer le code' : 'Afficher le code'"
-                :aria-pressed="codeRevealed"
-                @click="codeRevealed = !codeRevealed"
-              >
-                <AppIcon :name="codeRevealed ? 'eye-off' : 'eye'" :size="17" />
-              </button>
-              <button
-                type="button"
-                class="lobby-code-btn"
-                :class="{ 'is-done': copied }"
-                :aria-label="copied ? 'Lien copié' : 'Copier le lien d’invitation'"
-                :title="copied ? 'Lien copié' : 'Copier le lien d’invitation'"
-                @click="copyCode"
-              >
-                <AppIcon :name="copied ? 'check' : 'copy'" :size="16" />
-              </button>
-            </span>
-            <span class="sr-only" role="status">{{ copied ? 'Lien d’invitation copié.' : '' }}</span>
-          </div>
+          <RoomCode :code="route.params.code" />
         </div>
       </template>
     </GameHeader>
@@ -205,8 +180,8 @@
               <AppIcon name="robot" :size="15" />
               Ajouter un bot
             </button>
-            <button type="button" class="btn btn-primary btn-lg" @click="startSelection">
-              <AppIcon name="play" :size="16" />
+            <button type="button" class="btn btn-primary" @click="startSelection">
+              <AppIcon name="play" :size="15" />
               Lancer la sélection
             </button>
           </div>
@@ -380,6 +355,7 @@ import { ref, computed, onMounted, onUnmounted, reactive, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useGameStore } from '../stores/gameStore';
 import GameHeader from './GameHeader.vue';
+import RoomCode from './RoomCode.vue';
 import AppIcon from './AppIcon.vue';
 import ThemeToggle from './ThemeToggle.vue';
 
@@ -391,9 +367,6 @@ const directPseudo = ref('');
 const errorMsg = ref(null);
 const isLoading = ref(true);
 const showSettings = ref(false);
-const copied = ref(false);
-const codeRevealed = ref(false);
-
 
 const toggleOptions = [
   { key: 'enableBlindTest', label: 'Blind test', desc: 'Devinez aussi le titre pendant l’écoute. Une bonne réponse rapporte un point.' },
@@ -401,15 +374,6 @@ const toggleOptions = [
   { key: 'showAnswers', label: 'Révéler les réponses', desc: 'Affiche l’auteur du morceau au moment de la révélation.' },
   { key: 'autoAdvance', label: 'Enchaîner les manches', desc: 'Passe à la manche suivante sans action de l’hôte.' },
 ];
-
-const copyCode = async () => {
-  codeRevealed.value = true;
-  try {
-    await navigator.clipboard.writeText(`${window.location.origin}/game/${route.params.code}`);
-    copied.value = true;
-    setTimeout(() => { copied.value = false; }, 2000);
-  } catch { /* clipboard unavailable */ }
-};
 
 const avatarUrl = (seed) =>
   `https://api.dicebear.com/9.x/notionists-neutral/svg?seed=${encodeURIComponent(seed)}&backgroundColor=e6dcff,d9e8ff,f8d9ea`;
@@ -531,10 +495,6 @@ watch(() => store.session, (s) => {
 
 watch(showSettings, (open) => {
   document.body.style.overflow = open ? 'hidden' : '';
-});
-
-watch(() => route.params.code, () => {
-  codeRevealed.value = false;
 });
 
 const joinDirectly = async () => {

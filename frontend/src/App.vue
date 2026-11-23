@@ -5,14 +5,12 @@
         <div
           v-for="notif in store.notifications"
           :key="notif.id"
-          :class="['toast', `toast-${notif.type || 'info'}`]"
+          class="toast"
           role="status"
         >
-          <AppIcon
-            :name="getNotifIcon(notif.type)"
-            :size="17"
-            :style="{ color: getNotifColor(notif.type), flexShrink: 0, marginTop: '1px' }"
-          />
+          <span :class="['toast-icon', `toast-icon-${notif.type || 'info'}`]">
+            <AppIcon :name="getNotifIcon(notif.type)" :size="16" />
+          </span>
           <span class="toast-message">{{ notif.message }}</span>
           <button
             type="button"
@@ -56,10 +54,4 @@ const getNotifIcon = (type) => {
   return 'info';
 };
 
-const getNotifColor = (type) => {
-  if (type === 'success') return 'var(--success)';
-  if (type === 'warning') return 'var(--warning)';
-  if (type === 'error') return 'var(--danger)';
-  return 'var(--accent)';
-};
 </script>
