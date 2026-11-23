@@ -2,123 +2,43 @@ import dotenv from 'dotenv';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import pool from './config/database.js';
-import redisClient from './config/redis.js';
+import { closeRedis, connectRedis } from './config/redis.js';
+import { CORS_ORIGIN } from './config/game.js';
 import createApp from './app.js';
 import GameService from './services/GameService.js';
 import registerGameSocket from './sockets/gameSocket.js';
+import { initSchema } from './db/schema.js';
+import { ensureUploadDir } from './services/uploadService.js';
+import Player from './models/Player.js';
 
 dotenv.config();
 
 const PORT = Number.parseInt(process.env.PORT || '3001', 10);
 
-async function initSchema() {
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS sessions (
-      id SERIAL PRIMARY KEY,
-      code VARCHAR(6) UNIQUE NOT NULL,
-      host_name VARCHAR(100) NOT NULL,
-      phase VARCHAR(20) NOT NULL DEFAULT 'waiting',
-      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-      updated_at TIMESTAMP NOT NULL DEFAULT NOW()
-    )
-  `);
-
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS players (
-      id SERIAL PRIMARY KEY,
-      session_id INTEGER NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
-      name VARCHAR(100) NOT NULL,
-      score INTEGER NOT NULL DEFAULT 0,
-      created_at TIMESTAMP NOT NULL DEFAULT NOW()
-    )
-  `);
-
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS musics (
-      id SERIAL PRIMARY KEY,
-      session_id INTEGER NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
-      player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
-      title VARCHAR(255) NOT NULL,
-      artist VARCHAR(255) NOT NULL,
-      file_path TEXT NOT NULL,
-      cover_url TEXT,
-      created_at TIMESTAMP NOT NULL DEFAULT NOW()
-    )
-  `);
-
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS votes (
-      id SERIAL PRIMARY KEY,
-      session_id INTEGER NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
-      voter_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
-      music_id INTEGER NOT NULL REFERENCES musics(id) ON DELETE CASCADE,
-      guessed_player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
-      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-      UNIQUE (session_id, voter_id, music_id)
-    )
-  `);
-
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS blind_test_answers (
-      id SERIAL PRIMARY KEY,
-      session_id INTEGER NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
-      player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
-      music_id INTEGER NOT NULL REFERENCES musics(id) ON DELETE CASCADE,
-      answer_title VARCHAR(255) NOT NULL,
-      answer_artist VARCHAR(255) NOT NULL,
-      is_correct BOOLEAN NOT NULL DEFAULT FALSE,
-      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-      UNIQUE (session_id, player_id, music_id)
-    )
-  `);
-
-  await pool.query(`
-    ALTER TABLE sessions 
-    ADD COLUMN IF NOT EXISTS max_musics_per_player INTEGER DEFAULT 3,
-    ADD COLUMN IF NOT EXISTS selection_duration INTEGER DEFAULT 120,
-    ADD COLUMN IF NOT EXISTS extract_duration INTEGER DEFAULT 20,
-    ADD COLUMN IF NOT EXISTS voting_duration INTEGER DEFAULT 30,
-    ADD COLUMN IF NOT EXISTS show_answers BOOLEAN DEFAULT TRUE,
-    ADD COLUMN IF NOT EXISTS max_players INTEGER DEFAULT 12,
-    ADD COLUMN IF NOT EXISTS current_music_index INTEGER DEFAULT -1,
-    ADD COLUMN IF NOT EXISTS voting_status VARCHAR(20) DEFAULT 'idle',
-    ADD COLUMN IF NOT EXISTS timer_ends_at TIMESTAMP,
-    ADD COLUMN IF NOT EXISTS auto_advance BOOLEAN DEFAULT FALSE,
-    ADD COLUMN IF NOT EXISTS show_vote_count BOOLEAN DEFAULT TRUE,
-    ADD COLUMN IF NOT EXISTS enable_blind_test BOOLEAN DEFAULT FALSE;
-  `);
-
-  await pool.query(`
-    ALTER TABLE players
-    ADD COLUMN IF NOT EXISTS is_connected BOOLEAN DEFAULT TRUE,
-    ADD COLUMN IF NOT EXISTS is_bot BOOLEAN DEFAULT FALSE,
-    ADD COLUMN IF NOT EXISTS is_observer BOOLEAN DEFAULT FALSE,
-    ADD COLUMN IF NOT EXISTS avatar_seed VARCHAR(255);
-  `);
-
-  await pool.query(`
-    ALTER TABLE musics
-    ADD COLUMN IF NOT EXISTS play_order INTEGER DEFAULT -1,
-    ADD COLUMN IF NOT EXISTS cover_url TEXT,
-    ADD COLUMN IF NOT EXISTS blind_test_options JSONB;
-  `);
-}
+// A malformed client event must never take down every room and timer. Log
+// unexpected failures instead of letting Node terminate the whole process.
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled promise rejection:', reason);
+});
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught exception:', error);
+});
 
 async function bootstrap() {
   try {
-    await initSchema();
+    await initSchema(pool);
+    await ensureUploadDir();
+    await Player.markAllDisconnected();
 
-    try {
-      await redisClient.connect();
-    } catch (error) {
-      console.warn('Redis indisponible, continuation sans cache:', error.message);
-    }
+    // The cache is optional: never block HTTP startup on Redis.
+    void connectRedis();
 
     const io = new Server({
       cors: {
-        origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
-        credentials: true,
+        origin: CORS_ORIGIN.split(',').map((origin) => origin.trim()).filter(Boolean),
+        credentials: false,
       },
+      maxHttpBufferSize: 1_000_000,
     });
 
     const gameNamespace = io.of('/game');
@@ -131,10 +51,27 @@ async function bootstrap() {
     io.attach(server);
 
     await gameService.recoverSessions();
+    gameService.startMaintenance();
 
     server.listen(PORT, () => {
       console.log(`Backend running on http://localhost:${PORT}`);
     });
+
+    let shuttingDown = false;
+    const shutdown = async (signal) => {
+      if (shuttingDown) return;
+      shuttingDown = true;
+      console.log(`Received ${signal}, shutting down`);
+      gameService.shutdown();
+      io.close();
+      server.close();
+      await closeRedis();
+      await pool.end();
+      process.exit(0);
+    };
+
+    process.on('SIGINT', () => { void shutdown('SIGINT'); });
+    process.on('SIGTERM', () => { void shutdown('SIGTERM'); });
   } catch (error) {
     console.error('Unable to start backend:', error);
     process.exit(1);

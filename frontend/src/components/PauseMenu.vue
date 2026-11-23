@@ -154,7 +154,7 @@
                       <span v-if="p.id === store.player?.id" class="tag tag-accent" style="margin-left: 4px">Vous</span>
                     </p>
                     <p class="media-sub">
-                      <template v-if="p.name === store.session?.host_name">Hôte</template>
+                      <template v-if="p.id === store.session?.host_player_id">Hôte</template>
                       <template v-else-if="p.is_bot">Bot</template>
                       <template v-else>{{ p.is_connected ? 'En ligne' : 'Hors ligne' }}</template>
                     </p>
@@ -196,6 +196,7 @@ import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useGameStore } from '../stores/gameStore';
 import { theme, setTheme } from '../services/themeService';
+import { avatarUrl } from '../utils/avatar';
 import AppIcon from './AppIcon.vue';
 
 const route = useRoute();
@@ -211,9 +212,7 @@ const isVisible = computed(() => {
   return store.session && store.player && route.path.startsWith('/game/');
 });
 
-const isHost = computed(() => {
-  return store.player && store.session && store.player.name === store.session.host_name;
-});
+const isHost = computed(() => store.isHost);
 
 const isWaitingRoom = computed(() => {
   return route.path === `/game/${store.session?.code}`;
@@ -231,9 +230,6 @@ const phaseLabel = computed(() => {
 const resumeLabel = computed(() => (
   isWaitingRoom.value || isFinished.value ? 'Fermer le menu' : 'Reprendre la partie'
 ));
-
-const avatarUrl = (seed) =>
-  `https://api.dicebear.com/9.x/notionists-neutral/svg?seed=${encodeURIComponent(seed)}&backgroundColor=e6dcff,d9e8ff,f8d9ea`;
 
 const initials = (name) =>
   (name || '?')

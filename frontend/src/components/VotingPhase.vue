@@ -108,12 +108,11 @@
               <span class="status-dot is-live"></span>
               Vote ouvert
             </span>
-            <div class="artwork artwork-compact">
-              <img v-if="store.currentMusic?.cover_url" :src="store.currentMusic.cover_url" :alt="`Pochette de ${store.currentMusic?.title}`" />
-              <span v-else class="artwork-fallback"><AppIcon name="music" :size="40" :stroke-width="1.25" /></span>
-            </div>
-            <h2 class="stage-title">{{ store.currentMusic?.title }}</h2>
-            <p class="stage-text">{{ store.currentMusic?.artist }}</p>
+            <div class="mystery-record" aria-hidden="true"></div>
+            <h2 class="stage-title">À vous de dénoncer</h2>
+            <p class="stage-text pretty">
+              Désignez le joueur qui a proposé cet extrait. Le titre sera révélé à la fin de la manche.
+            </p>
 
             <div v-if="audioError" class="callout callout-danger" style="margin-top: 14px; width: 100%; max-width: 380px" role="alert">
               <AppIcon name="alert-triangle" :size="15" style="flex-shrink: 0; margin-top: 1px" />
@@ -211,7 +210,7 @@
                     <span>
                       {{ target.name }}
                       <span v-if="target.id === store.player?.id" class="tag" style="margin-left: 4px">Vous</span>
-                      <span v-else-if="target.name === store.session?.host_name" class="tag" style="margin-left: 4px">Hôte</span>
+                      <span v-else-if="target.id === store.session?.host_player_id" class="tag" style="margin-left: 4px">Hôte</span>
                     </span>
                   </span>
                   <span
@@ -312,6 +311,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useGameStore } from '../stores/gameStore';
+import { avatarUrl } from '../utils/avatar';
 import GameHeader from './GameHeader.vue';
 import GamePlayersTracker from './GamePlayersTracker.vue';
 import AppIcon from './AppIcon.vue';
@@ -405,9 +405,7 @@ const showSidePanel = computed(() => {
   return status.value === 'voting' || status.value === 'revelation';
 });
 
-const isHost = computed(() => {
-  return store.player && store.session && store.player.name === store.session.host_name;
-});
+const isHost = computed(() => store.isHost);
 
 const launchRound = async () => {
   if (!isHost.value) return;
@@ -583,9 +581,6 @@ const getVoteCountForPlayer = (playerId) => {
   return 0;
 };
 
-const avatarUrl = (seed) =>
-  `https://api.dicebear.com/9.x/notionists-neutral/svg?seed=${encodeURIComponent(seed)}&backgroundColor=e6dcff,d9e8ff,f8d9ea`;
-
 const initials = (name) =>
   (name || '?')
     .split(/\s+/)
@@ -658,12 +653,12 @@ const updateTimer = () => {
 };
 
 onMounted(async () => {
-  if (!store.player) {
+  await store.loadSession(route.params.code);
+  if (!store.token || !store.player || store.player.session_id !== store.session?.id) {
     router.push(`/game/${route.params.code}`);
     return;
   }
 
-  await store.loadSession(route.params.code);
   store.connectSocket(route.params.code);
 
   updateTimer();

@@ -104,7 +104,7 @@
                   <p class="rank-name">
                     {{ player.name }}
                     <span v-if="player.id === store.player?.id" class="tag tag-accent" style="margin-left: 4px">Vous</span>
-                    <span v-if="player.name === store.session?.host_name" class="tag" style="margin-left: 4px">Hôte</span>
+                    <span v-if="player.id === store.session?.host_player_id" class="tag" style="margin-left: 4px">Hôte</span>
                     <span v-if="player.is_bot" class="tag" style="margin-left: 4px">Bot</span>
                     <span v-if="player.is_observer" class="tag" style="margin-left: 4px">Spectateur</span>
                   </p>
@@ -223,6 +223,7 @@
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useGameStore } from '../stores/gameStore';
+import { avatarUrl } from '../utils/avatar';
 import GameHeader from './GameHeader.vue';
 import AppIcon from './AppIcon.vue';
 
@@ -230,9 +231,7 @@ const route = useRoute();
 const router = useRouter();
 const store = useGameStore();
 
-const isHost = computed(() => {
-  return store.player && store.session && store.player.name === store.session.host_name;
-});
+const isHost = computed(() => store.isHost);
 
 const podium = computed(() => store.ranking.slice(0, 3));
 
@@ -266,9 +265,6 @@ const getPlayerName = (id) => {
   const p = store.players.find(player => player.id === id);
   return p ? p.name : 'Inconnu';
 };
-
-const avatarUrl = (seed) =>
-  `https://api.dicebear.com/9.x/notionists-neutral/svg?seed=${encodeURIComponent(seed)}&backgroundColor=e6dcff,d9e8ff,f8d9ea`;
 
 const initials = (name) =>
   (name || '?')
@@ -323,7 +319,8 @@ onMounted(async () => {
     return;
   }
 
-  if (!store.player) {
+  await store.loadSession(route.params.code);
+  if (!store.token || !store.player || store.player.session_id !== store.session?.id) {
     router.push(`/game/${route.params.code}`);
     return;
   }

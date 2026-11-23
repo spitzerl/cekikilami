@@ -1,376 +1,335 @@
 import { Router } from 'express';
 import multer from 'multer';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import { createRateLimiters } from '../security/rateLimits.js';
+import {
+  extractBearerToken,
+  requireAuth,
+  requireHost,
+  requireSessionPlayer,
+  resolvePlayerToken,
+} from '../security/auth.js';
+import { httpError } from '../security/errors.js';
+import {
+  normalizeSessionCode,
+  requireNonEmptyString,
+  requirePlayerName,
+  requirePositiveInteger,
+} from '../security/validation.js';
+import { requireAudioUrl, requireCoverUrl } from '../security/media.js';
+import { UPLOAD_LIMITS } from '../config/game.js';
+import {
+  deleteUpload,
+  detectAudioExtension,
+  saveUpload,
+} from '../services/uploadService.js';
+import { searchTracks } from '../services/deezerService.js';
+import { getAvatar } from '../services/avatarService.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const uploadDir = path.resolve(__dirname, '../../uploads');
-
-const storage = multer.diskStorage({
-  destination: uploadDir,
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname || '').toLowerCase();
-    const safeExt = ['.mp3', '.wav', '.ogg', '.m4a'].includes(ext) ? ext : '.mp3';
-    cb(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}${safeExt}`);
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: UPLOAD_LIMITS.maxFileBytes,
+    files: 1,
+    fields: 20,
+    parts: 25,
   },
 });
 
-const upload = multer({
-  storage,
-  limits: { fileSize: 10 * 1024 * 1024 },
-});
-
-function requireNonEmptyString(value, fieldName) {
-  if (!value || typeof value !== 'string' || !value.trim()) {
-    const error = new Error(`Le champ ${fieldName} est requis`);
-    error.status = 400;
-    throw error;
-  }
-  return value.trim();
-}
-
-function requirePositiveInteger(value, fieldName) {
-  const parsed = Number(value);
-  if (!Number.isInteger(parsed) || parsed <= 0) {
-    const error = new Error(`Le champ ${fieldName} doit être un entier positif`);
-    error.status = 400;
-    throw error;
-  }
-  return parsed;
-}
-
-function requireHttpUrl(value, fieldName) {
-  try {
-    const parsed = new URL(requireNonEmptyString(value, fieldName));
-    if (!['http:', 'https:'].includes(parsed.protocol)) {
-      const error = new Error(`Le champ ${fieldName} doit être une URL HTTP valide`);
+function uploadMiddleware(req, res, next) {
+  upload.single('audio')(req, res, (error) => {
+    if (!error) {
+      next();
+      return;
+    }
+    if (error.code === 'LIMIT_FILE_SIZE') {
+      error.status = 413;
+      error.message = 'Fichier audio trop volumineux';
+    } else if (error.code?.startsWith('LIMIT_')) {
       error.status = 400;
-      throw error;
+      error.message = 'Envoi de fichier invalide';
     }
-    return parsed.toString();
-  } catch (error) {
-    if (error.status) {
-      throw error;
-    }
-    const invalidUrlError = new Error(`Le champ ${fieldName} doit être une URL valide`);
-    invalidUrlError.status = 400;
-    throw invalidUrlError;
-  }
+    next(error);
+  });
+}
+
+function sessionResponse(session) {
+  const { expires_at, ...safe } = session;
+  return safe;
 }
 
 export default function buildRoutes(gameService, ioNamespace) {
   const router = Router();
+  const limits = createRateLimiters();
 
-  router.get('/deezer/search', async (req, res, next) => {
+  router.get('/avatars/:seed', limits.avatar, async (req, res, next) => {
     try {
-      const queryText = req.query?.q ? req.query.q.trim() : '';
-      const url = queryText 
-        ? `https://api.deezer.com/search?q=${encodeURIComponent(queryText)}&limit=25`
-        : `https://api.deezer.com/chart/0/tracks?limit=25`;
+      const avatar = await getAvatar(req.params.seed);
+      res.setHeader('Content-Type', 'image/png');
+      res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      res.send(avatar.buffer);
+    } catch (error) {
+      next(error);
+    }
+  });
 
-      const response = await fetch(url);
+  router.post('/sessions', limits.createSession, async (req, res, next) => {
+    try {
+      const hostName = requirePlayerName(req.body?.hostName, 'hostName');
+      const data = await gameService.createSession(hostName);
+      res.status(201).json({
+        session: sessionResponse(data.session),
+        host: data.player,
+        token: data.token,
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
 
-      if (!response.ok) {
-        const error = new Error('Deezer indisponible');
-        error.status = 502;
-        throw error;
+  router.get('/sessions/:code/summary', limits.summary, async (req, res, next) => {
+    try {
+      const code = normalizeSessionCode(req.params.code);
+      res.setHeader('Cache-Control', 'no-store');
+      res.json(await gameService.getSessionSummary(code));
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post('/sessions/:code/join', limits.join, async (req, res, next) => {
+    try {
+      const code = normalizeSessionCode(req.params.code);
+      const playerName = requirePlayerName(req.body?.playerName);
+      const token = extractBearerToken(req);
+      let tokenPlayer = null;
+
+      if (token) {
+        tokenPlayer = await resolvePlayerToken(token);
+        if (!tokenPlayer) throw httpError(401, 'Jeton joueur invalide');
       }
 
-      const payload = await response.json();
-      const tracks = Array.isArray(payload?.data)
-        ? payload.data
-            .filter((track) => track?.preview)
-            .map((track) => ({
-              id: track.id,
-              title: track.title,
-              artist: track.artist?.name || 'Inconnu',
-              preview: track.preview ? track.preview.replace('http://', 'https://') : '',
-              link: track.link || null,
-              cover: track.album?.cover_medium ? track.album.cover_medium.replace('http://', 'https://') : null,
-            }))
-        : [];
+      const data = await gameService.joinSession(code, playerName, { token, tokenPlayer });
+      await gameService.broadcastState(code);
+      ioNamespace.to(code).emit('sound:play', { type: 'join' });
+      res.status(201).json({
+        session: sessionResponse(data.session),
+        player: data.player,
+        token: data.token,
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
 
+  router.get('/deezer/search', requireAuth, limits.deezer, async (req, res, next) => {
+    try {
+      const query = typeof req.query?.q === 'string' ? req.query.q.slice(0, 100) : '';
+      const tracks = await searchTracks(query, { limit: 25 });
+      res.setHeader('Cache-Control', 'private, max-age=300');
       res.json({ tracks });
     } catch (error) {
-      next(error);
+      if (error.status) {
+        next(error);
+      } else {
+        next(httpError(502, 'Deezer indisponible'));
+      }
     }
   });
 
-  router.post('/sessions', async (req, res, next) => {
+  router.use('/sessions/:code', requireAuth, requireSessionPlayer);
+
+  router.get('/sessions/:code', limits.state, async (req, res, next) => {
     try {
-      const hostName = requireNonEmptyString(req.body?.hostName, 'hostName');
-      const data = await gameService.createSession(hostName);
-      res.status(201).json(data);
+      res.setHeader('Cache-Control', 'no-store');
+      res.json(await gameService.getState(req.sessionCode, req.player.id));
     } catch (error) {
       next(error);
     }
   });
 
-  router.post('/sessions/:code/join', async (req, res, next) => {
+  router.post('/sessions/:code/config', requireHost, async (req, res, next) => {
     try {
-      const playerName = requireNonEmptyString(req.body?.playerName, 'playerName');
-      const code = requireNonEmptyString(req.params.code, 'code').toUpperCase();
-      const data = await gameService.joinSession(code, playerName);
-      await gameService.broadcastState(code);
-      ioNamespace.to(code).emit('sound:play', { type: 'join' });
-      res.status(201).json(data);
+      res.json(await gameService.updateConfig(req.sessionCode, req.body, req.player.id));
     } catch (error) {
       next(error);
     }
   });
 
-  router.get('/sessions/:code', async (req, res, next) => {
+  router.post('/sessions/:code/bots', requireHost, async (req, res, next) => {
     try {
-      const code = requireNonEmptyString(req.params.code, 'code').toUpperCase();
-      const playerId = req.query.playerId || null;
-      res.json(await gameService.getState(code, playerId));
-    } catch (error) {
-      next(error);
-    }
-  });
-
-  router.post('/sessions/:code/config', async (req, res, next) => {
-    try {
-      const code = requireNonEmptyString(req.params.code, 'code').toUpperCase();
-      const state = await gameService.updateConfig(code, req.body);
-      await gameService.broadcastState(code);
+      const state = await gameService.addBot(req.sessionCode, req.player.id);
+      ioNamespace.to(req.sessionCode).emit('sound:play', { type: 'join' });
       res.json(state);
     } catch (error) {
       next(error);
     }
   });
 
-  router.post('/sessions/:code/bots', async (req, res, next) => {
+  router.post('/sessions/:code/start-selection', requireHost, async (req, res, next) => {
     try {
-      const code = requireNonEmptyString(req.params.code, 'code').toUpperCase();
-      const state = await gameService.addBot(code);
-      await gameService.broadcastState(code);
-      ioNamespace.to(code).emit('sound:play', { type: 'join' });
-      res.json(state);
+      res.json(await gameService.startSelection(req.sessionCode, req.player.id));
     } catch (error) {
       next(error);
     }
   });
 
-  router.post('/sessions/:code/start-selection', async (req, res, next) => {
-    try {
-      const code = requireNonEmptyString(req.params.code, 'code').toUpperCase();
-      const state = await gameService.startSelection(code);
-      res.json(state);
-    } catch (error) {
-      next(error);
+  router.post(
+    '/sessions/:code/musics',
+    limits.upload,
+    uploadMiddleware,
+    async (req, res, next) => {
+      let storedPath = null;
+      try {
+        const title = requireNonEmptyString(req.body?.title, 'title', { maxLength: 255 });
+        const artist = requireNonEmptyString(req.body?.artist, 'artist', { maxLength: 255 });
+        let filePath = null;
+        let fileSize = 0;
+
+        if (req.file) {
+          const extension = await detectAudioExtension(req.file.buffer);
+          if (!extension) {
+            throw httpError(400, 'Format audio non supporté (mp3, wav, ogg ou m4a)');
+          }
+          const saved = await saveUpload(req.file.buffer, extension);
+          filePath = saved.filePath;
+          fileSize = saved.fileSize;
+          storedPath = saved.filePath;
+        } else if (req.body?.deezerPreviewUrl) {
+          filePath = requireAudioUrl(req.body.deezerPreviewUrl, 'deezerPreviewUrl');
+        }
+
+        if (!filePath) throw httpError(400, 'Le fichier audio est requis');
+        const coverUrl = req.body?.coverUrl ? requireCoverUrl(req.body.coverUrl, 'coverUrl') : null;
+
+        const music = await gameService.addMusic(req.sessionCode, {
+          playerId: req.player.id,
+          title,
+          artist,
+          filePath,
+          coverUrl,
+          fileSize,
+        });
+        storedPath = null;
+
+        await gameService.broadcastState(req.sessionCode);
+        res.status(201).json(music);
+      } catch (error) {
+        if (storedPath) await deleteUpload(storedPath);
+        next(error);
+      }
     }
-  });
-
-  router.post('/sessions/:code/musics', upload.single('audio'), async (req, res, next) => {
-    try {
-      const code = requireNonEmptyString(req.params.code, 'code').toUpperCase();
-      const playerId = requirePositiveInteger(req.body?.playerId, 'playerId');
-      const title = requireNonEmptyString(req.body?.title, 'title');
-      const artist = requireNonEmptyString(req.body?.artist, 'artist');
-
-      if (!Number.isInteger(playerId) || playerId <= 0) {
-        const error = new Error('playerId invalide');
-        error.status = 400;
-        throw error;
-      }
-
-      let filePath = null;
-      if (req.file?.filename) {
-        filePath = `/uploads/${req.file.filename}`;
-      } else if (req.body?.deezerPreviewUrl) {
-        filePath = requireHttpUrl(req.body.deezerPreviewUrl, 'deezerPreviewUrl');
-      }
-
-      if (!filePath) {
-        const error = new Error('Le fichier audio est requis');
-        error.status = 400;
-        throw error;
-      }
-
-      const coverUrl = req.body?.coverUrl ? requireHttpUrl(req.body.coverUrl, 'coverUrl') : null;
-
-      const music = await gameService.addMusic(code, {
-        playerId,
-        title,
-        artist,
-        filePath,
-        coverUrl,
-      });
-
-      await gameService.broadcastState(code);
-      res.status(201).json(music);
-    } catch (error) {
-      next(error);
-    }
-  });
+  );
 
   router.delete('/sessions/:code/musics/:musicId', async (req, res, next) => {
     try {
-      const code = requireNonEmptyString(req.params.code, 'code').toUpperCase();
-      const musicId = Number.parseInt(requireNonEmptyString(req.params.musicId, 'musicId'), 10);
-      const playerId = Number.parseInt(requireNonEmptyString(req.body?.playerId || req.query?.playerId, 'playerId'), 10);
-      const state = await gameService.deleteMusic(code, musicId, playerId);
-      await gameService.broadcastState(code);
+      const musicId = requirePositiveInteger(req.params.musicId, 'musicId');
+      res.json(await gameService.deleteMusic(req.sessionCode, musicId, req.player.id));
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post('/sessions/:code/start-voting', requireHost, async (req, res, next) => {
+    try {
+      res.json(await gameService.startVoting(req.sessionCode, req.player.id));
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post('/sessions/:code/start-round', requireHost, async (req, res, next) => {
+    try {
+      res.json(await gameService.startRound(req.sessionCode, req.player.id));
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post('/sessions/:code/advance-round', requireHost, async (req, res, next) => {
+    try {
+      res.json(await gameService.advanceRound(req.sessionCode, req.player.id));
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post('/sessions/:code/votes', limits.vote, async (req, res, next) => {
+    try {
+      const musicId = requirePositiveInteger(req.body?.musicId, 'musicId');
+      const guessedPlayerId = requirePositiveInteger(req.body?.guessedPlayerId, 'guessedPlayerId');
+      const state = await gameService.submitVote(req.sessionCode, req.player.id, musicId, guessedPlayerId);
       res.json(state);
     } catch (error) {
       next(error);
     }
   });
 
-  router.post('/sessions/:code/start-voting', async (req, res, next) => {
+  router.post('/sessions/:code/blind-test-answers', limits.vote, async (req, res, next) => {
     try {
-      const code = requireNonEmptyString(req.params.code, 'code').toUpperCase();
-      await gameService.startVoting(code);
-      const state = await gameService.getState(code);
+      const musicId = requirePositiveInteger(req.body?.musicId, 'musicId');
+      const answerTitle = requireNonEmptyString(req.body?.answerTitle, 'answerTitle', { maxLength: 255 });
+      const answerArtist = requireNonEmptyString(req.body?.answerArtist, 'answerArtist', { maxLength: 255 });
+      const state = await gameService.submitBlindTestAnswer(
+        req.sessionCode,
+        req.player.id,
+        musicId,
+        answerTitle,
+        answerArtist
+      );
       res.json(state);
     } catch (error) {
       next(error);
     }
   });
 
-  router.post('/sessions/:code/start-round', async (req, res, next) => {
+  router.post('/sessions/:code/finish', requireHost, async (req, res, next) => {
     try {
-      const code = requireNonEmptyString(req.params.code, 'code').toUpperCase();
-      const state = await gameService.startRound(code);
-      await gameService.broadcastState(code);
-      res.json(state);
+      res.json(await gameService.finishSession(req.sessionCode, req.player.id));
     } catch (error) {
       next(error);
     }
   });
 
-  router.post('/sessions/:code/advance-round', async (req, res, next) => {
+  router.post('/sessions/:code/reset', requireHost, async (req, res, next) => {
     try {
-      const code = requireNonEmptyString(req.params.code, 'code').toUpperCase();
-      const state = await gameService.advanceRound(code);
-      res.json(state);
+      res.json(await gameService.resetSession(req.sessionCode, req.player.id));
     } catch (error) {
       next(error);
     }
   });
 
-  router.post('/sessions/:code/votes', async (req, res, next) => {
+  router.get('/sessions/:code/results', limits.state, async (req, res, next) => {
     try {
-      const code = requireNonEmptyString(req.params.code, 'code').toUpperCase();
-      const voterId = Number.parseInt(req.body?.voterId, 10);
-      const musicId = Number.parseInt(req.body?.musicId, 10);
-      const guessedPlayerId = Number.parseInt(req.body?.guessedPlayerId, 10);
-
-      if (Number.isNaN(voterId) || Number.isNaN(musicId) || Number.isNaN(guessedPlayerId)) {
-        const error = new Error('Les identifiants voterId, musicId et guessedPlayerId sont requis et doivent être des entiers');
-        error.status = 400;
-        throw error;
-      }
-
-      const state = await gameService.submitVote(code, voterId, musicId, guessedPlayerId);
-      res.json(state);
+      res.setHeader('Cache-Control', 'no-store');
+      res.json(await gameService.getResults(req.sessionCode, req.player.id));
     } catch (error) {
       next(error);
     }
   });
 
-  router.post('/sessions/:code/blind-test-answers', async (req, res, next) => {
+  router.post('/sessions/:code/players/:playerId/promote', requireHost, async (req, res, next) => {
     try {
-      const code = requireNonEmptyString(req.params.code, 'code').toUpperCase();
-      const playerId = Number.parseInt(req.body?.playerId, 10);
-      const musicId = Number.parseInt(req.body?.musicId, 10);
-      const answerTitle = requireNonEmptyString(req.body?.answerTitle, 'answerTitle');
-      const answerArtist = requireNonEmptyString(req.body?.answerArtist, 'answerArtist');
-
-      if (Number.isNaN(playerId) || Number.isNaN(musicId)) {
-        const error = new Error('Les identifiants playerId et musicId sont requis et doivent être des entiers');
-        error.status = 400;
-        throw error;
-      }
-
-      const state = await gameService.submitBlindTestAnswer(code, playerId, musicId, answerTitle, answerArtist);
-      res.json(state);
+      const targetPlayerId = requirePositiveInteger(req.params.playerId, 'playerId');
+      res.json(await gameService.promotePlayer(req.sessionCode, req.player.id, targetPlayerId));
     } catch (error) {
       next(error);
     }
   });
 
-  router.post('/sessions/:code/finish', async (req, res, next) => {
+  router.post('/sessions/:code/players/:playerId/kick', requireHost, async (req, res, next) => {
     try {
-      const code = requireNonEmptyString(req.params.code, 'code').toUpperCase();
-      const results = await gameService.finishSession(code);
-      res.json(results);
+      const targetPlayerId = requirePositiveInteger(req.params.playerId, 'playerId');
+      res.json(await gameService.kickPlayer(req.sessionCode, req.player.id, targetPlayerId));
     } catch (error) {
       next(error);
     }
   });
 
-  router.post('/sessions/:code/reset', async (req, res, next) => {
-    try {
-      const code = requireNonEmptyString(req.params.code, 'code').toUpperCase();
-      const state = await gameService.resetSession(code);
-      res.json(state);
-    } catch (error) {
-      next(error);
-    }
-  });
-
-  router.get('/sessions/:code/results', async (req, res, next) => {
-    try {
-      const code = requireNonEmptyString(req.params.code, 'code').toUpperCase();
-      res.json(await gameService.getResults(code));
-    } catch (error) {
-      next(error);
-    }
-  });
-
-  router.post('/sessions/:code/players/:playerId/promote', async (req, res, next) => {
-    try {
-      const code = requireNonEmptyString(req.params.code, 'code').toUpperCase();
-      const targetPlayerId = Number.parseInt(req.params.playerId, 10);
-      const requesterId = Number.parseInt(req.body?.requesterId, 10);
-
-      if (Number.isNaN(targetPlayerId) || Number.isNaN(requesterId)) {
-        const error = new Error('playerId et requesterId doivent être des entiers valides');
-        error.status = 400;
-        throw error;
-      }
-
-      const state = await gameService.promotePlayer(code, requesterId, targetPlayerId);
-      res.json(state);
-    } catch (error) {
-      next(error);
-    }
-  });
-
-  router.post('/sessions/:code/players/:playerId/kick', async (req, res, next) => {
-    try {
-      const code = requireNonEmptyString(req.params.code, 'code').toUpperCase();
-      const targetPlayerId = Number.parseInt(req.params.playerId, 10);
-      const requesterId = Number.parseInt(req.body?.requesterId, 10);
-
-      if (Number.isNaN(targetPlayerId) || Number.isNaN(requesterId)) {
-        const error = new Error('playerId et requesterId doivent être des entiers valides');
-        error.status = 400;
-        throw error;
-      }
-
-      const state = await gameService.kickPlayer(code, requesterId, targetPlayerId);
-      res.json(state);
-    } catch (error) {
-      next(error);
-    }
-  });
   router.post('/sessions/:code/players/:playerId/avatar', async (req, res, next) => {
     try {
-      const code = requireNonEmptyString(req.params.code, 'code').toUpperCase();
-      const targetPlayerId = Number.parseInt(req.params.playerId, 10);
-
-      if (Number.isNaN(targetPlayerId)) {
-        const error = new Error('playerId doit être un entier valide');
-        error.status = 400;
-        throw error;
-      }
-
-      const state = await gameService.regenerateAvatar(code, targetPlayerId);
-      res.json(state);
+      const targetPlayerId = requirePositiveInteger(req.params.playerId, 'playerId');
+      res.json(await gameService.regenerateAvatar(req.sessionCode, targetPlayerId, req.player.id));
     } catch (error) {
       next(error);
     }

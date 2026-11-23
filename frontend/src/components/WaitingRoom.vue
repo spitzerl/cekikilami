@@ -114,7 +114,7 @@
               <span class="player-name">
                 {{ player.name }}
                 <AppIcon
-                  v-if="player.name === store.session?.host_name"
+                  v-if="player.id === store.session?.host_player_id"
                   name="crown"
                   :size="12"
                   class="player-crown"
@@ -354,6 +354,7 @@
 import { ref, computed, onMounted, onUnmounted, reactive, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useGameStore } from '../stores/gameStore';
+import { avatarUrl } from '../utils/avatar';
 import GameHeader from './GameHeader.vue';
 import RoomCode from './RoomCode.vue';
 import AppIcon from './AppIcon.vue';
@@ -375,9 +376,6 @@ const toggleOptions = [
   { key: 'autoAdvance', label: 'Enchaîner les manches', desc: 'Passe à la manche suivante sans action de l’hôte.' },
 ];
 
-const avatarUrl = (seed) =>
-  `https://api.dicebear.com/9.x/notionists-neutral/svg?seed=${encodeURIComponent(seed)}&backgroundColor=e6dcff,d9e8ff,f8d9ea`;
-
 const initials = (name) =>
   (name || '?')
     .split(/\s+/)
@@ -398,9 +396,7 @@ const config = reactive({
   enableBlindTest: false,
 });
 
-const isHost = computed(() =>
-  store.player && store.session && store.player.name === store.session.host_name
-);
+const isHost = computed(() => store.isHost);
 
 const maxPlayers = computed(() => store.session?.max_players || 8);
 
@@ -419,7 +415,7 @@ const settingsSummary = computed(() => {
 const playerRole = (player) => {
   if (!player.is_connected) return 'Hors ligne';
   if (player.is_bot) return 'Bot';
-  const isPlayerHost = player.name === store.session?.host_name;
+  const isPlayerHost = player.id === store.session?.host_player_id;
   const isLocal = player.id === store.player?.id;
   if (isPlayerHost) return isLocal ? 'Hôte, vous' : 'Hôte';
   if (isLocal) return 'Vous';
@@ -467,7 +463,7 @@ const handleSettingsKeyDown = (e) => {
 onMounted(async () => {
   try {
     await loadAndSyncConfig();
-    if (store.player && store.player.session_id === store.session?.id) {
+    if (store.token && store.player && store.player.session_id === store.session?.id) {
       store.connectSocket(route.params.code);
     }
     window.addEventListener('keydown', handleKeyDown);
@@ -488,6 +484,8 @@ onUnmounted(() => {
 watch(() => store.session, (s) => {
   if (!s) return;
   syncConfig(s);
+  // An invite link without a valid identity must stay on the join form.
+  if (!store.player || store.player.session_id !== s.id) return;
   if (s.phase === 'selection') router.push(`/game/${route.params.code}/selection`);
   else if (s.phase === 'voting') router.push(`/game/${route.params.code}/voting`);
   else if (s.phase === 'results') router.push(`/game/${route.params.code}/results`);

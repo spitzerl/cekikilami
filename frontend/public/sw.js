@@ -1,7 +1,9 @@
-const CACHE_NAME = 'cekikilami-v4';
+const CACHE_NAME = 'cekikilami-v5';
 const ASSETS = [
   '/',
   '/index.html',
+  '/theme-init.js',
+  '/sw-register.js',
   '/manifest.json',
   '/icon-192.png',
   '/icon-512.png',

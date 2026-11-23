@@ -2,10 +2,19 @@ import { defineStore } from 'pinia';
 import apiService from '../services/apiService';
 import socketService from '../services/socketService';
 
+function readStoredPlayer() {
+  try {
+    return JSON.parse(localStorage.getItem('music_game_player')) || null;
+  } catch {
+    return null;
+  }
+}
+
 export const useGameStore = defineStore('game', {
   state: () => ({
     session: null,
-    player: JSON.parse(localStorage.getItem('music_game_player')) || null,
+    player: readStoredPlayer(),
+    token: localStorage.getItem('music_game_token') || null,
     players: [],
     musics: [],
     currentMusic: null,
@@ -20,9 +29,34 @@ export const useGameStore = defineStore('game', {
   getters: {
     correctedNow: (state) => {
       return () => Date.now() + state.serverTimeOffset;
-    }
+    },
+    isHost: (state) => Boolean(
+      state.session
+      && state.player
+      && state.session.host_player_id === state.player.id
+    ),
   },
   actions: {
+    persistIdentity(player, token) {
+      this.player = player || null;
+      this.token = token || null;
+      if (player) {
+        localStorage.setItem('music_game_player', JSON.stringify(player));
+      } else {
+        localStorage.removeItem('music_game_player');
+      }
+      if (token) {
+        localStorage.setItem('music_game_token', token);
+      } else {
+        localStorage.removeItem('music_game_token');
+      }
+    },
+    clearIdentity() {
+      this.player = null;
+      this.token = null;
+      localStorage.removeItem('music_game_player');
+      localStorage.removeItem('music_game_token');
+    },
     applyState(data) {
       if (!data) return;
       if (data.serverTime) this.updateServerTimeOffset(data.serverTime);
@@ -32,6 +66,7 @@ export const useGameStore = defineStore('game', {
       if (data.currentMusic !== undefined) this.currentMusic = data.currentMusic || null;
       if (data.votes !== undefined) this.votes = data.votes || null;
       if (data.musicCounts !== undefined) this.musicCounts = data.musicCounts || null;
+      if (data.ranking !== undefined) this.ranking = data.ranking || [];
       if (data.player) {
         this.player = data.player;
         localStorage.setItem('music_game_player', JSON.stringify(data.player));
@@ -40,20 +75,60 @@ export const useGameStore = defineStore('game', {
     async createSession(hostName) {
       const { data } = await apiService.createSession(hostName);
       this.session = data.session;
-      this.player = data.host;
-      localStorage.setItem('music_game_player', JSON.stringify(data.host));
+      this.persistIdentity(data.host, data.token);
       return data;
     },
     async joinSession(code, playerName) {
-      const { data } = await apiService.joinSession(code, playerName);
+      let response;
+      try {
+        response = await apiService.joinSession(code, playerName);
+      } catch (error) {
+        if (error.response?.status === 401) {
+          this.disconnectSocket();
+          this.clearIdentity();
+          response = await apiService.joinSession(code, playerName);
+        } else {
+          throw error;
+        }
+      }
+
+      const { data } = response;
+      this.persistIdentity(data.player, data.token);
       this.applyState(data);
       return data;
     },
     async loadSession(code) {
-      const playerId = this.player?.id || null;
-      const { data } = await apiService.getSession(code, playerId);
-      this.applyState(data);
-      return data;
+      if (!this.token) {
+        const { data } = await apiService.getSessionSummary(code);
+        this.session = data.session;
+        this.players = [];
+        this.musics = [];
+        this.currentMusic = null;
+        this.votes = null;
+        this.musicCounts = null;
+        return data;
+      }
+
+      try {
+        const { data } = await apiService.getSession(code);
+        this.applyState(data);
+        return data;
+      } catch (error) {
+        const status = error.response?.status;
+        if (status === 401 || status === 403) {
+          this.disconnectSocket();
+          this.clearIdentity();
+          const { data } = await apiService.getSessionSummary(code);
+          this.session = data.session;
+          this.players = [];
+          this.musics = [];
+          this.currentMusic = null;
+          this.votes = null;
+          this.musicCounts = null;
+          return data;
+        }
+        throw error;
+      }
     },
     async updateConfig(config) {
       if (!this.session) return;
@@ -81,7 +156,7 @@ export const useGameStore = defineStore('game', {
     },
     async deleteMusic(musicId) {
       if (!this.session || !this.player) return;
-      const { data } = await apiService.deleteMusic(this.session.code, musicId, this.player.id);
+      const { data } = await apiService.deleteMusic(this.session.code, musicId);
       this.applyState(data);
       return data;
     },
@@ -94,7 +169,6 @@ export const useGameStore = defineStore('game', {
     async submitVote(musicId, guessedPlayerId) {
       if (!this.session || !this.player) return;
       const { data } = await apiService.submitVote(this.session.code, {
-        voterId: this.player.id,
         musicId,
         guessedPlayerId,
       });
@@ -104,7 +178,6 @@ export const useGameStore = defineStore('game', {
     async submitBlindTestAnswer(musicId, answerTitle, answerArtist) {
       if (!this.session || !this.player) return;
       const { data } = await apiService.submitBlindTestAnswer(this.session.code, {
-        playerId: this.player.id,
         musicId,
         answerTitle,
         answerArtist,
@@ -114,7 +187,7 @@ export const useGameStore = defineStore('game', {
     },
     async loadResults(code) {
       const { data } = await apiService.getResults(code);
-      this.ranking = data.ranking;
+      this.ranking = data.ranking || [];
       this.applyState(data);
       return data;
     },
@@ -126,17 +199,18 @@ export const useGameStore = defineStore('game', {
       this.currentMusic = null;
       this.votes = null;
       this.musicCounts = null;
+      this.ranking = [];
       return data;
     },
     async promotePlayer(targetPlayerId) {
       if (!this.session || !this.player) return;
-      const { data } = await apiService.promotePlayer(this.session.code, this.player.id, targetPlayerId);
+      const { data } = await apiService.promotePlayer(this.session.code, targetPlayerId);
       this.applyState(data);
       return data;
     },
     async kickPlayer(targetPlayerId) {
       if (!this.session || !this.player) return;
-      const { data } = await apiService.kickPlayer(this.session.code, this.player.id, targetPlayerId);
+      const { data } = await apiService.kickPlayer(this.session.code, targetPlayerId);
       this.applyState(data);
       return data;
     },
@@ -163,9 +237,9 @@ export const useGameStore = defineStore('game', {
       }, 5000);
     },
     connectSocket(code) {
+      if (!this.token) return;
       const playerId = this.player?.id || null;
 
-      // Clean up previous listeners to prevent duplicate joins & memory leaks
       socketService.off('state:update');
       socketService.off('sound:play');
       socketService.off('player:kicked');
@@ -173,9 +247,10 @@ export const useGameStore = defineStore('game', {
       socketService.off('player:status');
       socketService.off('connect');
       socketService.off('disconnect');
+      socketService.off('connect_error');
 
-      socketService.join(code, playerId);
-      
+      socketService.join(code, this.token);
+
       socketService.on('state:update', (state) => {
         if (state && state.serverTime) {
           this.updateServerTimeOffset(state.serverTime);
@@ -186,7 +261,7 @@ export const useGameStore = defineStore('game', {
         this.currentMusic = state.currentMusic || null;
         this.votes = state.votes || null;
         this.musicCounts = state.musicCounts || null;
-        // Keep the local player object in sync (observer status, avatar, etc.)
+        if (state.ranking) this.ranking = state.ranking;
         if (state.player) {
           this.player = state.player;
           localStorage.setItem('music_game_player', JSON.stringify(state.player));
@@ -199,31 +274,22 @@ export const useGameStore = defineStore('game', {
         });
       });
 
+      socketService.on('connect_error', (error) => {
+        this.addNotification(error?.message || 'Connexion refusée par le serveur', 'error');
+      });
+
       socketService.on('player:kicked', () => {
         alert("Vous avez été exclu (kicked) de la partie par l'hôte.");
-        this.session = null;
-        this.player = null;
-        this.players = [];
-        this.musics = [];
-        this.currentMusic = null;
-        this.votes = null;
-        localStorage.removeItem('music_game_player');
+        this.leaveSession();
         window.location.href = '/';
       });
 
       socketService.on('session:deleted', () => {
         alert("L'hôte a quitté ou la partie a été supprimée. Retour à l'accueil.");
-        this.session = null;
-        this.player = null;
-        this.players = [];
-        this.musics = [];
-        this.currentMusic = null;
-        this.votes = null;
-        localStorage.removeItem('music_game_player');
+        this.leaveSession();
         window.location.href = '/';
       });
 
-      // Show notifications when other players connect or disconnect
       socketService.on('player:status', ({ playerId: pId, playerName, isConnected }) => {
         if (pId !== this.player?.id) {
           const statusText = isConnected ? 'reconnecté' : 'déconnecté';
@@ -232,7 +298,6 @@ export const useGameStore = defineStore('game', {
         }
       });
 
-      // Show notifications when local player connects or disconnects
       socketService.on('connect', () => {
         this.addNotification("Vous êtes connecté au serveur de jeu", "success");
       });
@@ -248,13 +313,14 @@ export const useGameStore = defineStore('game', {
     },
     leaveSession() {
       this.disconnectSocket();
+      this.clearIdentity();
       this.session = null;
-      this.player = null;
       this.players = [];
       this.musics = [];
       this.currentMusic = null;
       this.votes = null;
-      localStorage.removeItem('music_game_player');
+      this.musicCounts = null;
+      this.ranking = [];
     },
     updateServerTimeOffset(serverTime) {
       if (serverTime) {

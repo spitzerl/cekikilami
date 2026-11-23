@@ -4,6 +4,15 @@ const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '/api',
 });
 
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('music_game_token');
+  if (token) {
+    config.headers = config.headers || {};
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 export default {
   createSession(hostName) {
     return api.post('/sessions', { hostName });
@@ -11,8 +20,11 @@ export default {
   joinSession(code, playerName) {
     return api.post(`/sessions/${code}/join`, { playerName });
   },
-  getSession(code, playerId = null) {
-    return api.get(`/sessions/${code}`, { params: { playerId } });
+  getSessionSummary(code) {
+    return api.get(`/sessions/${code}/summary`);
+  },
+  getSession(code) {
+    return api.get(`/sessions/${code}`);
   },
   updateConfig(code, config) {
     return api.post(`/sessions/${code}/config`, config);
@@ -29,20 +41,18 @@ export default {
   addMusic(code, payload) {
     if (payload.audio instanceof File) {
       const form = new FormData();
-      Object.entries(payload).forEach(([key, value]) => form.append(key, value));
+      Object.entries(payload).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) form.append(key, value);
+      });
       return api.post(`/sessions/${code}/musics`, form);
     }
     return api.post(`/sessions/${code}/musics`, payload);
   },
-  deleteMusic(code, musicId, playerId) {
-    return api.delete(`/sessions/${code}/musics/${musicId}`, { params: { playerId } });
+  deleteMusic(code, musicId) {
+    return api.delete(`/sessions/${code}/musics/${musicId}`);
   },
-  searchDeezer(query) {
-    return api.get('/deezer/search', {
-      params: {
-        q: query,
-      },
-    });
+  searchDeezer(query = '') {
+    return api.get('/deezer/search', { params: { q: query } });
   },
   startVoting(code) {
     return api.post(`/sessions/${code}/start-voting`);
@@ -62,11 +72,11 @@ export default {
   resetSession(code) {
     return api.post(`/sessions/${code}/reset`);
   },
-  promotePlayer(code, requesterId, targetPlayerId) {
-    return api.post(`/sessions/${code}/players/${targetPlayerId}/promote`, { requesterId });
+  promotePlayer(code, targetPlayerId) {
+    return api.post(`/sessions/${code}/players/${targetPlayerId}/promote`);
   },
-  kickPlayer(code, requesterId, targetPlayerId) {
-    return api.post(`/sessions/${code}/players/${targetPlayerId}/kick`, { requesterId });
+  kickPlayer(code, targetPlayerId) {
+    return api.post(`/sessions/${code}/players/${targetPlayerId}/kick`);
   },
   advanceRound(code) {
     return api.post(`/sessions/${code}/advance-round`);
@@ -74,7 +84,7 @@ export default {
   regenerateAvatar(code, playerId) {
     return api.post(`/sessions/${code}/players/${playerId}/avatar`);
   },
-  searchDeezer(query = '') {
-    return api.get('/deezer/search', { params: { q: query } });
+  avatarUrl(seed) {
+    return `/api/avatars/${encodeURIComponent(seed)}`;
   },
 };
