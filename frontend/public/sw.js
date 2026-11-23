@@ -1,11 +1,16 @@
-const CACHE_NAME = 'cekikilami-v1';
+const CACHE_NAME = 'cekikilami-v5';
 const ASSETS = [
   '/',
   '/index.html',
+  '/theme-init.js',
+  '/sw-register.js',
   '/manifest.json',
   '/icon-192.png',
   '/icon-512.png',
-  '/icon-maskable.png'
+  '/icon-maskable.png',
+  '/favicon.svg',
+  '/fonts/archivo-latin.woff2',
+  '/fonts/bricolage-latin.woff2'
 ];
 
 self.addEventListener('install', (event) => {

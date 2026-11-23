@@ -1,12 +1,14 @@
 import { query } from '../config/database.js';
+import { generateSessionCode } from '../security/tokens.js';
+import { SESSION_TTLS } from '../config/game.js';
 
 export default class Session {
-  static async create({ code, hostName }) {
+  static async create({ code, hostName, ttlSeconds = SESSION_TTLS.waiting }) {
     const result = await query(
-      `INSERT INTO sessions (code, host_name, phase)
-       VALUES ($1, $2, 'waiting')
+      `INSERT INTO sessions (code, host_name, phase, expires_at)
+       VALUES ($1, $2, 'waiting', NOW() + ($3 * INTERVAL '1 second'))
        RETURNING *`,
-      [code, hostName]
+      [code, hostName, ttlSeconds]
     );
     return result.rows[0];
   }
@@ -16,17 +18,40 @@ export default class Session {
     return result.rows[0] || null;
   }
 
-  static async updatePhase(code, phase) {
+  static async findById(id) {
+    const result = await query('SELECT * FROM sessions WHERE id = $1', [id]);
+    return result.rows[0] || null;
+  }
+
+  static async setHost(code, playerId, hostName = null) {
     const result = await query(
-      'UPDATE sessions SET phase = $1, updated_at = NOW() WHERE code = $2 RETURNING *',
-      [phase, code]
+      `UPDATE sessions
+       SET host_player_id = $1,
+           host_name = COALESCE($3, host_name),
+           updated_at = NOW()
+       WHERE code = $2
+       RETURNING *`,
+      [playerId, code, hostName]
+    );
+    return result.rows[0] || null;
+  }
+
+  static async updatePhase(code, phase, ttlSeconds = SESSION_TTLS.waiting) {
+    const result = await query(
+      `UPDATE sessions
+       SET phase = $1,
+           expires_at = NOW() + ($3 * INTERVAL '1 second'),
+           updated_at = NOW()
+       WHERE code = $2
+       RETURNING *`,
+      [phase, code, ttlSeconds]
     );
     return result.rows[0] || null;
   }
 
   static async updateConfig(code, { maxMusicsPerPlayer, selectionDuration, extractDuration, votingDuration, showAnswers, maxPlayers, autoAdvance, showVoteCount, enableBlindTest }) {
     const result = await query(
-      `UPDATE sessions 
+      `UPDATE sessions
        SET max_musics_per_player = COALESCE($1, max_musics_per_player),
            selection_duration = COALESCE($2, selection_duration),
            extract_duration = COALESCE($3, extract_duration),
@@ -56,29 +81,54 @@ export default class Session {
     return result.rows[0] || null;
   }
 
-  static async reset(code) {
+  static async extendExpiry(code, ttlSeconds) {
+    await query(
+      `UPDATE sessions
+       SET expires_at = NOW() + ($2 * INTERVAL '1 second'), updated_at = NOW()
+       WHERE code = $1`,
+      [code, ttlSeconds]
+    );
+  }
+
+  static async reset(code, ttlSeconds = SESSION_TTLS.waiting) {
     const result = await query(
       `UPDATE sessions
        SET phase = 'waiting',
            current_music_index = -1,
            voting_status = 'idle',
            timer_ends_at = NULL,
+           expires_at = NOW() + ($2 * INTERVAL '1 second'),
            updated_at = NOW()
        WHERE code = $1 RETURNING *`,
-      [code]
+      [code, ttlSeconds]
     );
     return result.rows[0] || null;
   }
 
+  static async count() {
+    const result = await query('SELECT COUNT(*)::INTEGER AS count FROM sessions');
+    return result.rows[0].count;
+  }
+
+  static async findExpired(limit = 50) {
+    const result = await query(
+      `SELECT * FROM sessions
+       WHERE expires_at IS NOT NULL AND expires_at < NOW()
+       ORDER BY expires_at ASC
+       LIMIT $1`,
+      [limit]
+    );
+    return result.rows;
+  }
+
+  static async deleteByCode(code) {
+    const result = await query('DELETE FROM sessions WHERE code = $1 RETURNING *', [code]);
+    return result.rows[0] || null;
+  }
+
   static async generateCode() {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-
     while (true) {
-      let code = '';
-      for (let i = 0; i < 6; i += 1) {
-        code += chars[Math.floor(Math.random() * chars.length)];
-      }
-
+      const code = generateSessionCode();
       const existing = await Session.findByCode(code);
       if (!existing) {
         return code;

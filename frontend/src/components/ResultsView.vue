@@ -1,369 +1,239 @@
 <template>
-  <div class="game-main-layout p-4 pb-0 max-w-7xl mx-auto opacity-0 animate-fade-in-up relative">
-    <!-- Ambient glowing backgrounds -->
-    <div class="glow-blob bg-purple-600 w-96 h-96 top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2"></div>
-    <div class="glow-blob bg-cyan-600 w-96 h-96 bottom-1/4 right-1/4 translate-x-1/2 translate-y-1/2"></div>
-    <div class="glow-blob bg-pink-600 w-80 h-80 top-1/2 left-2/3 -translate-x-1/2"></div>
-
-    <!-- Header -->
-    <header class="page-header">
-      <div class="flex justify-between items-center w-full sm:w-auto">
-        <div>
-          <h1 class="text-xl sm:text-3xl font-extrabold text-white">Classement Final</h1>
-          <p class="text-slate-400 text-xs hidden sm:block">Session terminée ! Félicitations à tous les participants.</p>
-        </div>
-        <!-- Mobile Options/Pause Button -->
-        <button 
-          type="button"
-          @click="triggerPause"
-          class="flex sm:hidden items-center justify-center w-10 h-10 rounded-xl bg-slate-900/60 hover:bg-slate-900/80 border border-slate-700/50 backdrop-blur-md text-slate-200 hover:text-white shadow-lg transition-all active:scale-95 hover:border-cyan-500/40 flex-shrink-0 ml-4"
-          title="Options / Menu"
-        >
-          <i class="fa-solid fa-pause text-[16px]"></i>
-        </button>
-      </div>
-      <div class="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-        <button @click="exportImage" class="glow-btn bg-cyan-600 hover:bg-cyan-500 text-white font-bold px-4 py-2.5 rounded-xl transition-all flex items-center gap-2 text-sm shadow-lg shadow-cyan-600/20 flex-1 sm:flex-none justify-center">
-          <i class="fa-solid fa-download text-[14px]"></i>
+  <div class="game-layout">
+    <GameHeader
+      title="Résultats"
+      subtitle="Session terminée. Voici ce que la playlist a révélé."
+      :step="4"
+    >
+      <template #actions>
+        <button type="button" class="btn btn-secondary" :disabled="!store.ranking.length" @click="exportImage">
+          <AppIcon name="download" :size="15" />
           Partager les scores
         </button>
-        <button v-if="isHost" @click="replay" class="glow-btn-purple bg-purple-600 hover:bg-purple-500 text-white font-bold px-6 py-2.5 rounded-xl transition-all flex items-center gap-2 text-sm flex-1 sm:flex-none justify-center">
-          <i class="fa-solid fa-rotate-right text-[14px]"></i>
+        <button v-if="isHost" type="button" class="btn btn-primary" @click="replay">
+          <AppIcon name="rotate-cw" :size="15" />
           Rejouer
         </button>
+      </template>
+    </GameHeader>
+
+    <main class="game-shell game-body">
+      <div v-if="!store.ranking.length" class="empty-state">
+        <AppIcon name="bar-chart" :size="20" />
+        <strong>Aucun résultat pour l’instant</strong>
+        <p>Les scores apparaîtront quand la partie sera terminée.</p>
       </div>
-    </header>
 
-    <!-- Players Tracker Widget -->
-    <GamePlayersTracker />
-
-    <!-- Podium & Leaderboard -->
-    <main class="flex-1 min-h-0 overflow-y-auto space-y-8 sm:space-y-12 relative z-10 scrollbar-none">
-      <!-- Top 3 Podium (Only visible if at least 1 player) -->
-      <section v-if="podium.length" class="flex flex-row items-end justify-center gap-2 sm:gap-6 pt-16 sm:pt-20 pb-6 max-w-3xl mx-auto px-1 sm:px-4">
-        <!-- 2nd Place -->
-        <div v-if="podium[1]" class="order-1 flex flex-col items-center w-[31%] sm:w-48 group relative">
-          <div class="podium-card relative w-full p-2 sm:p-6 rounded-2xl sm:rounded-3xl flex flex-col items-center justify-between h-36 sm:h-48 bg-gradient-to-b from-slate-500/15 via-slate-600/5 to-slate-950/10 border border-slate-500/35 shadow-lg text-center animate-grow-y transition-all duration-300 hover:translate-y-[-4px] hover:border-slate-400/50 hover:shadow-[0_0_30px_rgba(148,163,184,0.15)]" style="animation-delay: 0.15s;">
-            <!-- Avatar & Medal -->
-            <div class="absolute -top-6 sm:-top-10 flex flex-col items-center">
-              <div class="relative">
-                <img v-if="podium[1].avatar_seed" :src="`https://api.dicebear.com/9.x/notionists-neutral/svg?seed=${podium[1].avatar_seed}&backgroundColor=06b6d4,9333ea,f59e0b,f43f5e,10b981,3b82f6,6366f1`" class="w-10 h-10 sm:w-14 sm:h-14 rounded-full border-2 border-slate-350 bg-slate-800 shadow-lg transition-transform duration-300 group-hover:scale-110" alt="Avatar" />
-                <div v-else class="w-9 h-9 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-slate-200 via-slate-400 to-slate-500 border-2 border-slate-350 flex items-center justify-center text-sm sm:text-xl shadow-lg transition-transform duration-300 group-hover:scale-110">{{ getRankBadgeEmoji(podium[1]) }}</div>
-                <div v-if="podium[1].avatar_seed" class="absolute -bottom-1 -right-1 sm:-bottom-2 sm:-right-2 w-4 h-4 sm:w-6 sm:h-6 rounded-full bg-gradient-to-br from-slate-200 via-slate-400 to-slate-500 border-2 border-slate-900 flex items-center justify-center text-[8px] sm:text-xs shadow-md">
-                  {{ getRankBadgeEmoji(podium[1]) }}
-                </div>
-              </div>
-            </div>
-            
-            <div class="h-3 sm:h-6"></div>
-            
-            <div class="min-w-0 w-full">
-              <p class="font-extrabold text-white truncate max-w-full text-xs sm:text-base mb-0.5 sm:mb-1 tracking-wide">{{ podium[1].name }}</p>
-              <p class="text-lg sm:text-2xl font-black text-slate-300 font-mono mb-1 sm:mb-2">{{ podium[1].score }}<span class="text-[9px] sm:text-xs font-normal text-slate-400"> pts</span></p>
-            </div>
-            
-            <!-- Quick stats (desktop only) -->
-            <div class="hidden sm:flex gap-2 text-[10px] font-bold mt-auto">
-              <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full flex items-center gap-1">🎯 {{ podium[1].correctGuesses || 0 }}</span>
-              <span class="bg-purple-500/10 text-purple-400 border border-purple-500/20 px-2 py-0.5 rounded-full flex items-center gap-1">💜 {{ podium[1].votesReceived || 0 }}</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- 1st Place -->
-        <div v-if="podium[0]" class="order-2 flex flex-col items-center w-[36%] sm:w-52 transform -translate-y-2 sm:-translate-y-4 group relative">
-          <div class="podium-card podium-card-1 relative w-full p-2.5 sm:p-6 rounded-2xl sm:rounded-3xl flex flex-col items-center justify-between h-42 sm:h-56 bg-gradient-to-b from-yellow-500/15 via-amber-500/5 to-yellow-950/10 border border-yellow-500/40 shadow-[0_0_30px_rgba(234,179,8,0.15)] text-center animate-grow-y transition-all duration-300 hover:translate-y-[-4px] hover:border-yellow-500/60 hover:shadow-[0_0_40px_rgba(234,179,8,0.25)]" style="animation-delay: 0.3s;">
-            <!-- Crown & Medal -->
-            <div class="absolute -top-10 sm:-top-16 flex flex-col items-center select-none">
-              <!-- Crown Icon -->
-              <i class="fa-solid fa-crown text-[20px] sm:text-[28px] text-yellow-400 drop-shadow-[0_0_6px_rgba(234,179,8,0.6)] animate-float mb-0.5"></i>
-              <!-- Avatar & Medal -->
-              <div class="relative">
-                <img v-if="podium[0].avatar_seed" :src="`https://api.dicebear.com/9.x/notionists-neutral/svg?seed=${podium[0].avatar_seed}&backgroundColor=06b6d4,9333ea,f59e0b,f43f5e,10b981,3b82f6,6366f1`" class="w-12 h-12 sm:w-16 sm:h-16 rounded-full border-2 border-yellow-300 bg-slate-800 shadow-xl transition-transform duration-300 group-hover:scale-110" alt="Avatar" />
-                <div v-else class="w-11 h-11 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-yellow-300 via-amber-400 to-yellow-600 border-2 border-yellow-300 flex items-center justify-center text-base sm:text-2xl shadow-xl transition-transform duration-300 group-hover:scale-110">{{ getRankBadgeEmoji(podium[0]) }}</div>
-                <div v-if="podium[0].avatar_seed" class="absolute -bottom-1 -right-1 sm:-bottom-2 sm:-right-2 w-5 h-5 sm:w-7 sm:h-7 rounded-full bg-gradient-to-br from-yellow-300 via-amber-400 to-yellow-600 border-2 border-slate-900 flex items-center justify-center text-[10px] sm:text-sm shadow-md">
-                  {{ getRankBadgeEmoji(podium[0]) }}
-                </div>
-              </div>
-            </div>
-            
-            <div class="h-6 sm:h-10"></div>
-            
-            <div class="min-w-0 w-full">
-              <p class="font-extrabold text-white truncate max-w-full text-sm sm:text-lg mb-0.5 sm:mb-1 tracking-wide">{{ podium[0].name }}</p>
-              <p class="text-xl sm:text-3xl font-black text-yellow-400 font-mono mb-1 sm:mb-2">{{ podium[0].score }}<span class="text-[10px] sm:text-xs font-normal text-yellow-500/80"> pts</span></p>
-            </div>
-            
-            <!-- Quick stats (desktop only) -->
-            <div class="hidden sm:flex gap-2 text-[10px] font-bold mt-auto">
-              <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2.5 py-1 rounded-full flex items-center gap-1">🎯 {{ podium[0].correctGuesses || 0 }}</span>
-              <span class="bg-purple-500/10 text-purple-400 border border-purple-500/20 px-2.5 py-1 rounded-full flex items-center gap-1">💜 {{ podium[0].votesReceived || 0 }}</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- 3rd Place -->
-        <div v-if="podium[2]" class="order-3 flex flex-col items-center w-[29%] sm:w-44 group relative">
-          <div class="podium-card relative w-full p-2 sm:p-5 rounded-2xl sm:rounded-3xl flex flex-col items-center justify-between h-32 sm:h-42 bg-gradient-to-b from-amber-700/15 via-amber-800/5 to-amber-950/10 border border-amber-800/30 shadow-lg text-center animate-grow-y transition-all duration-300 hover:translate-y-[-4px] hover:border-amber-700/50 hover:shadow-[0_0_30px_rgba(180,83,9,0.15)]" style="animation-delay: 0s;">
-            <!-- Avatar & Medal -->
-            <div class="absolute -top-5 sm:-top-10 flex flex-col items-center">
-              <div class="relative">
-                <img v-if="podium[2].avatar_seed" :src="`https://api.dicebear.com/9.x/notionists-neutral/svg?seed=${podium[2].avatar_seed}&backgroundColor=06b6d4,9333ea,f59e0b,f43f5e,10b981,3b82f6,6366f1`" class="w-9 h-9 sm:w-12 sm:h-12 rounded-full border-2 border-amber-600 bg-slate-800 shadow-lg transition-transform duration-300 group-hover:scale-110" alt="Avatar" />
-                <div v-else class="w-8 h-8 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-amber-600 via-amber-700 to-amber-800 border-2 border-amber-600 flex items-center justify-center text-xs sm:text-lg shadow-lg transition-transform duration-300 group-hover:scale-110">{{ getRankBadgeEmoji(podium[2]) }}</div>
-                <div v-if="podium[2].avatar_seed" class="absolute -bottom-1 -right-1 sm:-bottom-1.5 sm:-right-1.5 w-3.5 h-3.5 sm:w-5 sm:h-5 rounded-full bg-gradient-to-br from-amber-600 via-amber-700 to-amber-800 border-2 border-slate-900 flex items-center justify-center text-[6px] sm:text-[10px] shadow-md">
-                  {{ getRankBadgeEmoji(podium[2]) }}
-                </div>
-              </div>
-            </div>
-            
-            <div class="h-2.5 sm:h-4"></div>
-            
-            <div class="min-w-0 w-full">
-              <p class="font-extrabold text-white truncate max-w-full text-[10px] sm:text-sm mb-0.5 sm:mb-1 tracking-wide">{{ podium[2].name }}</p>
-              <p class="text-base sm:text-xl font-black text-amber-500 font-mono mb-1 sm:mb-2">{{ podium[2].score }}<span class="text-[8px] sm:text-xs font-normal text-amber-650/80"> pts</span></p>
-            </div>
-            
-            <!-- Quick stats (desktop only) -->
-            <div class="hidden sm:flex gap-1.5 text-[9px] font-bold mt-auto">
-              <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full flex items-center gap-0.5">🎯 {{ podium[2].correctGuesses || 0 }}</span>
-              <span class="bg-purple-500/10 text-purple-400 border border-purple-500/20 px-2 py-0.5 rounded-full flex items-center gap-0.5">💜 {{ podium[2].votesReceived || 0 }}</span>
-            </div>
-          </div>
-        </div>
-      </section>
-      <!-- Tableau des scores -->
-      <section class="glass-panel p-6 rounded-3xl border border-slate-800/60 shadow-xl">
-        <h2 class="text-xl font-bold text-white mb-6 flex items-center gap-2">
-          <span>📊</span> Tableau des scores
-        </h2>
-        
-        <div class="space-y-3">
-          <div v-for="(player, idx) in store.ranking" :key="player.id" 
-            class="stagger-item flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-4 border-b border-slate-800/50 last:border-0 hover:bg-slate-900/10 transition-all duration-300 px-2 rounded-xl" 
-            :style="{ animationDelay: `${idx * 0.05}s` }">
-            
-            <div class="flex items-center gap-4">
-              <!-- Rank number inside a badge -->
-              <div :class="[
-                'w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm font-mono border shadow-sm',
-                getPlayerRank(player) === 1 ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' :
-                getPlayerRank(player) === 2 ? 'bg-slate-400/20 text-slate-300 border-slate-400/30' :
-                getPlayerRank(player) === 3 ? 'bg-amber-700/20 text-amber-500 border-amber-700/30' :
-                'bg-slate-900/60 text-slate-400 border-slate-850'
-              ]">
-                {{ getPlayerRank(player) !== null ? `#${getPlayerRank(player)}` : '-' }}
-              </div>
-              
-              <!-- Avatar -->
-              <img v-if="player.avatar_seed" :src="`https://api.dicebear.com/9.x/notionists-neutral/svg?seed=${player.avatar_seed}&backgroundColor=06b6d4,9333ea,f59e0b,f43f5e,10b981,3b82f6,6366f1`" :class="[
-                'w-10 h-10 rounded-full border bg-slate-800 shadow-sm transition-colors duration-300',
-                getPlayerRank(player) === 1 ? 'border-yellow-500/40' :
-                getPlayerRank(player) === 2 ? 'border-slate-400/40' :
-                getPlayerRank(player) === 3 ? 'border-amber-700/40' :
-                'border-slate-800'
-              ]" alt="Avatar" />
-              <div v-else :class="[
-                'w-10 h-10 rounded-full border flex items-center justify-center font-bold uppercase text-sm shadow-sm transition-colors duration-300',
-                getPlayerRank(player) === 1 ? 'bg-gradient-to-br from-yellow-500/20 to-yellow-600/10 border-yellow-500/40 text-yellow-300' :
-                getPlayerRank(player) === 2 ? 'bg-gradient-to-br from-slate-400/20 to-slate-500/10 border-slate-400/40 text-slate-200' :
-                getPlayerRank(player) === 3 ? 'bg-gradient-to-br from-amber-700/20 to-amber-800/10 border-amber-700/40 text-amber-400' :
-                'bg-gradient-to-br from-slate-700 to-slate-900 border-slate-800 text-slate-300'
-              ]">
-                {{ player.name.substring(0, 2) }}
-              </div>
-              
-              <!-- Name & Tags -->
-              <div class="flex flex-col">
-                <div class="flex items-center gap-2">
-                  <span class="font-bold text-white text-base">{{ player.name }}</span>
-                  <span v-if="player.is_bot" class="text-[9px] bg-cyan-500/20 text-cyan-400 px-1.5 py-0.5 rounded font-extrabold border border-cyan-500/30 uppercase tracking-wider">Bot</span>
-                  <span v-if="player.is_observer" class="text-[9px] bg-slate-700/30 text-slate-400 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">Obs</span>
-                </div>
-                <!-- Compact stats under the name -->
-                <span class="text-xs text-slate-400 mt-0.5">
-                  🎯 {{ player.correctGuesses || 0 }} correct • 💜 {{ player.votesReceived || 0 }} votes
-                </span>
-              </div>
-            </div>
-            
-            <!-- Total Score -->
-            <div class="text-right flex items-center justify-between sm:justify-end gap-3 border-t border-slate-850 pt-3 sm:border-0 sm:pt-0">
-              <span class="text-xs text-slate-500 sm:hidden">Score final :</span>
-              <span class="font-black text-cyan-400 text-xl font-mono tracking-wide">
-                {{ player.score }} <span class="text-xs font-medium text-slate-400">pts</span>
+      <div v-else class="results-stack">
+        <!-- Winner & runners-up -->
+        <section aria-label="Podium">
+          <div class="winner">
+            <span class="winner-rank">Vainqueur</span>
+            <div class="winner-main">
+              <img
+                v-if="podium[0].avatar_seed"
+                :src="avatarUrl(podium[0].avatar_seed)"
+                class="avatar"
+                alt=""
+              />
+              <span v-else class="avatar avatar-fallback" style="font-size: 18px">
+                {{ initials(podium[0].name) }}
               </span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- Global Game Stats -->
-      <section class="glass-panel p-6 rounded-3xl border border-slate-800/60 shadow-xl">
-        <h2 class="text-xl font-bold text-white mb-6 flex items-center gap-2">
-          <span>📈</span> Statistiques de la partie
-        </h2>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <!-- Morceaux joués -->
-          <div class="bg-slate-900/40 border border-slate-800/60 p-5 rounded-2xl flex items-center gap-4">
-            <div class="w-12 h-12 rounded-xl bg-slate-800/50 flex items-center justify-center text-2xl">
-              🎵
-            </div>
-            <div>
-              <p class="text-[10px] text-slate-400 uppercase font-black tracking-widest">Morceaux joués</p>
-              <p class="text-lg font-extrabold text-white mt-0.5">{{ totalTracks }} titres</p>
-            </div>
-          </div>
-
-          <!-- Meilleur détective -->
-          <div class="bg-emerald-500/5 border border-emerald-550/10 p-5 rounded-2xl flex items-center gap-4">
-            <div class="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center text-2xl">
-              🎯
-            </div>
-            <div>
-              <p class="text-[10px] text-emerald-400 uppercase font-black tracking-widest">Meilleur détective</p>
-              <p class="text-lg font-extrabold text-white mt-0.5" v-if="bestDetective">
-                {{ bestDetective.name }} <span class="text-xs font-semibold text-emerald-400 font-mono">({{ bestDetective.correctGuesses }} correct{{ bestDetective.correctGuesses > 1 ? 's' : '' }})</span>
-              </p>
-              <p class="text-lg font-extrabold text-slate-400 mt-0.5" v-else>
-                Aucun
-              </p>
-            </div>
-          </div>
-
-          <!-- Le plus suspecté -->
-          <div class="bg-purple-500/5 border border-purple-550/10 p-5 rounded-2xl flex items-center gap-4">
-            <div class="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center text-2xl">
-              💜
-            </div>
-            <div>
-              <p class="text-[10px] text-purple-400 uppercase font-black tracking-widest">Le plus suspecté</p>
-              <p class="text-lg font-extrabold text-white mt-0.5" v-if="mostSuspected">
-                {{ mostSuspected.name }} <span class="text-xs font-semibold text-purple-400 font-mono">({{ mostSuspected.votesReceived }} vote{{ mostSuspected.votesReceived > 1 ? 's' : '' }})</span>
-              </p>
-              <p class="text-lg font-extrabold text-slate-400 mt-0.5" v-else>
-                Aucun
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-  
-      <!-- Music Reveal History -->
-      <section class="glass-panel p-6 rounded-3xl border border-slate-800/60 shadow-xl">
-        <h2 class="text-xl font-bold text-white mb-6 flex items-center gap-2">
-          <span>🎵</span> Musiques de la partie
-        </h2>
-        
-        <div class="space-y-3">
-          <div v-for="music in store.musics" :key="music.id" 
-            class="music-item-card flex items-center justify-between py-4 border-b border-slate-800/50 last:border-0 transition-all px-2 rounded-xl hover:bg-slate-900/10 group overflow-hidden">
-            
-            <div class="flex items-center gap-4 min-w-0 z-10">
-              <!-- Pochette avec vinyle coulissant -->
-              <div class="relative w-14 h-14 flex-shrink-0 flex items-center justify-center">
-                <!-- Vinyle coulissant -->
-                <div class="vinyl-disc absolute w-12 h-12 rounded-full bg-slate-950 border border-slate-800 flex items-center justify-center shadow-lg -z-10">
-                  <div class="w-4 h-4 rounded-full bg-cyan-500/30 border border-cyan-400/50 flex items-center justify-center">
-                    <div class="w-1 h-1 rounded-full bg-slate-950"></div>
-                  </div>
-                </div>
-                
-                <!-- Cover Image -->
-                <img v-if="music.cover_url" :src="music.cover_url" 
-                  class="relative w-14 h-14 rounded-xl object-cover shadow border border-slate-800/80 z-10 transition-transform duration-300 group-hover:scale-95" />
-                <div v-else class="relative w-14 h-14 rounded-xl bg-gradient-to-br from-cyan-500/20 to-purple-500/20 border border-slate-800 flex items-center justify-center text-slate-400 z-10 transition-transform duration-300 group-hover:scale-95">
-                  <i class="fa-solid fa-music text-[24px]"></i>
-                </div>
-              </div>
-              
-              <div class="min-w-0 ml-1">
-                <p class="font-extrabold text-white text-base truncate">{{ music.title }}</p>
-                <p class="text-slate-400 text-sm truncate font-medium">{{ music.artist }}</p>
+              <div style="min-width: 0">
+                <p class="winner-name">{{ podium[0].name }}</p>
+                <p class="winner-meta">
+                  {{ podium[0].correctGuesses || 0 }} bonnes réponses, {{ podium[0].votesReceived || 0 }} votes reçus
+                </p>
               </div>
             </div>
-            
-            <div class="text-right pl-4 z-10 flex flex-col items-end">
-              <span class="text-[9px] text-slate-500 uppercase font-black tracking-widest block mb-0.5">Proposé par</span>
-              <span class="font-extrabold text-sm text-yellow-400 bg-yellow-400/5 border border-yellow-400/10 px-2.5 py-1 rounded-lg inline-block truncate max-w-[120px]">{{ getPlayerName(music.player_id) }}</span>
+            <p class="winner-score">
+              {{ podium[0].score }}<small> pts</small>
+            </p>
+          </div>
+
+          <div v-if="podium.length > 1" class="runner-ups" style="margin-top: 12px">
+            <div
+              v-for="(player, index) in podium.slice(1, 3)"
+              :key="player.id"
+              class="runner"
+            >
+              <span class="runner-rank">{{ String(index + 2).padStart(2, '0') }}</span>
+              <img
+                v-if="player.avatar_seed"
+                :src="avatarUrl(player.avatar_seed)"
+                class="avatar avatar-sm"
+                alt=""
+              />
+              <span v-else class="avatar avatar-sm avatar-fallback">{{ initials(player.name) }}</span>
+              <div style="min-width: 0">
+                <p class="rank-name">{{ player.name }}</p>
+                <p class="rank-sub">
+                  {{ player.correctGuesses || 0 }} bonne{{ (player.correctGuesses || 0) > 1 ? 's' : '' }} réponse{{ (player.correctGuesses || 0) > 1 ? 's' : '' }},
+                  {{ player.votesReceived || 0 }} vote{{ (player.votesReceived || 0) > 1 ? 's' : '' }} reçu{{ (player.votesReceived || 0) > 1 ? 's' : '' }}
+                </p>
+              </div>
+              <p class="runner-score">{{ player.score }}<small class="faint"> pts</small></p>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+
+        <!-- Full ranking -->
+        <section class="panel panel-pad" aria-labelledby="ranking-heading">
+          <div class="panel-head">
+            <div>
+              <h2 id="ranking-heading" class="panel-title">
+                <AppIcon name="bar-chart" :size="16" />
+                Classement complet
+              </h2>
+              <p class="panel-sub">{{ store.ranking.length }} joueur{{ store.ranking.length > 1 ? 's' : '' }} classé{{ store.ranking.length > 1 ? 's' : '' }}, du premier au dernier.</p>
+            </div>
+          </div>
+
+          <div>
+            <div v-for="(player, idx) in store.ranking" :key="player.id" class="rank-row">
+              <span class="rank-index">{{ String(idx + 1).padStart(2, '0') }}</span>
+              <div class="rank-main">
+                <img
+                  v-if="player.avatar_seed"
+                  :src="avatarUrl(player.avatar_seed)"
+                  class="avatar"
+                  alt=""
+                />
+                <span v-else class="avatar avatar-fallback">{{ initials(player.name) }}</span>
+                <div style="min-width: 0">
+                  <p class="rank-name">
+                    {{ player.name }}
+                    <span v-if="player.id === store.player?.id" class="tag tag-accent" style="margin-left: 4px">Vous</span>
+                    <span v-if="player.id === store.session?.host_player_id" class="tag" style="margin-left: 4px">Hôte</span>
+                    <span v-if="player.is_bot" class="tag" style="margin-left: 4px">Bot</span>
+                    <span v-if="player.is_observer" class="tag" style="margin-left: 4px">Spectateur</span>
+                  </p>
+                  <p class="rank-sub">
+                    {{ player.correctGuesses || 0 }} bonne{{ (player.correctGuesses || 0) > 1 ? 's' : '' }} réponse{{ (player.correctGuesses || 0) > 1 ? 's' : '' }},
+                    {{ player.votesReceived || 0 }} vote{{ (player.votesReceived || 0) > 1 ? 's' : '' }} reçu{{ (player.votesReceived || 0) > 1 ? 's' : '' }}
+                  </p>
+                </div>
+              </div>
+              <p class="rank-score">{{ player.score }}<small> pts</small></p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Game stats -->
+        <section class="stats-strip" aria-label="Statistiques de la partie">
+          <div class="stat-cell">
+            <p class="stat-label">Morceaux joués</p>
+            <p class="stat-value">{{ totalTracks }} <span>titre{{ totalTracks > 1 ? 's' : '' }}</span></p>
+          </div>
+          <div class="stat-cell">
+            <p class="stat-label">Meilleur détective</p>
+            <p v-if="bestDetective" class="stat-value">
+              {{ bestDetective.name }}
+              <span>({{ bestDetective.correctGuesses }} bonne{{ bestDetective.correctGuesses > 1 ? 's' : '' }} réponse{{ bestDetective.correctGuesses > 1 ? 's' : '' }})</span>
+            </p>
+            <p v-else class="stat-value faint">Aucun</p>
+          </div>
+          <div class="stat-cell">
+            <p class="stat-label">Le plus suspecté</p>
+            <p v-if="mostSuspected" class="stat-value">
+              {{ mostSuspected.name }}
+              <span>({{ mostSuspected.votesReceived }} vote{{ mostSuspected.votesReceived > 1 ? 's' : '' }} reçu{{ mostSuspected.votesReceived > 1 ? 's' : '' }})</span>
+            </p>
+            <p v-else class="stat-value faint">Aucun</p>
+          </div>
+        </section>
+
+        <!-- Music lineup -->
+        <section v-if="store.musics.length" class="panel panel-pad" aria-labelledby="music-heading">
+          <div class="panel-head">
+            <div>
+              <h2 id="music-heading" class="panel-title">
+                <AppIcon name="music" :size="16" />
+                La playlist
+              </h2>
+              <p class="panel-sub">Tout ce que le salon a écouté ce soir.</p>
+            </div>
+            <span class="count-pill">{{ store.musics.length }}</span>
+          </div>
+
+          <div class="row-list">
+            <div v-for="music in store.musics" :key="music.id" class="row">
+              <div class="media-row">
+                <img
+                  v-if="music.cover_url"
+                  :src="music.cover_url"
+                  class="media-cover"
+                  :alt="`Pochette de ${music.title}`"
+                  loading="lazy"
+                />
+                <span v-else class="media-cover media-cover-fallback">
+                  <AppIcon name="music" :size="18" />
+                </span>
+                <div class="media-text">
+                  <p class="media-title">{{ music.title }}</p>
+                  <p class="media-sub">{{ music.artist }}</p>
+                </div>
+              </div>
+              <span class="tag">par {{ getPlayerName(music.player_id) }}</span>
+            </div>
+          </div>
+        </section>
+      </div>
     </main>
 
+    <!-- Export dialog -->
+    <Transition name="fade">
+      <div v-if="showExportModal" class="overlay" @click.self="showExportModal = false">
+        <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="export-title">
+          <div class="dialog-head">
+            <div>
+              <h2 id="export-title" class="dialog-title">Résumé de la partie</h2>
+              <p class="panel-sub">Une carte à partager avec le groupe.</p>
+            </div>
+            <button ref="exportClose" type="button" class="btn btn-ghost btn-icon btn-sm" aria-label="Fermer" @click="showExportModal = false">
+              <AppIcon name="x" :size="16" />
+            </button>
+          </div>
 
+          <div style="padding: 18px 0">
+            <div class="export-preview">
+              <img :src="exportImageUrl" alt="Résumé des scores de la partie" />
+            </div>
+            <p class="hint" style="text-align: center; margin-top: 10px">
+              Appui long ou clic droit sur l’image pour l’enregistrer.
+            </p>
+          </div>
 
-    <!-- Export Modal -->
-    <div v-if="showExportModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
-      <div class="glass-panel max-w-lg w-full p-6 rounded-3xl border border-slate-800 shadow-2xl relative flex flex-col items-center">
-        <button @click="showExportModal = false" class="absolute top-4 right-4 text-slate-400 hover:text-white transition-all text-xl font-bold">
-          ✕
-        </button>
-        
-        <h3 class="text-xl font-bold text-white mb-2 flex items-center gap-2">
-          📸 Résumé de la partie
-        </h3>
-        <p class="text-slate-400 text-xs text-center mb-4">
-          Téléchargez cette carte pour la partager avec vos amis ou sur vos réseaux sociaux !
-        </p>
-        
-        <!-- Image preview -->
-        <div class="w-full max-w-[360px] aspect-square rounded-2xl overflow-hidden border border-slate-700/50 shadow-lg mb-6 relative group bg-slate-950">
-          <img :src="exportImageUrl" alt="Résumé des scores" class="w-full h-full object-contain" />
-          <div class="absolute inset-0 bg-slate-950/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
-            <span class="text-white text-xs bg-slate-900/80 px-3 py-1.5 rounded-full border border-slate-700 font-medium">Appui long ou clic droit pour enregistrer</span>
+          <div class="dialog-actions">
+            <a :href="exportImageUrl" :download="exportImageFilename" class="btn btn-primary btn-block">
+              <AppIcon name="download" :size="15" />
+              Télécharger l’image
+            </a>
+            <button type="button" class="btn btn-secondary btn-block" @click="showExportModal = false">
+              Fermer
+            </button>
           </div>
         </div>
-        
-        <!-- Actions -->
-        <div class="flex gap-3 w-full">
-          <button @click="showExportModal = false" class="flex-1 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold rounded-xl transition-all text-sm">
-            Fermer
-          </button>
-          <a :href="exportImageUrl" :download="exportImageFilename" class="flex-1 py-3 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-xl transition-all text-center flex items-center justify-center gap-2 text-sm shadow-lg shadow-cyan-600/20">
-            <i class="fa-solid fa-download text-[14px]"></i>
-            Télécharger
-          </a>
-        </div>
       </div>
-    </div>
+    </Transition>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useGameStore } from '../stores/gameStore';
-import GamePlayersTracker from './GamePlayersTracker.vue';
-import { getPlayersRankings } from '../utils/ranking';
+import { avatarUrl } from '../utils/avatar';
+import GameHeader from './GameHeader.vue';
+import AppIcon from './AppIcon.vue';
 
 const route = useRoute();
 const router = useRouter();
 const store = useGameStore();
 
-const triggerPause = () => {
-  window.dispatchEvent(new CustomEvent('open-pause-menu'));
-};
+const isHost = computed(() => store.isHost);
 
-const rankings = computed(() => getPlayersRankings(store.ranking));
-const getPlayerRank = (player) => rankings.value[player?.id];
-const getRankBadgeEmoji = (player) => {
-  const rank = getPlayerRank(player);
-  if (rank == null) return '—';
-  if (rank === 1) return '🥇';
-  if (rank === 2) return '🥈';
-  if (rank === 3) return '🥉';
-  return `#${rank}`;
-};
-
-const isHost = computed(() => {
-  return store.player && store.session && store.player.name === store.session.host_name;
-});
-
-const podium = computed(() => {
-  // Take top 3 players from ranking
-  return store.ranking.slice(0, 3);
-});
+const podium = computed(() => store.ranking.slice(0, 3));
 
 const totalTracks = computed(() => store.musics.length);
 
@@ -396,10 +266,22 @@ const getPlayerName = (id) => {
   return p ? p.name : 'Inconnu';
 };
 
+const initials = (name) =>
+  (name || '?')
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part.charAt(0))
+    .join('')
+    .toUpperCase();
+
 const handleKeyDown = (e) => {
-  if (e.code === 'Space' && isHost.value) {
-    const isTyping = ['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName);
-    if (!isTyping) {
+  if (e.key === 'Escape' && showExportModal.value) {
+    showExportModal.value = false;
+    return;
+  }
+  if (e.code === 'Space' && isHost.value && !showExportModal.value) {
+    const isInteractive = ['INPUT', 'TEXTAREA', 'BUTTON', 'A', 'SELECT'].includes(document.activeElement?.tagName);
+    if (!isInteractive) {
       e.preventDefault();
       replay();
     }
@@ -408,7 +290,6 @@ const handleKeyDown = (e) => {
 
 onMounted(async () => {
   if (route.path === '/test-export') {
-    // Populate store with mock results
     store.ranking = [
       { id: '1', name: 'Lucas', score: 120, correctGuesses: 5, votesReceived: 2, is_bot: false },
       { id: '2', name: 'Sophie (Bot)', score: 95, correctGuesses: 4, votesReceived: 3, is_bot: true },
@@ -438,7 +319,8 @@ onMounted(async () => {
     return;
   }
 
-  if (!store.player) {
+  await store.loadSession(route.params.code);
+  if (!store.token || !store.player || store.player.session_id !== store.session?.id) {
     router.push(`/game/${route.params.code}`);
     return;
   }
@@ -449,9 +331,9 @@ onMounted(async () => {
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeyDown);
+  document.body.style.overflow = '';
 });
 
-// Watch for phase changes to redirect back to waiting room when session is reset
 watch(() => store.session?.phase, (newPhase) => {
   if (newPhase === 'waiting') {
     router.push(`/game/${route.params.code}`);
@@ -463,12 +345,21 @@ const replay = async () => {
   try {
     await store.resetSession();
   } catch (err) {
-    console.error("Failed to reset session:", err);
+    console.error('Failed to reset session:', err);
   }
 };
 
 const showExportModal = ref(false);
+const exportClose = ref(null);
 const exportImageUrl = ref('');
+
+watch(showExportModal, async (open) => {
+  document.body.style.overflow = open ? 'hidden' : '';
+  if (open) {
+    await nextTick();
+    exportClose.value?.focus();
+  }
+});
 
 const exportImageFilename = computed(() => {
   const code = store.session?.code || 'game';
@@ -503,49 +394,6 @@ const drawRoundedRect = (ctx, x, y, width, height, radius, fillStyle, strokeStyl
   }
 };
 
-const drawVinyl = (ctx, cx, cy, r) => {
-  // Outer vinyl disc (dark slate-950)
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.fillStyle = '#0b0f19'; // slate 950
-  ctx.fill();
-
-  // Outer border highlights
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.strokeStyle = '#1e293b'; // slate 800
-  ctx.lineWidth = 2;
-  ctx.stroke();
-
-  // Grooves (concentric lines)
-  for (let i = 0.3; i < 0.9; i += 0.15) {
-    ctx.beginPath();
-    ctx.arc(cx, cy, r * i, 0, Math.PI * 2);
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-  }
-
-  // Center label (cyan/purple gradient circle)
-  const labelRadius = r * 0.35;
-  const labelGrad = ctx.createLinearGradient(cx - labelRadius, cy - labelRadius, cx + labelRadius, cy + labelRadius);
-  labelGrad.addColorStop(0, '#8b5cf6'); // purple
-  labelGrad.addColorStop(1, '#06b6d4'); // cyan
-  ctx.beginPath();
-  ctx.arc(cx, cy, labelRadius, 0, Math.PI * 2);
-  ctx.fillStyle = labelGrad;
-  ctx.fill();
-
-  // Center hole
-  ctx.beginPath();
-  ctx.arc(cx, cy, r * 0.08, 0, Math.PI * 2);
-  ctx.fillStyle = '#020617'; // slate 950
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-  ctx.lineWidth = 1;
-  ctx.stroke();
-};
-
 const drawGlowBlob = (ctx, x, y, r, color) => {
   const grad = ctx.createRadialGradient(x, y, 0, x, y, r);
   grad.addColorStop(0, color);
@@ -562,9 +410,7 @@ const exportImage = () => {
   const second = ranking[1];
   const third = ranking[2];
 
-  // We exclude the top 3 players from the list
   const remainingPlayersCount = Math.max(0, ranking.length - 3);
-  // Panel height needs to fit remaining players (40px per row) or stats (which take about 240px)
   const panelHeight = Math.max(240, 85 + remainingPlayersCount * 40);
   const canvasHeight = 450 + panelHeight + 110;
 
@@ -573,86 +419,69 @@ const exportImage = () => {
   canvas.height = canvasHeight;
   const ctx = canvas.getContext('2d');
 
-  // 1. Background radial gradient
+  // Paper background
   const bgGrad = ctx.createRadialGradient(400, canvasHeight / 2, 50, 400, canvasHeight / 2, Math.max(600, canvasHeight));
-  bgGrad.addColorStop(0, '#100e2b'); // Indigo/purple 950 base
-  bgGrad.addColorStop(0.6, '#080c18'); // slate 900 base
-  bgGrad.addColorStop(1, '#020308'); // black/slate 950 base
+  bgGrad.addColorStop(0, '#fff8ed');
+  bgGrad.addColorStop(0.7, '#f6ead9');
+  bgGrad.addColorStop(1, '#eadfe9');
   ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, 800, canvasHeight);
 
-  // Draw Glow Blobs to mirror the UI
-  drawGlowBlob(ctx, 150, 150, 300, 'rgba(124, 58, 237, 0.08)'); // Purple glow top-left
-  drawGlowBlob(ctx, 650, canvasHeight - 150, 300, 'rgba(6, 182, 212, 0.08)');  // Cyan glow bottom-right
-  drawGlowBlob(ctx, 400, canvasHeight / 2, 250, 'rgba(219, 39, 119, 0.05)');  // Pink glow center
+  drawGlowBlob(ctx, 130, 140, 300, 'rgba(107, 60, 224, 0.16)');
+  drawGlowBlob(ctx, 670, canvasHeight - 140, 300, 'rgba(228, 86, 159, 0.10)');
 
-  // 2. Vinyl disc decorative background
-  drawVinyl(ctx, 740, canvasHeight - 60, 150);
-
-  // 3. Header title and info
-  // Title "CÉKIKILAMI" with gradient
-  const titleGrad = ctx.createLinearGradient(50, 0, 320, 0);
-  titleGrad.addColorStop(0, '#06b6d4'); // cyan-500
-  titleGrad.addColorStop(0.5, '#8b5cf6'); // purple-500
-  titleGrad.addColorStop(1, '#ec4899'); // pink-500
-  ctx.fillStyle = titleGrad;
-  ctx.font = '900 38px Outfit, system-ui, -apple-system, sans-serif';
+  // Header
+  ctx.fillStyle = '#2e1b3f';
+  ctx.font = '800 38px Archivo, system-ui, -apple-system, sans-serif';
   ctx.fillText('CÉKIKILAMI', 50, 75);
 
-  // Subtitle
-  ctx.fillStyle = '#94a3b8'; // slate-400
-  ctx.font = '700 14px "Plus Jakarta Sans", system-ui, sans-serif';
-  ctx.fillText(`CLASSEMENT FINAL • SALON : ${store.session?.code || ''}`, 50, 110);
+  ctx.fillStyle = '#644f72';
+  ctx.font = '600 14px Archivo, system-ui, sans-serif';
+  ctx.fillText(`Classement final — salon ${store.session?.code || ''}`, 50, 108);
 
-  // Date
   const dateStr = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  ctx.fillStyle = '#64748b'; // slate-500
-  ctx.font = '600 13px "Plus Jakarta Sans", system-ui, sans-serif';
+  ctx.fillStyle = '#6f5b7a';
+  ctx.font = '500 13px ui-monospace, monospace';
   ctx.textAlign = 'right';
-  ctx.fillText(dateStr, 750, 110);
-  ctx.textAlign = 'left'; // reset
+  ctx.fillText(dateStr, 750, 108);
+  ctx.textAlign = 'left';
 
-  // Header separator line
   ctx.beginPath();
-  ctx.moveTo(50, 135);
-  ctx.lineTo(750, 135);
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+  ctx.moveTo(50, 132);
+  ctx.lineTo(750, 132);
+  ctx.strokeStyle = 'rgba(46, 27, 63, 0.16)';
   ctx.lineWidth = 1;
   ctx.stroke();
 
-  // 4. Draw Podium (Top 3)
-  const drawPodiumColumn = (x, y, w, h, radius, fillGradStart, borderStyle, player, rankEmoji) => {
+  // Podium
+  const drawPodiumColumn = (x, y, w, h, radius, fillColor, borderStyle, player, rankEmoji) => {
     if (!player) return;
 
-    // 1. Column background with top rounded corners
     const colGrad = ctx.createLinearGradient(x, y, x, y + h);
-    colGrad.addColorStop(0, fillGradStart);
-    colGrad.addColorStop(1, 'rgba(15, 23, 42, 0.02)');
+    colGrad.addColorStop(0, fillColor);
+    colGrad.addColorStop(1, 'rgba(255, 248, 237, 0.4)');
     drawRoundedRect(ctx, x, y, w, h, radius, colGrad, borderStyle, 1.5);
 
-    // 2. Medal circle overlapping the top edge
     const medalRadius = rankEmoji === '🥇' ? 28 : rankEmoji === '🥈' ? 24 : 22;
     const medalY = y;
-    
-    // Draw medal outer glow/shadow
+
     ctx.beginPath();
     ctx.arc(x + w / 2, medalY, medalRadius + 3, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+    ctx.fillStyle = 'rgba(46, 27, 63, 0.08)';
     ctx.fill();
 
-    // Draw medal circle
     const medalGrad = ctx.createLinearGradient(x + w / 2 - medalRadius, medalY - medalRadius, x + w / 2 + medalRadius, medalY + medalRadius);
     if (rankEmoji === '🥇') {
-      medalGrad.addColorStop(0, '#fde047'); // yellow-300
-      medalGrad.addColorStop(1, '#ca8a04'); // yellow-600
+      medalGrad.addColorStop(0, '#fde047');
+      medalGrad.addColorStop(1, '#ca8a04');
     } else if (rankEmoji === '🥈') {
-      medalGrad.addColorStop(0, '#e2e8f0'); // slate-200
-      medalGrad.addColorStop(1, '#64748b'); // slate-500
+      medalGrad.addColorStop(0, '#e2e8f0');
+      medalGrad.addColorStop(1, '#64748b');
     } else {
-      medalGrad.addColorStop(0, '#f97316'); // orange-500
-      medalGrad.addColorStop(1, '#9a3412'); // orange-800
+      medalGrad.addColorStop(0, '#f97316');
+      medalGrad.addColorStop(1, '#9a3412');
     }
-    
+
     ctx.beginPath();
     ctx.arc(x + w / 2, medalY, medalRadius, 0, Math.PI * 2);
     ctx.fillStyle = medalGrad;
@@ -661,157 +490,129 @@ const exportImage = () => {
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Draw Emoji inside Medal
     ctx.font = `${rankEmoji === '🥇' ? 20 : rankEmoji === '🥈' ? 18 : 16}px system-ui`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(rankEmoji, x + w / 2, medalY);
-    ctx.textBaseline = 'alphabetic'; // reset
+    ctx.textBaseline = 'alphabetic';
 
-    // 3. Crown for 1st place
     if (rankEmoji === '🥇') {
       ctx.font = '28px system-ui';
       ctx.fillText('👑', x + w / 2, medalY - medalRadius - 8);
     }
 
-    // 4. Player name inside the column (aligned from bottom y + h)
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '800 14px Outfit, system-ui, sans-serif';
+    ctx.fillStyle = '#2e1b3f';
+    ctx.font = '700 14px Archivo, system-ui, sans-serif';
     ctx.textAlign = 'center';
     let displayName = player.name;
-    if (player.is_bot) displayName = truncateText(displayName, 10);
-    else displayName = truncateText(displayName, 12);
+    displayName = truncateText(displayName, player.is_bot ? 10 : 12);
     ctx.fillText(displayName, x + w / 2, y + h - 90);
 
-    // 5. Score inside the column (aligned from bottom y + h)
-    ctx.fillStyle = rankEmoji === '🥇' ? '#facc15' : rankEmoji === '🥈' ? '#cbd5e1' : '#f97316';
-    ctx.font = '900 22px monospace';
+    ctx.fillStyle = rankEmoji === '🥇' ? '#6b3ce0' : rankEmoji === '🥈' ? '#2b8ed6' : '#b8315f';
+    ctx.font = '700 22px ui-monospace, monospace';
     ctx.fillText(`${player.score}`, x + w / 2 - 10, y + h - 55);
-    ctx.fillStyle = '#94a3b8';
-    ctx.font = '600 11px "Plus Jakarta Sans", sans-serif';
+    ctx.fillStyle = '#644f72';
+    ctx.font = '500 11px Archivo, sans-serif';
     ctx.fillText('pts', x + w / 2 + (player.score.toString().length * 6) + 4, y + h - 55);
 
-    // 6. Stats badges at the bottom of the column (aligned from bottom y + h)
     const statsY = y + h - 25;
     const correctVal = player.correctGuesses || 0;
     const votesVal = player.votesReceived || 0;
 
-    // Badges layout (horizontal center align)
     const bW = 48;
     const bH = 18;
     const bRad = 9;
     const startX = x + w / 2 - bW - 3;
-    
-    // Correct Guesses badge
-    drawRoundedRect(ctx, startX, statsY - 12, bW, bH, bRad, 'rgba(16, 185, 129, 0.08)', 'rgba(16, 185, 129, 0.2)', 1);
-    ctx.fillStyle = '#34d399';
-    ctx.font = '700 9px sans-serif';
+
+    drawRoundedRect(ctx, startX, statsY - 12, bW, bH, bRad, 'rgba(44, 122, 110, 0.06)', 'rgba(44, 122, 110, 0.2)', 1);
+    ctx.fillStyle = '#2c7a6e';
+    ctx.font = '600 9px Archivo, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText(`🎯 ${correctVal}`, startX + bW / 2, statsY);
 
-    // Votes Received badge
     const startX2 = x + w / 2 + 3;
-    drawRoundedRect(ctx, startX2, statsY - 12, bW, bH, bRad, 'rgba(168, 85, 247, 0.08)', 'rgba(168, 85, 247, 0.2)', 1);
-    ctx.fillStyle = '#c084fc';
-    ctx.font = '700 9px sans-serif';
+    drawRoundedRect(ctx, startX2, statsY - 12, bW, bH, bRad, 'rgba(107, 60, 224, 0.06)', 'rgba(107, 60, 224, 0.2)', 1);
+    ctx.fillStyle = '#5227c4';
+    ctx.font = '600 9px Archivo, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText(`💜 ${votesVal}`, startX2 + bW / 2, statsY);
   };
 
-  // Draw Podium
   ctx.textAlign = 'center';
-  drawPodiumColumn(175, 260, 130, 160, 16, 'rgba(148, 163, 184, 0.15)', 'rgba(148, 163, 184, 0.25)', second, '🥈');
-  drawPodiumColumn(325, 220, 150, 200, 20, 'rgba(234, 179, 8, 0.15)', 'rgba(234, 179, 8, 0.35)', first, '🥇');
-  drawPodiumColumn(495, 290, 130, 130, 16, 'rgba(180, 83, 9, 0.12)', 'rgba(180, 83, 9, 0.22)', third, '🥉');
-  ctx.textAlign = 'left'; // Reset
+  drawPodiumColumn(175, 260, 130, 160, 16, 'rgba(43, 142, 214, 0.10)', 'rgba(43, 142, 214, 0.28)', second, '🥈');
+  drawPodiumColumn(325, 220, 150, 200, 20, 'rgba(107, 60, 224, 0.12)', 'rgba(107, 60, 224, 0.40)', first, '🥇');
+  drawPodiumColumn(495, 290, 130, 130, 16, 'rgba(228, 86, 159, 0.08)', 'rgba(228, 86, 159, 0.25)', third, '🥉');
+  ctx.textAlign = 'left';
 
-  // 5. Lower Content Panel: Left (Classment Table) & Right (Stats highlights)
-  // Panel background
-  drawRoundedRect(ctx, 50, 450, 700, panelHeight, 16, 'rgba(15, 23, 42, 0.45)', 'rgba(255, 255, 255, 0.06)', 1);
+  drawRoundedRect(ctx, 50, 450, 700, panelHeight, 16, 'rgba(255, 248, 237, 0.9)', 'rgba(46, 27, 63, 0.12)', 1);
 
-  // --- Left Column: Rankings ---
-  ctx.fillStyle = '#94a3b8';
-  ctx.font = '900 12px "Plus Jakarta Sans", system-ui, sans-serif';
-  ctx.fillText('CLASSEMENT', 70, 485);
+  ctx.fillStyle = '#6f5b7a';
+  ctx.font = '600 11px ui-monospace, monospace';
+  ctx.fillText('Classement', 70, 485);
 
   let yOffset = 515;
   if (ranking.length <= 3) {
-    ctx.fillStyle = '#64748b';
-    ctx.font = 'italic 13px "Plus Jakarta Sans", sans-serif';
+    ctx.fillStyle = '#6f5b7a';
+    ctx.font = 'italic 13px Archivo, sans-serif';
     ctx.fillText('Aucun autre joueur', 70, 515);
   } else {
     for (let i = 3; i < ranking.length; i++) {
       const p = ranking[i];
-      
-      // Draw Rank Badge container
-      let badgeBg = 'rgba(15, 23, 42, 0.6)';
-      let badgeStroke = 'rgba(255, 255, 255, 0.05)';
-      let badgeText = '#94a3b8';
-      drawRoundedRect(ctx, 70, yOffset - 16, 32, 22, 6, badgeBg, badgeStroke, 1);
-      
-      // Rank text inside badge
-      ctx.fillStyle = badgeText;
-      ctx.font = '900 11px monospace';
+
+      drawRoundedRect(ctx, 70, yOffset - 16, 32, 22, 6, 'rgba(46, 27, 63, 0.04)', 'rgba(46, 27, 63, 0.1)', 1);
+
+      ctx.fillStyle = '#644f72';
+      ctx.font = '600 11px ui-monospace, monospace';
       ctx.textAlign = 'center';
       ctx.fillText(`#${i + 1}`, 86, yOffset - 1);
 
-      // Draw Avatar circle
       ctx.beginPath();
       ctx.arc(122, yOffset - 5, 12, 0, Math.PI * 2);
-      let avBg = 'rgba(30, 41, 59, 0.8)';
-      let avStroke = 'rgba(255, 255, 255, 0.08)';
-      let avText = '#cbd5e1';
-      ctx.fillStyle = avBg;
+      ctx.fillStyle = 'rgba(46, 27, 63, 0.06)';
       ctx.fill();
-      ctx.strokeStyle = avStroke;
+      ctx.strokeStyle = 'rgba(46, 27, 63, 0.12)';
       ctx.stroke();
 
-      // Avatar initials
-      ctx.fillStyle = avText;
-      ctx.font = 'bold 9px Outfit, sans-serif';
+      ctx.fillStyle = '#644f72';
+      ctx.font = '700 9px Archivo, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(p.name.substring(0, 2).toUpperCase(), 122, yOffset - 5);
-      ctx.textBaseline = 'alphabetic'; // reset
+      ctx.textBaseline = 'alphabetic';
 
-      // Player Name
-      ctx.fillStyle = '#ffffff';
-      ctx.font = '700 13px Outfit, system-ui, sans-serif';
+      ctx.fillStyle = '#2e1b3f';
+      ctx.font = '600 13px Archivo, system-ui, sans-serif';
       ctx.textAlign = 'left';
       let displayName = p.name;
       if (p.is_bot) displayName += ' (Bot)';
       ctx.fillText(truncateText(displayName, 14), 146, yOffset);
 
-      // Player Score
-      ctx.fillStyle = '#22d3ee';
-      ctx.font = '800 13px monospace';
+      ctx.fillStyle = '#5227c4';
+      ctx.font = '600 13px ui-monospace, monospace';
       ctx.textAlign = 'right';
       ctx.fillText(`${p.score} pts`, 370, yOffset);
-      ctx.textAlign = 'left'; // reset
+      ctx.textAlign = 'left';
 
-      // Separator line
       ctx.beginPath();
       ctx.moveTo(70, yOffset + 12);
       ctx.lineTo(370, yOffset + 12);
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+      ctx.strokeStyle = 'rgba(46, 27, 63, 0.07)';
       ctx.stroke();
 
       yOffset += 40;
     }
   }
 
-  // Vertical Divider
   ctx.beginPath();
   ctx.moveTo(400, 470);
   ctx.lineTo(400, 450 + panelHeight - 25);
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
+  ctx.strokeStyle = 'rgba(46, 27, 63, 0.12)';
   ctx.lineWidth = 1;
   ctx.stroke();
 
-  // --- Right Column: Stats ---
-  ctx.fillStyle = '#94a3b8';
-  ctx.font = '900 12px "Plus Jakarta Sans", system-ui, sans-serif';
-  ctx.fillText('STATISTIQUES', 430, 485);
+  ctx.fillStyle = '#6f5b7a';
+  ctx.font = '600 11px ui-monospace, monospace';
+  ctx.fillText('Statistiques', 430, 485);
 
   const totalTracks = store.musics.length;
 
@@ -835,128 +636,53 @@ const exportImage = () => {
 
   let statsY = 525;
 
-  // Helper to draw a single stat item
   const drawStatItem = (icon, title, value, valColor) => {
-    // Icon
     ctx.font = '22px system-ui';
     ctx.fillText(icon, 430, statsY - 2);
-    
-    // Title
-    ctx.fillStyle = '#94a3b8';
-    ctx.font = '700 11px "Plus Jakarta Sans", sans-serif';
-    ctx.fillText(title.toUpperCase(), 468, statsY - 10);
-    
-    // Value
-    ctx.fillStyle = valColor || '#ffffff';
-    ctx.font = '800 14px Outfit, system-ui, sans-serif';
+
+    ctx.fillStyle = '#6f5b7a';
+    ctx.font = '600 11px Archivo, sans-serif';
+    ctx.fillText(title, 468, statsY - 10);
+
+    ctx.fillStyle = valColor || '#2e1b3f';
+    ctx.font = '700 14px Archivo, system-ui, sans-serif';
     ctx.fillText(value, 468, statsY + 8);
-    
+
     statsY += 52;
   };
 
-  // Stat 1: Total tracks
-  drawStatItem('🎵', 'Morceaux joués', `${totalTracks} titres proposés`, '#cbd5e1');
+  drawStatItem('🎵', 'Morceaux joués', `${totalTracks} titres proposés`, '#644f72');
 
-  // Stat 2: Best detective
   if (bestDetective) {
-    drawStatItem('🎯', 'Meilleur détective', `${bestDetective} (${maxCorrect} correct${maxCorrect > 1 ? 's' : ''})`, '#34d399');
+    drawStatItem('🎯', 'Meilleur détective', `${bestDetective} (${maxCorrect} bonne${maxCorrect > 1 ? 's' : ''} réponse${maxCorrect > 1 ? 's' : ''})`, '#2c7a6e');
   } else {
-    drawStatItem('🎯', 'Meilleur détective', 'Aucune bonne réponse', '#64748b');
+    drawStatItem('🎯', 'Meilleur détective', 'Aucune bonne réponse', '#6f5b7a');
   }
 
-  // Stat 3: Most suspected
   if (mostSuspected) {
-    drawStatItem('💜', 'Le plus suspecté', `${mostSuspected} (${maxVotes} vote${maxVotes > 1 ? 's' : ''} reçu${maxVotes > 1 ? 's' : ''})`, '#c084fc');
+    drawStatItem('💜', 'Le plus suspecté', `${mostSuspected} (${maxVotes} vote${maxVotes > 1 ? 's' : ''} reçu${maxVotes > 1 ? 's' : ''})`, '#5227c4');
   } else {
-    drawStatItem('😈', 'Le plus suspecté', 'Aucun vote reçu', '#64748b');
+    drawStatItem('💜', 'Le plus suspecté', 'Aucun vote reçu', '#6f5b7a');
   }
 
-  // 6. Footer branding
   ctx.beginPath();
   ctx.moveTo(50, 450 + panelHeight + 25);
   ctx.lineTo(750, 450 + panelHeight + 25);
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+  ctx.strokeStyle = 'rgba(46, 27, 63, 0.12)';
   ctx.lineWidth = 1;
   ctx.stroke();
 
-  ctx.fillStyle = '#64748b';
-  ctx.font = '600 13px "Plus Jakarta Sans", system-ui, sans-serif';
-  ctx.fillText('CÉKIKILAMI • JEU DE MUSIQUE EN LIGNE', 50, 450 + panelHeight + 65);
+  ctx.fillStyle = '#6f5b7a';
+  ctx.font = '500 13px Archivo, system-ui, sans-serif';
+  ctx.fillText('Cékikilami, jeu de musique en ligne', 50, 450 + panelHeight + 65);
 
   ctx.textAlign = 'right';
-  ctx.fillStyle = '#475569';
-  ctx.font = '500 12px monospace';
+  ctx.fillStyle = '#6f5b7a';
+  ctx.font = '500 12px ui-monospace, monospace';
   ctx.fillText('cekikilami.lucasspitzer.fr', 750, 450 + panelHeight + 65);
   ctx.textAlign = 'left';
 
   exportImageUrl.value = canvas.toDataURL('image/png');
   showExportModal.value = true;
 };
-
-
 </script>
-
-<style scoped>
-/* Glowing background blobs */
-.glow-blob {
-  filter: blur(120px);
-  pointer-events: none;
-  position: absolute;
-  border-radius: 9999px;
-  opacity: 0.12;
-  z-index: -10;
-}
-
-/* Glass panel glow animation */
-.podium-card {
-  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.podium-card:hover {
-  transform: translateY(-8px) scale(1.02);
-  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5);
-  border-color: rgba(255, 255, 255, 0.15);
-}
-
-.podium-card-1:hover {
-  box-shadow: 0 20px 40px -15px rgba(234, 179, 8, 0.15);
-  border-color: rgba(234, 179, 8, 0.4);
-}
-
-/* Music vinyl rotation effect */
-.music-item-card {
-  position: relative;
-  overflow: hidden;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-.music-item-card:hover {
-  transform: translateY(-2px);
-  border-color: rgba(255, 255, 255, 0.12);
-  box-shadow: 0 10px 20px -10px rgba(0, 0, 0, 0.5);
-}
-
-.vinyl-disc {
-  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-  transform: translateX(0px) rotate(0deg);
-  opacity: 0;
-}
-.music-item-card:hover .vinyl-disc {
-  transform: translateX(24px) rotate(180deg);
-  opacity: 1;
-}
-
-/* Staggered slide up items */
-@keyframes slide-up {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.stagger-item {
-  animation: slide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-</style>

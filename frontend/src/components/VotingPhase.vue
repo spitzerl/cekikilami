@@ -1,307 +1,309 @@
 <template>
-  <div class="game-main-layout p-4 pb-0 max-w-7xl mx-auto opacity-0 animate-fade-in-up">
-    <!-- Header -->
-    <header class="page-header">
-      <div class="flex justify-between items-center w-full sm:w-auto">
-        <div>
-          <h1 class="text-xl sm:text-3xl font-extrabold text-white">
-            {{ status === 'revelation' ? 'Révélation' : 'Phase de Vote' }}
-          </h1>
-          <p class="text-slate-400 text-xs mt-0.5">
-            Morceau <span class="text-cyan-400 font-bold font-mono">{{ (store.session?.current_music_index || 0) + 1 }}</span>
-          </p>
+  <div class="game-layout">
+    <GameHeader
+      :title="headerTitle"
+      :subtitle="headerSubtitle"
+      :step="3"
+    >
+      <template #actions>
+        <div
+          v-if="showTimer"
+          :class="['timer', remainingTime < 10 ? 'is-urgent' : '']"
+          role="timer"
+          :aria-label="`Temps restant : ${remainingTime} secondes`"
+        >
+          <AppIcon name="clock" :size="15" />
+          {{ remainingTime }} s
         </div>
-        <!-- Mobile Timer (Compact) & Pause -->
-        <div class="flex sm:hidden items-center gap-2">
-          <div v-if="status !== 'idle'" :class="['flex items-center gap-1.5 px-3 py-1.5 rounded-xl border font-bold text-base transition-all duration-300', remainingTime < 10 ? 'bg-rose-500/10 border-rose-500 text-rose-400 animate-pulse' : 'bg-slate-900 border-slate-800 text-cyan-400']">
-            <i class="fa-regular fa-clock text-[14px]"></i>
-            <span class="font-mono text-sm">{{ remainingTime }}s</span>
-          </div>
-          <button 
-            type="button"
-            @click="triggerPause"
-            class="flex items-center justify-center w-9 h-9 rounded-xl bg-slate-900/60 hover:bg-slate-900/80 border border-slate-700/50 backdrop-blur-md text-slate-200 hover:text-white shadow-lg transition-all active:scale-95 hover:border-cyan-500/40"
-            title="Mettre en pause / Options"
-          >
-            <i class="fa-solid fa-pause text-[14px]"></i>
-          </button>
-        </div>
-      </div>
 
-      <!-- Header Action Controls -->
-      <div class="flex items-center gap-2.5 w-full sm:w-auto justify-end">
-        <!-- Host Skip/Next Subphase Button -->
         <button
           v-if="isHost && status === 'voting'"
+          type="button"
+          :class="['btn', everyoneHasVoted ? 'btn-primary' : 'btn-secondary']"
           @click="advanceSubphase"
-          :class="['flex-1 sm:flex-none px-3.5 py-2 border text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-lg active:scale-95', everyoneHasVoted ? 'bg-emerald-600 hover:bg-emerald-500 border-emerald-500 text-white animate-pulse' : 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-200']"
         >
-          <span>Révéler ({{ totalVotesCast }}/{{ totalEligibleVoters }})</span>
-          <i class="fa-solid fa-angles-right text-[13px]"></i>
+          <AppIcon name="eye" :size="15" />
+          Révéler ({{ votesSummary.cast }}/{{ votesSummary.total }})
         </button>
 
-        <!-- Desktop Timer -->
-        <div v-if="status !== 'idle'" :class="['hidden sm:flex items-center gap-2 px-4 py-2 rounded-xl border font-bold text-lg transition-all duration-300', remainingTime < 10 ? 'bg-rose-500/10 border-rose-500 text-rose-400 animate-pulse' : 'bg-slate-900 border-slate-800 text-cyan-400']">
-          <i class="fa-regular fa-clock text-[18px]"></i>
-          <span class="font-mono">{{ remainingTime }}s</span>
-        </div>
-      </div>
-    </header>
+        <button
+          v-if="isHost && status === 'revelation'"
+          type="button"
+          class="btn btn-primary"
+          @click="advanceFromRevelation"
+        >
+          <AppIcon name="forward" :size="15" />
+          Manche suivante
+        </button>
+      </template>
+    </GameHeader>
 
-    <!-- Players Tracker Widget -->
-    <GamePlayersTracker />
-
-    <!-- First Round Start Screen -->
-    <main v-if="status === 'idle'" class="flex-1 min-h-0 overflow-y-auto flex flex-col items-center justify-center w-full relative z-10 scrollbar-none">
-      <div class="glass-panel p-8 md:p-12 text-center rounded-3xl border border-slate-800 shadow-2xl max-w-3xl w-full mx-auto relative overflow-hidden flex flex-col justify-center items-center">
-        <!-- Background Glow -->
-        <div class="absolute inset-0 bg-gradient-to-br from-cyan-500/10 via-transparent to-purple-500/10 pointer-events-none"></div>
-
-        <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 text-xs font-bold uppercase tracking-wider mb-6 relative z-10">
-          Préparation de la manche 1
-        </div>
-
-        <h2 class="text-4xl md:text-5xl font-black text-white mb-6 tracking-tight drop-shadow-lg relative z-10">La partie va commencer !</h2>
-        <p class="text-lg md:text-xl text-slate-300 font-medium mb-12 relative z-10 max-w-xl mx-auto">
-          La phase de sélection est terminée.<br/>
-          Écoutez attentivement chaque morceau et devinez quel joueur l'a proposé.
+    <!-- First round -->
+    <main v-if="status === 'idle'" class="game-shell game-body" style="max-width: 820px">
+      <section class="panel stage">
+        <span class="stage-kicker">
+          <span class="status-dot is-live"></span>
+          Préparation
+        </span>
+        <h2 class="stage-title">La partie va commencer</h2>
+        <p class="stage-text pretty">
+          La sélection est terminée. Écoutez chaque extrait et devinez quel joueur l’a proposé.
         </p>
-        
-        <div v-if="isHost" class="relative z-10 w-full">
-          <button @click="launchRound" class="glow-btn-cyan bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black py-4 px-10 md:py-5 md:px-12 rounded-2xl transition-all flex items-center justify-center gap-3 mx-auto text-xl md:text-2xl shadow-[0_0_40px_rgba(6,182,212,0.6)] hover:scale-105 active:scale-95">
-            <i class="fa-solid fa-play text-[24px]"></i>
-            Commencer la partie
-          </button>
+
+        <button
+          v-if="isHost"
+          type="button"
+          class="btn btn-primary btn-lg"
+          style="margin-top: 26px"
+          @click="launchRound"
+        >
+          <AppIcon name="play" :size="17" />
+          Commencer la partie
+        </button>
+        <div v-else class="status" style="margin-top: 26px">
+          <span class="status-dot is-live"></span>
+          En attente de l’hôte…
         </div>
-        <div v-else class="space-y-4 relative z-10">
-          <div class="inline-flex items-center justify-center gap-3 px-6 py-4 rounded-xl bg-slate-900/50 border border-slate-800 text-slate-400 w-full max-w-md mx-auto">
-            <span class="w-2.5 h-2.5 bg-cyan-400 rounded-full animate-ping"></span>
-            <span class="font-bold text-base md:text-lg">En attente de l'hôte pour commencer...</span>
-          </div>
-        </div>
-      </div>
+      </section>
     </main>
 
-    <!-- Main Board (Subsequent phases) -->
-    <main v-else class="flex-1 min-h-0 flex flex-col md:grid md:grid-cols-2 gap-4 md:gap-6 overflow-hidden md:overflow-visible">
-      <!-- Status Box -->
-      <section class="glass-panel p-4 rounded-2xl border border-slate-800 text-center relative overflow-hidden flex flex-col items-center justify-center flex-shrink-0 w-full md:min-h-[500px] lg:min-h-[600px] py-4 sm:py-6">
-
-        <!-- Listening Phase -->
-        <div v-if="status === 'listening'" class="space-y-6">
-          <!-- Animated soundwave (Equalizer) -->
-          <div class="flex items-end justify-center gap-2 h-16 mb-4 w-40 mx-auto px-4 py-2">
-            <span class="w-2 bg-cyan-400 rounded-full animate-eq-1" style="height: 20%;"></span>
-            <span class="w-2 bg-cyan-500 rounded-full animate-eq-2" style="height: 40%;"></span>
-            <span class="w-2 bg-purple-500 rounded-full animate-eq-3" style="height: 15%;"></span>
-            <span class="w-2 bg-purple-600 rounded-full animate-eq-4" style="height: 35%;"></span>
-            <span class="w-2 bg-cyan-400 rounded-full animate-eq-5" style="height: 25%;"></span>
-          </div>
-          <h2 class="text-2xl font-extrabold text-white">Écoute en cours...</h2>
-          <p class="text-slate-400 text-sm max-w-md mx-auto">
-            Écoutez attentivement l'extrait audio. Les votes ouvriront dès que la lecture sera terminée.
-          </p>
-          
-          <!-- Audio helper info -->
-          <div class="flex flex-col items-center gap-2 mt-4">
-            <div v-if="audioError" class="px-4 py-2 bg-rose-500/20 border border-rose-500/30 rounded-xl text-rose-300 text-xs font-bold flex items-center gap-2 animate-pulse max-w-sm mx-auto">
-              <i class="fa-solid fa-triangle-exclamation text-[14px] text-rose-300 flex-shrink-0"></i>
-              Impossible de charger ou lire le son (bloqué ou expiré).
-            </div>
-            <button @click="retryAudio" class="px-4 py-2 bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/50 rounded-xl text-slate-300 hover:text-white text-xs font-extrabold flex items-center gap-1.5 active:scale-95 transition-all shadow-md">
-              <i class="fa-solid fa-play text-[13px]"></i>
-              Relancer l'extrait audio
-            </button>
-          </div>
-        </div>
-
-        <!-- Voting Phase -->
-        <div v-else-if="status === 'voting'" class="space-y-2 sm:space-y-4 w-full">
-          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 text-xs font-bold uppercase tracking-wider mb-1 sm:mb-2">
-            Vote Ouvert
-          </div>
-          <h2 class="text-base sm:text-3xl font-extrabold text-white">Qui a proposé ce morceau ?</h2>
-          
-          <!-- Track details revealed -->
-          <div class="max-w-md mx-auto flex items-center gap-3 sm:gap-4 text-left py-1 sm:py-2">
-            <img v-if="store.currentMusic?.cover_url" :src="store.currentMusic.cover_url" class="w-12 h-12 sm:w-16 sm:h-16 rounded-xl object-cover shadow-xl border border-slate-800/60 flex-shrink-0" />
-            <div v-else class="w-12 h-12 sm:w-16 sm:h-16 rounded-xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center text-white shadow-xl flex-shrink-0">
-              <i class="fa-solid fa-music text-[20px] sm:text-[28px] opacity-80"></i>
-            </div>
-            <div class="min-w-0">
-              <p class="font-extrabold text-white text-sm sm:text-lg truncate">{{ store.currentMusic?.title }}</p>
-              <p class="text-slate-400 text-xs sm:text-sm truncate mt-0.5">{{ store.currentMusic?.artist }}</p>
-            </div>
-          </div>
-
-          <!-- Audio helper info -->
-          <div class="flex flex-col items-center gap-2 mt-2 sm:mt-4">
-            <div v-if="audioError" class="px-4 py-2 bg-rose-500/20 border border-rose-500/30 rounded-xl text-rose-300 text-xs font-bold flex items-center gap-2 animate-pulse max-w-sm mx-auto">
-              <i class="fa-solid fa-triangle-exclamation text-[14px] text-rose-300 flex-shrink-0"></i>
-              Impossible de charger ou lire le son (bloqué ou expiré).
-            </div>
-            <button @click="retryAudio" class="px-4 py-2 bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/50 rounded-xl text-slate-300 hover:text-white text-xs font-extrabold flex items-center gap-1.5 active:scale-95 transition-all shadow-md">
-              <i class="fa-solid fa-play text-[13px]"></i>
-              Relancer l'extrait audio
-            </button>
-          </div>
-        </div>
-
-        <!-- Revelation Phase & Blind Test Revelation -->
-        <div v-else-if="status === 'revelation'" class="w-full flex-1 flex flex-col items-center justify-center py-1 sm:py-2 relative">
-          <!-- Glass Card Container -->
-          <div class="relative w-full max-w-sm bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 shadow-2xl rounded-2xl p-2.5 sm:p-5 flex flex-col items-center text-center overflow-hidden">
-            
-            <!-- Glow Effect -->
-            <div class="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-purple-500/10 pointer-events-none"></div>
-
-            <!-- Compact cover art on mobile -->
-            <div class="relative group mb-2 sm:mb-4 z-10">
-              <img v-if="store.currentMusic?.cover_url" :src="store.currentMusic.cover_url" class="w-16 h-16 sm:w-40 sm:h-40 md:w-44 md:h-44 rounded-xl sm:rounded-2xl object-cover shadow-[0_10px_30px_rgba(0,0,0,0.5)] border border-slate-700/80 transition-transform duration-700 group-hover:scale-105 group-hover:-rotate-1" />
-              <div v-else class="w-16 h-16 sm:w-40 sm:h-40 md:w-44 md:h-44 rounded-xl sm:rounded-2xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center text-white shadow-[0_10px_30px_rgba(0,0,0,0.5)] border border-slate-700/80">
-                <i class="fa-solid fa-music text-[24px] sm:text-[56px] opacity-80"></i>
-              </div>
+    <main v-else class="game-shell game-body">
+      <div :class="['voting-grid', { 'is-single': !showSidePanel }]">
+        <!-- Stage -->
+        <section class="panel stage" aria-live="polite">
+          <!-- Listening -->
+          <template v-if="status === 'listening'">
+            <span class="stage-kicker">
+              <span class="status-dot is-live"></span>
+              Écoute en cours
+            </span>
+            <div class="mystery-record" aria-hidden="true"></div>
+            <h2 class="stage-title">Écoutez bien</h2>
+            <p class="stage-text pretty">
+              L’extrait tourne. Les votes ouvriront dès la fin de la lecture.
+            </p>
+            <div class="eq is-playing" style="margin-top: 18px" aria-hidden="true">
+              <span></span><span></span><span></span><span></span><span></span>
             </div>
 
-            <!-- Song info (smaller font on mobile) -->
-            <div class="z-10 w-full mb-1.5 sm:mb-3">
-              <h3 class="text-sm sm:text-xl md:text-2xl font-black text-white leading-tight truncate max-w-full drop-shadow-md">{{ store.currentMusic?.title }}</h3>
-              <p class="text-[11px] sm:text-sm md:text-base text-cyan-400/80 font-bold truncate max-w-full mt-0.5 sm:mt-1 drop-shadow">{{ store.currentMusic?.artist }}</p>
+            <div v-if="audioError" class="callout callout-danger" style="margin-top: 18px; width: 100%; max-width: 380px" role="alert">
+              <AppIcon name="alert-triangle" :size="15" style="flex-shrink: 0; margin-top: 1px" />
+              Extrait indisponible ou bloqué par le navigateur.
             </div>
-
-            <!-- Proposer (More compact on mobile) -->
-            <div v-if="status === 'revelation'" class="z-10 w-full bg-slate-950/40 rounded-xl p-1.5 sm:p-2.5 border border-slate-800/60 mb-2 sm:mb-3 flex flex-wrap items-center justify-center gap-1.5 sm:gap-1 shadow-inner">
-              <span class="text-[9px] sm:text-[10px] text-yellow-500/80 uppercase font-black tracking-widest">Proposé par :</span>
-              <div class="flex items-center gap-1.5">
-                <img v-if="proposerPlayer?.avatar_seed" :src="`https://api.dicebear.com/9.x/notionists-neutral/svg?seed=${proposerPlayer.avatar_seed}&backgroundColor=06b6d4,9333ea,f59e0b,f43f5e,10b981,3b82f6,6366f1`" class="w-6 h-6 sm:w-10 sm:h-10 rounded-full border border-yellow-500/30 bg-slate-800 shadow-md flex-shrink-0" alt="Avatar" />
-                <span class="text-sm sm:text-xl md:text-2xl font-black text-yellow-400 tracking-wide animate-pulse drop-shadow-md">{{ proposerName }}</span>
-              </div>
-            </div>
-
-            <!-- Personal Results (Smaller badges on mobile) -->
-            <div v-if="!isObserver && status === 'revelation'" class="z-10 w-full mt-1 sm:mt-2 flex flex-col gap-1 sm:gap-2">
-              <div v-if="store.session?.enable_blind_test && myBlindTestResult" :class="['px-2.5 py-1 sm:px-5 sm:py-2.5 rounded-xl border text-[10px] sm:text-sm font-black uppercase tracking-wider shadow-lg', myBlindTestResult.statusClass]">
-                BLIND TEST : {{ myBlindTestResult.statusLabel }}
-              </div>
-              <div v-if="myVoteResult" :class="['px-2.5 py-1 sm:px-5 sm:py-2.5 rounded-xl border text-[10px] sm:text-sm font-black uppercase tracking-wider shadow-lg', myVoteResult.statusClass]">
-                VOTE : {{ myVoteResult.statusLabel }}
-              </div>
-            </div>
-          </div>
-
-          <!-- Host: advance to next round (Less margin on mobile) -->
-          <div v-if="isHost && status === 'revelation'" class="mt-2.5 sm:mt-6 z-10">
-            <button @click="advanceFromRevelation" class="glow-btn-purple bg-purple-600 hover:bg-purple-500 text-white font-extrabold py-2.5 px-5 sm:py-3.5 sm:px-8 rounded-2xl transition-all flex items-center gap-2 text-xs sm:text-base shadow-[0_0_20px_rgba(147,51,234,0.4)] active:scale-98">
-              <i class="fa-solid fa-forward text-[12px] sm:text-[18px]"></i>
-              Manche suivante
-            </button>
-          </div>
-        </div>
-
-
-      </section>
-
-      <!-- Interactive Zone (Voting List or Revelation Details) -->
-      <section class="glass-panel p-4 md:p-6 rounded-2xl border border-slate-800 flex-1 min-h-0 flex flex-col overflow-hidden">
-        <!-- Voting Active -->
-        <div v-if="status === 'voting'" class="flex flex-col h-full min-h-0 space-y-3">
-          <!-- Proposer Message -->
-          <div v-if="isProposer" class="text-center p-2.5 sm:p-4 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 font-bold text-xs sm:text-sm">
-            📢 Vous avez proposé ce morceau. Votre vote sert uniquement à bluffer les autres joueurs !
-          </div>
-          <!-- Observer Message -->
-          <div v-else-if="isObserver" class="text-center p-3 sm:p-5 bg-slate-900/40 border border-slate-800 rounded-xl text-slate-400 italic text-xs sm:text-sm">
-            Vous êtes spectateur de cette partie. Observez les votes en direct !
-          </div>
-
-          <!-- Voter Buttons Grid -->
-          <div v-if="!isObserver" class="flex flex-col flex-1 min-h-0 space-y-2">
-            <p class="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 flex-shrink-0">Sélectionnez le suspect :</p>
-            <TransitionGroup
-              name="list"
-              tag="div"
-              class="grid grid-cols-2 gap-3 md:gap-4 overflow-y-auto p-3 -mx-3"
+            <button
+              v-if="store.currentMusic?.file_path"
+              type="button"
+              class="btn btn-ghost btn-sm"
+              style="margin-top: 10px"
+              @click="retryAudio"
             >
-              <button
-                v-for="target in eligiblePlayers"
-                :key="target.id"
-                @click="castVote(target.id)"
-                :disabled="target.id === store.player?.id"
-                :class="['p-3 sm:p-4.5 rounded-2xl border text-left font-bold transition-all flex justify-between items-center text-sm sm:text-base md:text-lg min-h-[56px] sm:min-h-[64px]', selectedVoteId === target.id ? 'bg-cyan-500/10 border-cyan-500 text-white shadow-md shadow-cyan-500/10' : 'bg-slate-900/60 border-slate-800 text-slate-300 hover:border-slate-700 hover:text-white', target.id === store.player?.id ? 'opacity-50 cursor-not-allowed hover:border-slate-800 hover:text-slate-300 hover:scale-100 active:scale-100' : 'active:scale-[0.98] hover:scale-[1.01]']"
-              >
-                <div class="flex items-center gap-2 sm:gap-3 truncate pr-2">
-                  <img v-if="target.avatar_seed" :src="`https://api.dicebear.com/9.x/notionists-neutral/svg?seed=${target.avatar_seed}&backgroundColor=06b6d4,9333ea,f59e0b,f43f5e,10b981,3b82f6,6366f1`" class="w-7 h-7 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-full border border-slate-700/50 bg-slate-800/80 flex-shrink-0" alt="Avatar" />
-                  <span class="truncate">{{ target.name }}</span>
-                </div>
-                <!-- Vote Counter -->
-                <span v-if="store.session?.show_vote_count && getVoteCountForPlayer(target.id) > 0" class="w-6 h-6 flex-shrink-0 flex items-center justify-center text-[11px] bg-cyan-500/20 text-cyan-400 rounded-full border border-cyan-500/30 font-bold animate-pulse-glow">
-                  {{ getVoteCountForPlayer(target.id) }}
-                </span>
-              </button>
-            </TransitionGroup>
-          </div>
-        </div>
+              <AppIcon name="play" :size="13" />
+              Relancer l’extrait
+            </button>
+          </template>
 
-        <!-- Revelation Details -->
-        <div v-else-if="status === 'revelation'" class="flex flex-col h-full min-h-0 space-y-3">
-          <h3 class="text-base sm:text-lg font-bold text-white mb-1 sm:mb-4 flex-shrink-0">Détail des votes</h3>
-          <div class="space-y-2 flex-1 overflow-y-auto pr-2 pb-2">
-            <div v-for="result in voteResults" :key="result.player.id" class="flex items-center justify-between gap-3 py-3 border-b border-slate-800/50 last:border-0 hover:bg-slate-900/10 transition-all px-2 rounded-xl min-w-0">
-              <div class="flex items-center gap-2 min-w-0 flex-1">
-                <img v-if="result.player.avatar_seed" :src="`https://api.dicebear.com/9.x/notionists-neutral/svg?seed=${result.player.avatar_seed}&backgroundColor=06b6d4,9333ea,f59e0b,f43f5e,10b981,3b82f6,6366f1`" class="w-7 h-7 rounded-full border border-slate-700/50 bg-slate-800 flex-shrink-0" alt="Avatar" />
-                <div class="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 min-w-0">
-                  <span class="font-bold text-slate-200 text-sm truncate max-w-[100px] sm:max-w-none">{{ result.player.name }}</span>
-                  <template v-if="result.vote">
-                    <span class="text-xs text-slate-500 whitespace-nowrap">pense que c'est</span>
-                    <span class="font-bold text-slate-200 text-sm truncate max-w-[100px] sm:max-w-none">{{ getPlayerName(result.vote.guessed_player_id) }}</span>
-                  </template>
-                  <template v-else>
-                    <span class="text-xs text-slate-500 italic whitespace-nowrap">n'a pas pu se décider</span>
-                  </template>
-                </div>
+          <!-- Voting -->
+          <template v-else-if="status === 'voting'">
+            <span class="stage-kicker">
+              <span class="status-dot is-live"></span>
+              Vote ouvert
+            </span>
+            <div class="mystery-record" aria-hidden="true"></div>
+            <h2 class="stage-title">À vous de dénoncer</h2>
+            <p class="stage-text pretty">
+              Désignez le joueur qui a proposé cet extrait. Le titre sera révélé à la fin de la manche.
+            </p>
+
+            <div v-if="audioError" class="callout callout-danger" style="margin-top: 14px; width: 100%; max-width: 380px" role="alert">
+              <AppIcon name="alert-triangle" :size="15" style="flex-shrink: 0; margin-top: 1px" />
+              Extrait indisponible ou bloqué par le navigateur.
+            </div>
+            <button
+              v-if="store.currentMusic?.file_path"
+              type="button"
+              class="btn btn-ghost btn-sm"
+              style="margin-top: 8px"
+              @click="retryAudio"
+            >
+              <AppIcon name="play" :size="13" />
+              Relancer l’extrait
+            </button>
+          </template>
+
+          <!-- Revelation -->
+          <template v-else-if="status === 'revelation'">
+            <span class="stage-kicker">
+              <span class="status-dot is-live"></span>
+              Manche terminée
+            </span>
+            <div class="artwork">
+              <img v-if="store.currentMusic?.cover_url" :src="store.currentMusic.cover_url" :alt="`Pochette de ${store.currentMusic?.title}`" />
+              <span v-else class="artwork-fallback"><AppIcon name="music" :size="40" :stroke-width="1.25" /></span>
+            </div>
+            <h2 class="stage-title">{{ store.currentMusic?.title }}</h2>
+            <p class="stage-text">{{ store.currentMusic?.artist }}</p>
+
+            <div class="reveal-proposer">
+              <img
+                v-if="proposerPlayer?.avatar_seed"
+                :src="avatarUrl(proposerPlayer.avatar_seed)"
+                class="avatar avatar-sm"
+                alt=""
+              />
+              <span v-else class="avatar avatar-sm avatar-fallback">{{ initials(proposerName) }}</span>
+              <div style="text-align: left">
+                <span class="reveal-label">Proposé par</span>
+                <p class="reveal-name">{{ proposerName }}</p>
               </div>
-              
-              <!-- Success / Failure / Bluff / Missing Badge -->
-              <span :class="['text-[10px] px-2 py-0.5 rounded border font-bold uppercase whitespace-nowrap flex-shrink-0', result.statusClass]">
-                {{ result.statusLabel }}
+            </div>
+
+            <div v-if="!isObserver" class="result-tags">
+              <span v-if="store.session?.enable_blind_test && myBlindTestResult" :class="myBlindTestResult.statusClass">
+                Blind test : {{ myBlindTestResult.statusLabel.toLowerCase() }}
+              </span>
+              <span v-if="myVoteResult" :class="myVoteResult.statusClass">
+                Votre vote : {{ myVoteResult.statusLabel.toLowerCase() }}
               </span>
             </div>
-            <p v-if="!voteResults?.length" class="text-xs text-slate-500 italic text-center py-4">Aucun joueur pour cette manche.</p>
-          </div>
-        </div>
+          </template>
+        </section>
 
-
-
-        <div v-else-if="status === 'listening'" class="h-full flex flex-col justify-center">
-          <div v-if="!store.session?.enable_blind_test" class="text-center text-slate-500 italic text-sm">
-            Les options de vote apparaîtront dès la fin de l'écoute.
-          </div>
-          <div v-else-if="!isObserver" class="flex flex-col h-full space-y-4 pt-4">
-            <div v-if="isProposer" class="text-center py-2.5 bg-purple-500/10 border border-purple-500/20 px-4 rounded-xl text-purple-400 font-medium text-xs mb-2">
-              📢 C'est votre morceau ! Vous ne participez pas au Blind Test.
+        <!-- Ballot / details -->
+        <section v-if="showSidePanel" class="panel panel-pad">
+          <!-- Voting ballot -->
+          <template v-if="status === 'voting'">
+            <div v-if="isObserver" class="callout">
+              <AppIcon name="eye" :size="15" style="flex-shrink: 0; margin-top: 1px" />
+              Vous êtes spectateur de cette partie. Observez les votes en direct.
             </div>
-            <p v-else class="text-xs font-semibold text-cyan-400 uppercase tracking-wider mb-2 text-center flex-shrink-0">Blind Test : Quel est ce morceau ?</p>
-            <TransitionGroup name="list" tag="div" class="grid grid-cols-2 gap-3 md:gap-4 overflow-y-auto p-3 -mx-3">
-              <button
-                v-for="(option, index) in blindTestOptions"
-                :key="index"
-                @click="submitBlindTestAnswer(option)"
-                :disabled="hasAnsweredBlindTest || isProposer"
-                :class="getBlindTestOptionClass(option)"
+            <template v-else>
+              <div class="panel-head">
+                <div>
+                  <h2 class="panel-title">Qui a proposé ce morceau ?</h2>
+                  <p class="panel-sub">Vous pouvez changer de suspect jusqu’à la révélation.</p>
+                </div>
+              </div>
+
+              <div v-if="isProposer" class="callout callout-accent" style="margin-bottom: 16px">
+                <AppIcon name="info" :size="15" style="flex-shrink: 0; margin-top: 1px" />
+                Vous avez proposé ce morceau. Votre vote sert uniquement à brouiller les pistes.
+              </div>
+
+              <TransitionGroup name="list" tag="div" class="ballot-list">
+                <button
+                  v-for="target in ballotTargets"
+                  :key="target.id"
+                  type="button"
+                  :class="['ballot-btn', selectedVoteId === target.id ? 'is-selected' : '']"
+                  :disabled="target.id === store.player?.id"
+                  :aria-label="`Voter pour ${target.name}${target.id === store.player?.id ? ' (vous ne pouvez pas voter pour vous-même)' : ''}`"
+                  @click="castVote(target.id)"
+                >
+                  <span class="media-row" style="gap: 9px">
+                    <img
+                      v-if="target.avatar_seed"
+                      :src="avatarUrl(target.avatar_seed)"
+                      class="avatar avatar-sm"
+                      alt=""
+                    />
+                    <span v-else class="avatar avatar-sm avatar-fallback">{{ initials(target.name) }}</span>
+                    <span>
+                      {{ target.name }}
+                      <span v-if="target.id === store.player?.id" class="tag" style="margin-left: 4px">Vous</span>
+                      <span v-else-if="target.id === store.session?.host_player_id" class="tag" style="margin-left: 4px">Hôte</span>
+                    </span>
+                  </span>
+                  <span
+                    v-if="store.session?.show_vote_count && getVoteCountForPlayer(target.id) > 0"
+                    class="ballot-count"
+                    :aria-label="`${getVoteCountForPlayer(target.id)} votes`"
+                  >
+                    {{ getVoteCountForPlayer(target.id) }}
+                  </span>
+                </button>
+              </TransitionGroup>
+            </template>
+          </template>
+
+          <!-- Listening: blind test -->
+          <template v-else-if="status === 'listening'">
+            <div v-if="isObserver" class="callout">
+              <AppIcon name="eye" :size="15" style="flex-shrink: 0; margin-top: 1px" />
+              Blind test en cours pour les joueurs.
+            </div>
+            <template v-else>
+              <div class="panel-head">
+                <div>
+                  <h2 class="panel-title">Blind test</h2>
+                  <p class="panel-sub">Devinez le titre pendant l’écoute.</p>
+                </div>
+              </div>
+
+              <div v-if="isProposer" class="callout callout-accent" style="margin-bottom: 16px">
+                <AppIcon name="info" :size="15" style="flex-shrink: 0; margin-top: 1px" />
+                C’est votre morceau : vous ne participez pas au blind test.
+              </div>
+              <div class="option-grid">
+                <button
+                  v-for="(option, index) in blindTestOptions"
+                  :key="index"
+                  type="button"
+                  :class="getBlindTestOptionClass(option)"
+                  :disabled="hasAnsweredBlindTest || isProposer"
+                  @click="submitBlindTestAnswer(option)"
+                >
+                  <span class="title">{{ option.title }}</span>
+                  <span class="artist">{{ option.artist }}</span>
+                </button>
+              </div>
+              <p v-if="hasAnsweredBlindTest" class="hint" style="margin-top: 12px">
+                Réponse enregistrée. Résultat à la révélation.
+              </p>
+            </template>
+          </template>
+
+          <!-- Revelation: vote details -->
+          <template v-else-if="status === 'revelation'">
+            <div class="panel-head">
+              <div>
+                <h2 class="panel-title">Détail des votes</h2>
+                <p class="panel-sub">Ce que chacun a répondu pour cette manche.</p>
+              </div>
+            </div>
+
+            <div class="scroll-area">
+              <div
+                v-for="result in voteResults"
+                :key="result.player.id"
+                class="vote-detail-row"
               >
-                <span class="font-extrabold text-sm md:text-base line-clamp-1 w-full">{{ option.title }}</span>
-                <span class="text-xs text-slate-400 line-clamp-1 w-full mt-1">{{ option.artist }}</span>
-              </button>
-            </TransitionGroup>
-          </div>
-          <div v-else class="text-center text-slate-500 italic text-sm">
-            Mode Blind Test en cours pour les joueurs...
-          </div>
-        </div>
-      </section>
+                <div class="vote-detail-copy">
+                  <img
+                    v-if="result.player.avatar_seed"
+                    :src="avatarUrl(result.player.avatar_seed)"
+                    class="avatar avatar-sm"
+                    alt=""
+                  />
+                  <span v-else class="avatar avatar-sm avatar-fallback">{{ initials(result.player.name) }}</span>
+                  <span class="who">{{ result.player.name }}</span>
+                  <span v-if="result.vote" class="what">
+                    pense que c’est <strong>{{ getPlayerName(result.vote.guessed_player_id) }}</strong>
+                  </span>
+                  <span v-else class="what">n’a pas voté</span>
+                </div>
+                <span v-if="result.vote" :class="result.statusClass">{{ result.statusLabel }}</span>
+              </div>
+            </div>
+
+            <p v-if="!voteResults?.length" class="hint" style="text-align: center; padding: 24px 0">
+              Aucun joueur pour cette manche.
+            </p>
+          </template>
+        </section>
+      </div>
     </main>
 
-
+    <GamePlayersTracker />
   </div>
 </template>
 
@@ -309,24 +311,21 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useGameStore } from '../stores/gameStore';
+import { avatarUrl } from '../utils/avatar';
+import GameHeader from './GameHeader.vue';
 import GamePlayersTracker from './GamePlayersTracker.vue';
+import AppIcon from './AppIcon.vue';
 
 const route = useRoute();
 const router = useRouter();
 const store = useGameStore();
 
-const triggerPause = () => {
-  window.dispatchEvent(new CustomEvent('open-pause-menu'));
-};
-
 const remainingTime = ref(0);
 let timerInterval = null;
 
-// Local Player State
 const selectedVoteId = ref(null);
 const audioError = ref(false);
 
-// Blind Test State
 const blindTestSelectedAnswer = ref(null);
 
 const blindTestOptions = computed(() => {
@@ -359,56 +358,61 @@ const submitBlindTestAnswer = async (option) => {
   try {
     await store.submitBlindTestAnswer(store.currentMusic.id, option.title, option.artist);
   } catch (err) {
-    console.error("Failed to submit blind test answer:", err);
-    blindTestSelectedAnswer.value = null; // Revert on error
+    console.error('Failed to submit blind test answer:', err);
+    blindTestSelectedAnswer.value = null;
   }
 };
 
 const getBlindTestOptionClass = (option) => {
-  const baseClasses = 'p-4 rounded-2xl border text-left transition-all flex flex-col justify-center items-center text-center min-h-[80px]';
-  
-  if (isProposer.value) {
-    return `${baseClasses} opacity-50 cursor-not-allowed bg-slate-900/40 border-slate-800 text-slate-500`;
-  }
-  
-  if (!hasAnsweredBlindTest.value) {
-    return `${baseClasses} bg-slate-900/60 border-slate-800 text-slate-300 hover:border-slate-700 hover:text-white hover:scale-[1.02]`;
-  }
-  
-  // Has answered
-  const isSelected = answeredBlindTestOption.value?.title === option.title && answeredBlindTestOption.value?.artist === option.artist;
-  
-  if (isSelected) {
-    if (blindTestResult.value) {
-      if (blindTestResult.value.is_correct) {
-        return `${baseClasses} bg-emerald-500/20 border-emerald-500 text-emerald-400 shadow-md shadow-emerald-500/20 scale-105`;
-      } else {
-        return `${baseClasses} bg-rose-500/20 border-rose-500 text-rose-400 shadow-md shadow-rose-500/20 scale-105`;
-      }
-    }
-    // Optimistic state before server response
-    return `${baseClasses} bg-cyan-500/20 border-cyan-500 text-white shadow-md shadow-cyan-500/20 scale-105`;
-  } else {
-    // Unselected options after answering
-    return `${baseClasses} opacity-50 cursor-not-allowed bg-slate-900/40 border-slate-800 text-slate-500`;
-  }
+  if (!hasAnsweredBlindTest.value) return 'option-btn';
+  const isSelected = answeredBlindTestOption.value?.title === option.title
+    && answeredBlindTestOption.value?.artist === option.artist;
+  if (!isSelected) return 'option-btn';
+  // Keep the answer neutral until the reveal: the interface promises the
+  // result at the end of the round, so don't leak it during listening.
+  if (status.value === 'revelation' && blindTestResult.value?.is_correct) return 'option-btn is-correct';
+  if (status.value === 'revelation' && blindTestResult.value) return 'option-btn is-wrong';
+  return 'option-btn is-chosen';
 };
 
-// Audio State
 let audio = null;
 
 const status = computed(() => store.session?.voting_status || 'listening');
 
-const isHost = computed(() => {
-  return store.player && store.session && store.player.name === store.session.host_name;
+const headerTitle = computed(() => (status.value === 'revelation' ? 'Révélation' : 'Écoute & vote'));
+
+const headerSubtitle = computed(() => {
+  if (status.value === 'idle') return 'La première manche va commencer.';
+
+  const index = (store.session?.current_music_index ?? 0) + 1;
+  const total = store.currentMusic?.round_total;
+  const round = total ? `Morceau ${index} sur ${total}.` : `Morceau ${index}.`;
+
+  if (status.value === 'listening') return `${round} Écoutez l’extrait.`;
+  if (status.value === 'voting') return `${round} À vous de dénoncer.`;
+  if (status.value === 'revelation') return `${round} La manche est terminée.`;
+  return round;
 });
+
+const showTimer = computed(
+  () => status.value === 'listening' || status.value === 'voting'
+);
+
+const showSidePanel = computed(() => {
+  if (status.value === 'listening') {
+    return !!store.session?.enable_blind_test && !isObserver.value;
+  }
+  return status.value === 'voting' || status.value === 'revelation';
+});
+
+const isHost = computed(() => store.isHost);
 
 const launchRound = async () => {
   if (!isHost.value) return;
   try {
     await store.startRound();
   } catch (err) {
-    console.error("Failed to launch round:", err);
+    console.error('Failed to launch round:', err);
   }
 };
 
@@ -417,7 +421,7 @@ const advanceFromRevelation = async () => {
   try {
     await store.advanceRound();
   } catch (err) {
-    console.error("Failed to advance from revelation:", err);
+    console.error('Failed to advance from revelation:', err);
   }
 };
 
@@ -426,7 +430,7 @@ const advanceSubphase = async () => {
   try {
     await store.advanceRound();
   } catch (err) {
-    console.error("Failed to advance subphase:", err);
+    console.error('Failed to advance subphase:', err);
   }
 };
 
@@ -446,38 +450,39 @@ const everyoneHasVoted = computed(() => {
   return voters > 0 && totalVotesCast.value >= voters;
 });
 
+const votesSummary = computed(() => ({
+  cast: Math.min(totalVotesCast.value, totalEligibleVoters.value),
+  total: totalEligibleVoters.value,
+}));
+
 const handleSpaceAdvance = async () => {
   if (!isHost.value) return;
   try {
     if (status.value === 'idle') {
       await store.startRound();
-    } else {
+    } else if (status.value === 'voting' || status.value === 'revelation') {
       await store.advanceRound();
     }
   } catch (err) {
-    console.error("Failed to advance phase via keyboard:", err);
+    console.error('Failed to advance phase via keyboard:', err);
   }
 };
 
 const handleKeyDown = (e) => {
   if (e.code === 'Space' && isHost.value) {
-    const isTyping = ['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName);
-    if (!isTyping) {
+    const isInteractive = ['INPUT', 'TEXTAREA', 'BUTTON', 'A', 'SELECT'].includes(document.activeElement?.tagName);
+    if (!isInteractive) {
       e.preventDefault();
       handleSpaceAdvance();
     }
   }
 };
 
-
-const isObserver = computed(() => {
-  return store.player?.is_observer;
-});
+const isObserver = computed(() => store.player?.is_observer);
 
 const isProposer = computed(() => {
   if (!store.currentMusic) return false;
   if (store.currentMusic.is_proposer !== undefined) return store.currentMusic.is_proposer;
-  // Fallback for older states
   if (store.musics && store.musics.length > 0) {
     return store.musics.some(m => m.file_path === store.currentMusic.file_path || (m.title === store.currentMusic.title && m.artist === store.currentMusic.artist));
   }
@@ -486,10 +491,17 @@ const isProposer = computed(() => {
 
 const eligiblePlayers = computed(() => {
   if (!store.players) return [];
-  // Return all active players, sorted alphabetically
   return store.players
     .filter(p => !p.is_observer)
     .sort((a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' }));
+});
+
+// Yourself is never a valid target, so it goes last instead of splitting the list.
+const ballotTargets = computed(() => {
+  const selfId = store.player?.id;
+  const others = eligiblePlayers.value.filter((p) => p.id !== selfId);
+  const self = eligiblePlayers.value.find((p) => p.id === selfId);
+  return self ? [...others, self] : others;
 });
 
 const voteResults = computed(() => {
@@ -497,31 +509,25 @@ const voteResults = computed(() => {
   const currentVotes = Array.isArray(store.votes) ? store.votes : [];
   return eligiblePlayers.value.map(player => {
     const vote = currentVotes.find(v => v.voter_id === player.id);
-    const isProposer = player.id === store.currentMusic?.player_id;
+    const isProposerPlayer = player.id === store.currentMusic?.player_id;
     let statusLabel = '';
     let statusClass = '';
-    
-    if (isProposer) {
-      statusLabel = 'BLUFF';
-      statusClass = 'bg-slate-500/20 text-slate-400 border-slate-500/30';
-    } else if (!vote) {
-      statusLabel = "N'a pas voté";
-      statusClass = 'bg-rose-500/10 text-rose-400 border-rose-500/20';
+
+    if (!vote) {
+      statusLabel = 'N’a pas voté';
+      statusClass = 'tag tag-danger';
+    } else if (isProposerPlayer) {
+      statusLabel = 'Bluff';
+      statusClass = 'tag';
     } else if (vote.guessed_player_id === store.currentMusic?.player_id) {
-      statusLabel = '✓ Correct +1';
-      statusClass = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+      statusLabel = 'Correct';
+      statusClass = 'tag tag-success';
     } else {
-      statusLabel = '✗ Incorrect';
-      statusClass = 'bg-rose-500/10 text-rose-400 border-rose-500/20';
+      statusLabel = 'Incorrect';
+      statusClass = 'tag tag-danger';
     }
 
-    return {
-      player,
-      vote,
-      isProposer,
-      statusLabel,
-      statusClass
-    };
+    return { player, vote, isProposer: isProposerPlayer, statusLabel, statusClass };
   });
 });
 
@@ -532,22 +538,22 @@ const myVoteResult = computed(() => {
 
 const myBlindTestResult = computed(() => {
   if (!store.session?.enable_blind_test || !store.player) return null;
-  
+
   let statusLabel = '';
-  let statusClass = '';
-  
+  let statusClass = 'tag';
+
   if (isProposer.value) {
-    statusLabel = 'NE PARTICIPE PAS';
-    statusClass = 'bg-slate-500/20 text-slate-400 border-slate-500/30';
+    statusLabel = 'Ne participe pas';
+    statusClass = 'tag';
   } else if (!blindTestResult.value) {
-    statusLabel = "N'a pas répondu";
-    statusClass = 'bg-rose-500/10 text-rose-400 border-rose-500/20';
+    statusLabel = 'Sans réponse';
+    statusClass = 'tag tag-danger';
   } else if (blindTestResult.value.is_correct) {
-    statusLabel = '✓ Correct +1';
-    statusClass = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+    statusLabel = 'Correct';
+    statusClass = 'tag tag-success';
   } else {
-    statusLabel = '✗ Incorrect';
-    statusClass = 'bg-rose-500/10 text-rose-400 border-rose-500/20';
+    statusLabel = 'Incorrect';
+    statusClass = 'tag tag-danger';
   }
 
   return { statusLabel, statusClass };
@@ -575,45 +581,40 @@ const getVoteCountForPlayer = (playerId) => {
   return 0;
 };
 
+const initials = (name) =>
+  (name || '?')
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part.charAt(0))
+    .join('')
+    .toUpperCase();
+
 const formatAudioUrl = (path) => {
   if (!path) return '';
-  if (path.startsWith('http://')) {
-    return path.replace('http://', 'https://');
-  }
+  if (path.startsWith('http://')) return path.replace('http://', 'https://');
   if (path.startsWith('https://')) return path;
-  // Les fichiers uploadés sont servis sur /uploads et passent par le proxy
-  // Vite (dev) ou Nginx (prod). Ne pas préfixer avec VITE_API_URL qui contient /api.
   return path;
 };
 
 watch(() => store.volume, (newVol) => {
-  if (audio) {
-    audio.volume = newVol;
-  }
+  if (audio) audio.volume = newVol;
 });
 
 const startAudio = () => {
   audioError.value = false;
-  if (audio) {
-    audio.pause();
-  }
-  
+  if (audio) audio.pause();
+
   if (store.currentMusic?.file_path) {
     const url = formatAudioUrl(store.currentMusic.file_path);
     audio = new Audio(url);
     audio.volume = store.volume;
-    
-    audio.onerror = (e) => {
-      console.error("Audio playback error:", e);
-      audioError.value = true;
-    };
-    
+
+    audio.onerror = () => { audioError.value = true; };
+
     if (status.value === 'listening') {
       audio.play().catch(err => {
-        console.warn("Autoplay was blocked or audio failed:", err);
-        if (err.name !== 'NotAllowedError') {
-          audioError.value = true;
-        }
+        console.warn('Autoplay was blocked or audio failed:', err);
+        if (err.name !== 'NotAllowedError') audioError.value = true;
       });
     }
   }
@@ -623,7 +624,7 @@ const retryAudio = () => {
   audioError.value = false;
   if (audio) {
     audio.play().catch(err => {
-      console.error("Manual replay failed:", err);
+      console.error('Manual replay failed:', err);
       audioError.value = true;
     });
   } else {
@@ -633,58 +634,52 @@ const retryAudio = () => {
 
 const castVote = async (targetId) => {
   if (isObserver.value || status.value !== 'voting') return;
-  
+
   try {
     selectedVoteId.value = targetId;
     await store.submitVote(store.currentMusic.id, targetId);
   } catch (err) {
-    console.error("Failed to submit vote:", err);
+    console.error('Failed to submit vote:', err);
   }
 };
 
 const updateTimer = () => {
   if (store.session?.timer_ends_at) {
     const end = new Date(store.session.timer_ends_at).getTime();
-    const diff = Math.max(0, Math.round((end - store.correctedNow()) / 1000));
-    remainingTime.value = diff;
+    remainingTime.value = Math.max(0, Math.round((end - store.correctedNow()) / 1000));
   } else {
     remainingTime.value = 0;
   }
 };
 
 onMounted(async () => {
-  if (!store.player) {
+  await store.loadSession(route.params.code);
+  if (!store.token || !store.player || store.player.session_id !== store.session?.id) {
     router.push(`/game/${route.params.code}`);
     return;
   }
-  
-  await store.loadSession(route.params.code);
+
   store.connectSocket(route.params.code);
-  
+
   updateTimer();
   timerInterval = setInterval(updateTimer, 1000);
 
-  // Play audio immediately if we are in listening subphase
   startAudio();
   window.addEventListener('keydown', handleKeyDown);
 });
 
 onUnmounted(() => {
   if (timerInterval) clearInterval(timerInterval);
-  if (audio) {
-    audio.pause();
-  }
+  if (audio) audio.pause();
   window.removeEventListener('keydown', handleKeyDown);
 });
 
-// Watch current music to reload audio
 watch(() => store.currentMusic?.id, () => {
-  selectedVoteId.value = null; // reset vote selection for next track
-  blindTestSelectedAnswer.value = null; // reset blind test selection
+  selectedVoteId.value = null;
+  blindTestSelectedAnswer.value = null;
   startAudio();
 });
 
-// Watch voting status
 watch(() => status.value, (newStatus) => {
   if (newStatus === 'listening') {
     if (audio) {
@@ -693,15 +688,11 @@ watch(() => status.value, (newStatus) => {
     } else {
       startAudio();
     }
-  } else {
-    // Stop audio on voting or revelation
-    if (audio) {
-      audio.pause();
-    }
+  } else if (audio) {
+    audio.pause();
   }
 });
 
-// Watch phase change to redirect to results
 watch(() => store.session?.phase, (newPhase) => {
   if (newPhase === 'results') {
     router.push(`/game/${route.params.code}/results`);
@@ -711,6 +702,4 @@ watch(() => store.session?.phase, (newPhase) => {
     router.push(`/game/${route.params.code}`);
   }
 });
-
-
 </script>

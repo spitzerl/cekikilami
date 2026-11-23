@@ -1,104 +1,104 @@
+import crypto from 'node:crypto';
 import { query } from '../config/database.js';
 import Session from '../models/Session.js';
 import Player from '../models/Player.js';
 import Music from '../models/Music.js';
+import { httpError } from '../security/errors.js';
+import {
+  generateAvatarSeed,
+  generatePlayerToken,
+  hashToken,
+} from '../security/tokens.js';
+import {
+  normalizeSessionCode,
+  requireBoolean,
+  requireIntegerInRange,
+  requireNonEmptyString,
+  requirePlayerName,
+} from '../security/validation.js';
+import { requireCoverUrl, requireMusicSource } from '../security/media.js';
+import {
+  CONFIG_BOUNDS,
+  DEEZER,
+  HOST_DISCONNECT_GRACE_MS,
+  MAINTENANCE_INTERVAL_MS,
+  MAX_SESSIONS,
+  SESSION_TTLS,
+  UPLOAD_LIMITS,
+} from '../config/game.js';
+import { BOT_NAMES_POOL, GENRE_QUERIES } from '../data/botCatalog.js';
+import { buildBlindTestOptions, getBotTracks, mapWithConcurrency } from './deezerService.js';
+import { cleanupOrphanUploads, deleteUpload, deleteUploadsForMusics } from './uploadService.js';
+import { shuffle } from '../utils/normalize.js';
 
 const VALID_PHASES = ['waiting', 'selection', 'voting', 'results'];
 
-function httpError(status, message) {
-  const error = new Error(message);
-  error.status = status;
-  return error;
+function sanitizePlayer(player) {
+  if (!player) return null;
+  const { token_hash, ...safe } = player;
+  return safe;
 }
 
-const normalizeTitle = (t) => {
-  if (!t) return '';
-  return t
-    .toLowerCase()
-    .replace(/\s+f(ea)?t(\.?\s+|\s+).*$/gi, '')
-    .replace(/\s*[\(\[-].*$/g, '')
-    .replace(/[^a-z0-9\s]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-};
+function publicSession(session) {
+  if (!session) return null;
+  const { expires_at, ...safe } = session;
+  return safe;
+}
 
-const BOT_NAMES_POOL = [
-  'Lucas', 'Hugo', 'Arthur', 'Thomas', 'Léa', 'Camille', 'Manon', 'Chloé', 'Emma', 'Nathan',
-  'Enzo', 'Louis', 'Clara', 'Sarah', 'Inès', 'Maëlys', 'Jade', 'Léo', 'Gabriel', 'Paul',
-  'Maxime', 'Julien', 'Antoine', 'Nicolas', 'Marie', 'Julie', 'Sophie', 'Alexandre', 'Adrien', 'Elisa'
-];
+function sanitizeOwnMusic(music) {
+  return {
+    id: music.id,
+    title: music.title,
+    artist: music.artist,
+    file_path: music.file_path,
+    cover_url: music.cover_url,
+    created_at: music.created_at,
+  };
+}
 
-const BOT_TRACKS = [
-  { title: "Blinding Lights", artist: "The Weeknd", file_path: "https://cdns-preview-e.dzcdn.net/stream/c-e12ac87d5b1b748f06f7ad86903f262b-6.mp3" },
-  { title: "Shape of You", artist: "Ed Sheeran", file_path: "https://cdns-preview-d.dzcdn.net/stream/c-d232fb2ed0b90d8a297bdc07520e5883-6.mp3" },
-  { title: "Dance Monkey", artist: "Tones and I", file_path: "https://cdns-preview-9.dzcdn.net/stream/c-97491cf2371c6cc49df244d2d4f29df5-6.mp3" },
-  { title: "Someone You Loved", artist: "Lewis Capaldi", file_path: "https://cdns-preview-b.dzcdn.net/stream/c-b716ca1d7d0a213e4b4cc8e11e03dfdc-6.mp3" },
-  { title: "Bad Guy", artist: "Billie Eilish", file_path: "https://cdns-preview-5.dzcdn.net/stream/c-5cf29d2b2707248f7d93ebf4f58f4c54-6.mp3" },
-  { title: "Stay", artist: "The Kid LAROI & Justin Bieber", file_path: "https://cdns-preview-7.dzcdn.net/stream/c-76a6b8f362de0b8dc77678f187a5dc07-6.mp3" },
-  { title: "As It Was", artist: "Harry Styles", file_path: "https://cdns-preview-6.dzcdn.net/stream/c-6e6ad8f391b10a24ef7c075db3de07b6-6.mp3" },
-  { title: "Perfect", artist: "Ed Sheeran", file_path: "https://cdns-preview-b.dzcdn.net/stream/c-b258cfb5a0fb70f20ee4b85c1f01dfdc-6.mp3" },
-  { title: "Believer", artist: "Imagine Dragons", file_path: "https://cdns-preview-b.dzcdn.net/stream/c-b03f0b2fbc9e731b8ef51ef40d4f2dfc-6.mp3" },
-  { title: "Levitating", artist: "Dua Lipa", file_path: "https://cdns-preview-8.dzcdn.net/stream/c-8a2bf6e1de0e6cc47de1328905f84b6f-6.mp3" },
-  { title: "Dynamite", artist: "BTS", file_path: "https://cdns-preview-d.dzcdn.net/stream/c-db7ac87f8ce829a28e8dfdf163e070dc-6.mp3" },
-  { title: "Shallow", artist: "Lady Gaga & Bradley Cooper", file_path: "https://cdns-preview-7.dzcdn.net/stream/c-7e6ac8786de8ec37efc77d079cf7e0dc-6.mp3" },
-  { title: "Flowers", artist: "Miley Cyrus", file_path: "https://cdns-preview-f.dzcdn.net/stream/c-f232abce0ef87a8cdef132df05f8dfdc-6.mp3" },
-  { title: "Starboy", artist: "The Weeknd", file_path: "https://cdns-preview-0.dzcdn.net/stream/c-0e2ac87e5b1b748f06f7ad86903f262b-6.mp3" },
-  { title: "Save Your Tears", artist: "The Weeknd", file_path: "https://cdns-preview-3.dzcdn.net/stream/c-3f2ac87e5b1b748f06f7ad86903f262b-6.mp3" }
-];
+function sessionLogTag(code) {
+  return crypto.createHash('sha256').update(String(code)).digest('hex').slice(0, 8);
+}
+
+function playerIdOrNull(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const parsed = Number.parseInt(value, 10);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
 
 export default class GameService {
   constructor() {
     this.ioNamespace = null;
     this.activeTimers = new Map();
+    this.hostDisconnectTimeouts = new Map();
+    this.botVoteTimers = new Map();
+    this.maintenanceInterval = null;
+    this.isReaping = false;
   }
 
   setIoNamespace(ioNamespace) {
     this.ioNamespace = ioNamespace;
   }
 
-  async broadcastState(code) {
-    if (!this.ioNamespace) return;
-    try {
-      const socketsInRoom = await this.ioNamespace.in(code).fetchSockets();
-      await Promise.all(socketsInRoom.map(async (socket) => {
-        try {
-          const playerId = socket.playerId || null;
-          const playerState = await this.getState(code, playerId);
-          socket.emit('state:update', playerState);
-        } catch (err) {
-          // ignore socket emit error
-        }
-      }));
-    } catch (err) {
-      this.log(code, `Error in broadcasting state: ${err.message}`);
-    }
-  }
-
   log(code, message) {
-    console.log(`[GAME LOG][${code}][${new Date().toISOString()}]: ${message}`);
+    console.log(`[GAME LOG][${sessionLogTag(code)}][${new Date().toISOString()}]: ${message}`);
   }
 
-  // Timer Helper
   startTimer(code, durationSeconds, callback) {
     this.clearTimer(code);
-    const delayMs = durationSeconds * 1000;
+    const delayMs = Math.max(0, durationSeconds * 1000);
     const endsAt = new Date(Date.now() + delayMs);
 
     const timeoutId = setTimeout(async () => {
       this.activeTimers.delete(code);
       try {
         await callback();
-      } catch (err) {
-        this.log(code, `Error in timer callback: ${err.message}`);
+      } catch (error) {
+        this.log(code, `Error in timer callback: ${error.message}`);
       }
     }, delayMs);
 
-    this.activeTimers.set(code, {
-      timeoutId,
-      endsAt,
-      callback
-    });
-
+    this.activeTimers.set(code, { timeoutId, endsAt, callback });
     return endsAt;
   }
 
@@ -109,34 +109,445 @@ export default class GameService {
     }
   }
 
-  async createSession(hostName) {
-    const code = await Session.generateCode();
-    const session = await Session.create({ code, hostName });
-    const host = await Player.create({ sessionId: session.id, name: hostName });
-    this.log(code, `Session created by host ${hostName}`);
-    return { session, host };
+  scheduleBotVote(code, delayMs, callback) {
+    const timeoutId = setTimeout(async () => {
+      const timers = this.botVoteTimers.get(code);
+      if (timers) timers.delete(timeoutId);
+      try {
+        await callback();
+      } catch {
+        // A bot vote can legitimately lose the race with a phase change.
+      }
+    }, Math.max(0, delayMs));
+
+    if (!this.botVoteTimers.has(code)) this.botVoteTimers.set(code, new Set());
+    this.botVoteTimers.get(code).add(timeoutId);
   }
 
-  async updateConfig(code, config) {
-    const session = await Session.findByCode(code);
-    if (!session) {
-      throw httpError(404, 'Session introuvable');
+  clearBotVoteTimers(code) {
+    const timers = this.botVoteTimers.get(code);
+    if (!timers) return;
+    for (const timeoutId of timers) clearTimeout(timeoutId);
+    this.botVoteTimers.delete(code);
+  }
+
+  cancelHostDisconnect(code) {
+    if (this.hostDisconnectTimeouts.has(code)) {
+      clearTimeout(this.hostDisconnectTimeouts.get(code));
+      this.hostDisconnectTimeouts.delete(code);
     }
+  }
+
+  scheduleHostDisconnect(code, delayMs = HOST_DISCONNECT_GRACE_MS) {
+    this.cancelHostDisconnect(code);
+    const timeoutId = setTimeout(async () => {
+      try {
+        const session = await Session.findByCode(code);
+        if (!session || session.phase !== 'waiting') return;
+        const players = await Player.findBySession(session.id);
+        const host = players.find((player) => player.id === session.host_player_id);
+        if (host && !host.is_connected) {
+          this.log(code, 'Host remained disconnected, deleting waiting room');
+          await this.deleteSession(code, { reason: 'host-disconnect' });
+        }
+      } catch (error) {
+        console.error(`Error in host disconnect timeout for session ${sessionLogTag(code)}:`, error);
+      } finally {
+        this.hostDisconnectTimeouts.delete(code);
+      }
+    }, Math.max(0, delayMs));
+
+    this.hostDisconnectTimeouts.set(code, timeoutId);
+  }
+
+  async broadcastState(code) {
+    if (!this.ioNamespace) return;
+    try {
+      const data = await this.loadSessionState(code);
+      const socketsInRoom = await this.ioNamespace.in(code).fetchSockets();
+      await Promise.all(socketsInRoom.map(async (socket) => {
+        try {
+          socket.emit('state:update', this.buildStateForPlayer(data, socket.playerId));
+        } catch {
+          // Ignore a socket that disconnected during the broadcast.
+        }
+      }));
+    } catch (error) {
+      this.log(code, `Error in broadcasting state: ${error.message}`);
+    }
+  }
+
+  async loadSessionState(code) {
+    const session = await Session.findByCode(code);
+    if (!session) throw httpError(404, 'Session introuvable');
+
+    const [players, musics, votesResult, answersResult] = await Promise.all([
+      Player.findBySession(session.id),
+      Music.findBySession(session.id),
+      query('SELECT * FROM votes WHERE session_id = $1', [session.id]),
+      query('SELECT * FROM blind_test_answers WHERE session_id = $1', [session.id]),
+    ]);
+
+    return {
+      session,
+      players,
+      musics,
+      votes: votesResult.rows,
+      blindTestAnswers: answersResult.rows,
+    };
+  }
+
+  computeRanking(data) {
+    const playerMap = new Map(data.players.map((player) => [player.id, {
+      ...player,
+      score: 0,
+      votesReceived: 0,
+      correctGuesses: 0,
+    }]));
+    const musicProposers = new Map(data.musics.map((music) => [music.id, music.player_id]));
+
+    for (const vote of data.votes) {
+      const proposerId = musicProposers.get(vote.music_id);
+      if (vote.voter_id === proposerId) continue;
+
+      const guessed = playerMap.get(vote.guessed_player_id);
+      if (guessed) guessed.votesReceived += 1;
+
+      if (proposerId && vote.guessed_player_id === proposerId) {
+        const voter = playerMap.get(vote.voter_id);
+        if (voter) voter.correctGuesses += 1;
+      }
+    }
+
+    if (data.session.enable_blind_test) {
+      for (const answer of data.blindTestAnswers) {
+        if (!answer.is_correct) continue;
+        const player = playerMap.get(answer.player_id);
+        if (player) player.correctGuesses += 1;
+      }
+    }
+
+    for (const player of playerMap.values()) {
+      player.score = player.correctGuesses;
+    }
+
+    return Array.from(playerMap.values()).sort((first, second) => {
+      if (second.score !== first.score) return second.score - first.score;
+      return new Date(first.created_at) - new Date(second.created_at);
+    });
+  }
+
+  buildStateForPlayer(data, playerId = null) {
+    const { session, players, musics, votes, blindTestAnswers } = data;
+    const selfId = playerIdOrNull(playerId);
+    const self = selfId ? players.find((player) => player.id === selfId) || null : null;
+    const sanitizedPlayers = players.map(sanitizePlayer);
+    const base = {
+      session: publicSession(session),
+      serverTime: new Date().toISOString(),
+    };
+
+    if (session.phase === 'waiting') {
+      return {
+        ...base,
+        players: sanitizedPlayers,
+        musics: [],
+        player: sanitizePlayer(self),
+      };
+    }
+
+    if (session.phase === 'selection') {
+      const musicCounts = {};
+      for (const player of players) {
+        musicCounts[player.id] = musics.filter((music) => music.player_id === player.id).length;
+      }
+      return {
+        ...base,
+        players: sanitizedPlayers,
+        musics: selfId
+          ? musics.filter((music) => music.player_id === selfId).map(sanitizeOwnMusic)
+          : [],
+        musicCounts,
+        player: sanitizePlayer(self),
+      };
+    }
+
+    if (session.phase === 'voting') {
+      const votingPlayers = sanitizedPlayers.map((player) => {
+        const { score, ...rest } = player;
+        return rest;
+      });
+      const currentTrack = musics.find((music) => music.play_order === session.current_music_index);
+      const status = session.voting_status;
+      const isReveal = status === 'revelation' && session.show_answers;
+      let currentMusic = null;
+      let votesForCurrentMusic = null;
+
+      if (currentTrack && status !== 'idle') {
+        currentMusic = {
+          id: currentTrack.id,
+          file_path: currentTrack.file_path,
+          round_total: musics.filter((music) => music.play_order >= 0).length,
+          is_proposer: selfId === currentTrack.player_id,
+        };
+
+        if (status === 'listening') {
+          if (session.enable_blind_test) {
+            currentMusic.blind_test_options = currentTrack.blind_test_options || [];
+          }
+        } else if (status === 'revelation') {
+          currentMusic.title = currentTrack.title;
+          currentMusic.artist = currentTrack.artist;
+          currentMusic.cover_url = currentTrack.cover_url;
+          if (isReveal) currentMusic.player_id = currentTrack.player_id;
+        }
+
+        if (session.enable_blind_test) {
+          const ownAnswers = blindTestAnswers.filter(
+            (answer) => answer.music_id === currentTrack.id && answer.player_id === selfId
+          );
+          const visibleAnswers = isReveal && session.show_answers
+            ? blindTestAnswers.filter((answer) => answer.music_id === currentTrack.id)
+            : ownAnswers;
+
+          currentMusic.blind_test_answers = visibleAnswers.map((answer) => ({
+            id: answer.id,
+            ...(isReveal && session.show_answers ? { player_id: answer.player_id } : {}),
+            answer_title: answer.answer_title,
+            answer_artist: answer.answer_artist,
+            ...(isReveal ? { is_correct: answer.is_correct } : {}),
+          }));
+        }
+
+        const currentVotes = votes.filter((vote) => vote.music_id === currentTrack.id);
+        if (status === 'voting' && session.show_vote_count) {
+          const voteCounts = {};
+          for (const player of players) voteCounts[player.id] = 0;
+          for (const vote of currentVotes) {
+            if (voteCounts[vote.guessed_player_id] !== undefined) {
+              voteCounts[vote.guessed_player_id] += 1;
+            }
+          }
+          votesForCurrentMusic = voteCounts;
+        } else if (isReveal) {
+          votesForCurrentMusic = currentVotes.map((vote) => ({
+            id: vote.id,
+            music_id: vote.music_id,
+            voter_id: vote.voter_id,
+            guessed_player_id: vote.guessed_player_id,
+          }));
+        }
+      }
+
+      return {
+        ...base,
+        players: votingPlayers,
+        currentMusic,
+        votes: votesForCurrentMusic,
+        player: selfId ? (votingPlayers.find((player) => player.id === selfId) || null) : null,
+      };
+    }
+
+    if (session.phase === 'results') {
+      const ranking = this.computeRanking(data);
+      const selfRanked = selfId ? ranking.find((player) => player.id === selfId) || null : null;
+      return {
+        ...base,
+        players: ranking,
+        musics,
+        votes,
+        ranking,
+        player: selfRanked,
+      };
+    }
+
+    throw httpError(500, 'Phase de session invalide');
+  }
+
+  async getState(code, playerId = null) {
+    const normalizedCode = normalizeSessionCode(code);
+    const data = await this.loadSessionState(normalizedCode);
+    return this.buildStateForPlayer(data, playerId);
+  }
+
+  async getSessionSummary(code) {
+    const normalizedCode = normalizeSessionCode(code);
+    const session = await Session.findByCode(normalizedCode);
+    if (!session) throw httpError(404, 'Session introuvable');
+    const players = await Player.findBySession(session.id);
+    return {
+      session: publicSession(session),
+      playerCount: players.length,
+      isJoinable: session.phase === 'waiting' && players.length < session.max_players,
+    };
+  }
+
+  async assertHost(code, actorId) {
+    const normalizedCode = normalizeSessionCode(code);
+    const session = await Session.findByCode(normalizedCode);
+    if (!session) throw httpError(404, 'Session introuvable');
+    if (!Number.isInteger(actorId) || session.host_player_id !== actorId) {
+      throw httpError(403, 'Seul l’hôte peut effectuer cette action');
+    }
+    return session;
+  }
+
+  async createSession(hostName) {
+    const normalizedHostName = requirePlayerName(hostName, 'hostName');
+    const sessionCount = await Session.count();
+    if (sessionCount >= MAX_SESSIONS) {
+      throw httpError(503, 'Le nombre maximum de sessions actives est atteint');
+    }
+
+    const code = await Session.generateCode();
+    const token = generatePlayerToken();
+    const session = await Session.create({ code, hostName: normalizedHostName });
+    const host = await Player.create({
+      sessionId: session.id,
+      name: normalizedHostName,
+      tokenHash: hashToken(token),
+    });
+    const updatedSession = await Session.setHost(code, host.id, normalizedHostName);
+
+    this.log(code, `Session created by host ${normalizedHostName}`);
+    return { session: updatedSession, player: host, token };
+  }
+
+  async joinSession(code, playerName, { token = null, tokenPlayer = null } = {}) {
+    const normalizedCode = normalizeSessionCode(code);
+    const normalizedName = requirePlayerName(playerName);
+    const session = await Session.findByCode(normalizedCode);
+    if (!session) throw httpError(404, 'Session introuvable');
+    if (session.phase !== 'waiting') throw httpError(409, 'La partie a déjà commencé');
+
+    const tokenForSession = tokenPlayer && tokenPlayer.session_id === session.id ? tokenPlayer : null;
+    if (tokenForSession && tokenForSession.name.trim().toLowerCase() !== normalizedName.toLowerCase()) {
+      throw httpError(409, 'Ce navigateur a déjà un joueur dans ce salon');
+    }
+
+    const players = await Player.findBySession(session.id);
+    if (players.length >= session.max_players) throw httpError(409, 'La session est complète');
+
+    const existing = await Player.findBySessionAndNameWithToken(session.id, normalizedName);
+    if (existing) {
+      const samePlayer = tokenForSession && tokenForSession.id === existing.id;
+      const canClaimLegacy = !existing.token_hash && !tokenForSession;
+
+      if (!samePlayer && !canClaimLegacy) {
+        throw httpError(409, 'Ce pseudo est déjà utilisé. Reconnectez-vous depuis le navigateur qui l’a rejoint.');
+      }
+
+      let playerToken = token;
+      if (canClaimLegacy) {
+        playerToken = generatePlayerToken();
+        await Player.setTokenHash(existing.id, hashToken(playerToken), session.id);
+      }
+
+      const player = await Player.updateConnectionStatus(existing.id, true, session.id);
+      await Session.extendExpiry(normalizedCode, SESSION_TTLS.waiting);
+      this.log(normalizedCode, `Player reconnected: ${normalizedName}`);
+      return { session, player, token: playerToken };
+    }
+
+    const playerToken = generatePlayerToken();
+    let player;
+    try {
+      player = await Player.create({
+        sessionId: session.id,
+        name: normalizedName,
+        tokenHash: hashToken(playerToken),
+      });
+    } catch (error) {
+      if (error.code === '23505') {
+        throw httpError(409, 'Ce pseudo est déjà utilisé dans cette session');
+      }
+      throw error;
+    }
+
+    await Session.extendExpiry(normalizedCode, SESSION_TTLS.waiting);
+    this.log(normalizedCode, `Player joined: ${normalizedName}`);
+    return { session, player, token: playerToken };
+  }
+
+  sanitizeConfig(config = {}) {
+    const sanitized = {};
+
+    if (Object.hasOwn(config, 'maxPlayers')) {
+      sanitized.maxPlayers = requireIntegerInRange(config.maxPlayers, 'maxPlayers', CONFIG_BOUNDS.maxPlayers);
+    }
+    if (Object.hasOwn(config, 'maxMusicsPerPlayer')) {
+      sanitized.maxMusicsPerPlayer = requireIntegerInRange(
+        config.maxMusicsPerPlayer,
+        'maxMusicsPerPlayer',
+        CONFIG_BOUNDS.maxMusicsPerPlayer
+      );
+    }
+    if (Object.hasOwn(config, 'selectionDuration')) {
+      sanitized.selectionDuration = requireIntegerInRange(
+        config.selectionDuration,
+        'selectionDuration',
+        CONFIG_BOUNDS.selectionDuration
+      );
+    }
+    if (Object.hasOwn(config, 'extractDuration')) {
+      sanitized.extractDuration = requireIntegerInRange(
+        config.extractDuration,
+        'extractDuration',
+        CONFIG_BOUNDS.extractDuration
+      );
+    }
+    if (Object.hasOwn(config, 'votingDuration')) {
+      sanitized.votingDuration = requireIntegerInRange(
+        config.votingDuration,
+        'votingDuration',
+        CONFIG_BOUNDS.votingDuration
+      );
+    }
+    if (Object.hasOwn(config, 'showAnswers')) {
+      sanitized.showAnswers = requireBoolean(config.showAnswers, 'showAnswers');
+    }
+    if (Object.hasOwn(config, 'autoAdvance')) {
+      sanitized.autoAdvance = requireBoolean(config.autoAdvance, 'autoAdvance');
+    }
+    if (Object.hasOwn(config, 'showVoteCount')) {
+      sanitized.showVoteCount = requireBoolean(config.showVoteCount, 'showVoteCount');
+    }
+    if (Object.hasOwn(config, 'enableBlindTest')) {
+      sanitized.enableBlindTest = requireBoolean(config.enableBlindTest, 'enableBlindTest');
+    }
+
+    return sanitized;
+  }
+
+  async updateConfig(code, config, actorId) {
+    code = normalizeSessionCode(code);
+    const session = await this.assertHost(code, actorId);
     if (session.phase !== 'waiting' && (session.phase !== 'voting' || session.voting_status !== 'idle')) {
       throw httpError(409, 'Impossible de modifier les paramètres en cours de jeu');
     }
-    const updated = await Session.updateConfig(code, config);
-    this.log(code, `Configuration updated: ${JSON.stringify(config)}`);
-    return this.getState(code);
+
+    const sanitized = this.sanitizeConfig(config);
+    if (sanitized.maxPlayers !== undefined) {
+      const playerCount = await Player.countBySession(session.id);
+      if (sanitized.maxPlayers < playerCount) {
+        throw httpError(409, 'La limite de joueurs ne peut pas être inférieure au nombre actuel de joueurs');
+      }
+    }
+
+    const updated = await Session.updateConfig(code, sanitized);
+    if (session.phase === 'waiting') {
+      await Session.extendExpiry(code, SESSION_TTLS.waiting);
+    }
+    this.log(code, `Configuration updated: ${JSON.stringify(sanitized)}`);
+    await this.broadcastState(code);
+    return this.getState(code, actorId);
   }
 
-  async addBot(code) {
-    const session = await Session.findByCode(code);
-    if (!session) {
-      throw httpError(404, 'Session introuvable');
-    }
+  async addBot(code, actorId) {
+    code = normalizeSessionCode(code);
+    const session = await this.assertHost(code, actorId);
     if (session.phase !== 'waiting') {
-      throw httpError(409, 'Impossible d\'ajouter un bot après le début de la partie');
+      throw httpError(409, 'Impossible d’ajouter un bot après le début de la partie');
     }
 
     const players = await Player.findBySession(session.id);
@@ -144,12 +555,9 @@ export default class GameService {
       throw httpError(409, 'Nombre maximum de joueurs atteint');
     }
 
-    // Choose a unique real name for the bot from the pool
-    const existingNames = new Set(players.map(p => p.name.toLowerCase()));
+    const existingNames = new Set(players.map((player) => player.name.toLowerCase()));
     let botName = '';
-    
-    const shuffledPool = [...BOT_NAMES_POOL].sort(() => Math.random() - 0.5);
-    for (const candidate of shuffledPool) {
+    for (const candidate of shuffle(BOT_NAMES_POOL)) {
       if (!existingNames.has(candidate.toLowerCase())) {
         botName = candidate;
         break;
@@ -157,366 +565,227 @@ export default class GameService {
     }
 
     if (!botName) {
-      const botCount = players.filter(p => p.is_bot).length;
+      const botCount = players.filter((player) => player.is_bot).length;
       botName = `Bot ${botCount + 1}`;
     }
 
     const bot = await Player.create({ sessionId: session.id, name: botName, isBot: true });
+    await Session.extendExpiry(code, SESSION_TTLS.waiting);
     this.log(code, `Bot added: ${botName}`);
-    return this.getState(code);
+    await this.broadcastState(code);
+    return this.getState(code, actorId);
   }
 
-  async joinSession(code, playerName) {
-    const session = await Session.findByCode(code);
-    if (!session) {
-      throw httpError(404, 'Session introuvable');
+  async assertUploadQuota(session, playerId, fileSize) {
+    if (fileSize < 0 || fileSize > UPLOAD_LIMITS.maxFileBytes) {
+      throw httpError(413, 'Fichier audio trop volumineux');
     }
+    if (fileSize === 0) return;
 
-    if (session.phase !== 'waiting') {
-      throw httpError(409, 'La partie a déjà commencé');
+    const [playerTotal, sessionTotal, globalTotal] = await Promise.all([
+      Music.sumFileSizeByPlayer(playerId, session.id),
+      Music.sumFileSizeBySession(session.id),
+      Music.sumFileSizeGlobal(),
+    ]);
+
+    if (playerTotal + fileSize > UPLOAD_LIMITS.maxPlayerBytes) {
+      throw httpError(409, 'Quota d’upload de ce joueur atteint');
     }
-
-    const players = await Player.findBySession(session.id);
-    if (players.length >= session.max_players) {
-      throw httpError(409, 'La session est complète');
+    if (sessionTotal + fileSize > UPLOAD_LIMITS.maxSessionBytes) {
+      throw httpError(409, 'Quota d’upload de cette session atteint');
     }
-
-    const normalizedName = playerName.trim().toLowerCase();
-    const existingPlayer = players.find(p => p.name.trim().toLowerCase() === normalizedName);
-    if (existingPlayer) {
-      if (existingPlayer.is_connected) {
-        throw httpError(409, 'Ce pseudo est déjà utilisé dans cette session');
-      }
-
-      // Un joueur déconnecté peut reprendre sa place avec le même pseudo.
-      const player = await Player.updateConnectionStatus(existingPlayer.id, true);
-      this.log(code, `Player reconnected: ${playerName}`);
-      return { session, player };
+    if (globalTotal + fileSize > UPLOAD_LIMITS.maxTotalBytes) {
+      throw httpError(409, 'Quota d’upload global atteint');
     }
-
-    const player = await Player.create({ sessionId: session.id, name: playerName });
-    this.log(code, `Player joined: ${playerName}`);
-    return { session, player };
   }
 
   async addMusic(code, payload) {
+    code = normalizeSessionCode(code);
     const session = await Session.findByCode(code);
-    if (!session) {
-      throw httpError(404, 'Session introuvable');
-    }
-
+    if (!session) throw httpError(404, 'Session introuvable');
     if (session.phase !== 'selection') {
-      throw httpError(409, 'La phase de sélection n\'est pas active');
+      throw httpError(409, 'La phase de sélection n’est pas active');
     }
 
     const players = await Player.findBySession(session.id);
-    if (!players.some(p => p.id === payload.playerId)) {
+    if (!players.some((player) => player.id === payload.playerId)) {
       throw httpError(400, 'Joueur invalide pour cette session');
     }
 
-    // Check count of player's musics
     const musics = await Music.findBySession(session.id);
-    const playerMusics = musics.filter(m => m.player_id === payload.playerId);
+    const playerMusics = musics.filter((music) => music.player_id === payload.playerId);
     if (playerMusics.length >= session.max_musics_per_player) {
       throw httpError(409, `Vous avez déjà ajouté le nombre maximum de musiques (${session.max_musics_per_player})`);
     }
 
-    const music = await Music.create({ sessionId: session.id, ...payload });
-    this.log(code, `Music added: ${payload.title} by player ${payload.playerId}`);
+    const title = requireNonEmptyString(payload.title, 'title', { maxLength: 255 });
+    const artist = requireNonEmptyString(payload.artist, 'artist', { maxLength: 255 });
+    const filePath = requireMusicSource(payload.filePath, 'filePath');
+    const coverUrl = payload.coverUrl ? requireCoverUrl(payload.coverUrl, 'coverUrl') : null;
+    const fileSize = Number.isInteger(payload.fileSize) && payload.fileSize > 0 ? payload.fileSize : 0;
+
+    await this.assertUploadQuota(session, payload.playerId, fileSize);
+
+    const music = await Music.create({
+      sessionId: session.id,
+      playerId: payload.playerId,
+      title,
+      artist,
+      filePath,
+      coverUrl,
+      fileSize,
+    });
+
+    await Session.extendExpiry(code, SESSION_TTLS.selection);
+    this.log(code, `Music added: ${title} by player ${payload.playerId}`);
     return music;
   }
 
   async deleteMusic(code, musicId, playerId) {
+    code = normalizeSessionCode(code);
     const session = await Session.findByCode(code);
-    if (!session) {
-      throw httpError(404, 'Session introuvable');
-    }
+    if (!session) throw httpError(404, 'Session introuvable');
     if (session.phase !== 'selection') {
       throw httpError(409, 'Impossible de supprimer des musiques en dehors de la sélection');
     }
-    const deleted = await Music.deleteMusic(musicId, playerId);
-    if (!deleted) {
-      throw httpError(404, 'Musique introuvable ou non autorisée');
-    }
+
+    const player = await Player.findById(playerId, session.id);
+    if (!player) throw httpError(403, 'Joueur invalide pour cette session');
+
+    const deleted = await Music.deleteMusic(musicId, session.id, playerId);
+    if (!deleted) throw httpError(404, 'Musique introuvable ou non autorisée');
+
+    await deleteUpload(deleted.file_path);
+    await Session.extendExpiry(code, SESSION_TTLS.selection);
     this.log(code, `Music deleted: id ${musicId} by player ${playerId}`);
-    return this.getState(code);
+    await this.broadcastState(code);
+    return this.getState(code, playerId);
   }
 
-  async startSelection(code) {
-    const session = await Session.findByCode(code);
-    if (!session) {
-      throw httpError(404, 'Session introuvable');
-    }
+  async startSelection(code, actorId) {
+    code = normalizeSessionCode(code);
+    const session = await this.assertHost(code, actorId);
     if (session.phase !== 'waiting') {
       throw httpError(409, 'La sélection a déjà démarré');
     }
 
-    // Transition to selection
-    await Session.updatePhase(code, 'selection');
-    
-    // Auto-generate music for bots with specific musical tastes
+    await Session.updatePhase(code, 'selection', SESSION_TTLS.selection);
+
     const players = await Player.findBySession(session.id);
-    const bots = players.filter(p => p.is_bot);
-    
-    const GENRE_QUERIES = {
-      metal: ['Metallica', 'Iron Maiden', 'Slipknot', 'System of a Down', 'Gojira', 'Rammstein', 'Megadeth', 'Slayer', 'Nightwish', 'Korn', 'Guns N\' Roses', 'Black Sabbath', 'Judas Priest', 'Motorhead', 'Tool', 'Deftones', 'Avenged Sevenfold'],
-      electro: ['Daft Punk', 'David Guetta', 'Avicii', 'Calvin Harris', 'Kygo', 'Martin Garrix', 'Justice', 'Fred again..', 'Peggy Gou', 'Disclosure', 'Deadmau5', 'Skrillex', 'Swedish House Mafia', 'Fatboy Slim', 'Flume', 'Paul Kalkbrenner', 'Petit Biscuit'],
-      reggae: ['Bob Marley', 'Dub Inc', 'Naâman', 'Tiken Jah Fakoly', 'Damian Marley', 'Alpha Blondy', 'Alborosie', 'Protoje', 'Chronixx', 'Buju Banton', 'Shaggy', 'Sean Paul', 'Jimmy Cliff', 'Peter Tosh', 'Steel Pulse', 'Groundation', 'Danakil', 'Tryo'],
-      variete: ['Celine Dion', 'Jean-Jacques Goldman', 'Francis Cabrel', 'Michel Sardou', 'Johnny Hallyday', 'Mylene Farmer', 'Stromae', 'Clara Luciani', 'Vianney', 'Angèle', 'Edith Piaf', 'Charles Aznavour', 'Serge Gainsbourg', 'Jacques Brel', 'Georges Brassens', 'Renaud', 'Daniel Balavoine', 'Indochine'],
-      pop: ['The Weeknd', 'Ed Sheeran', 'Billie Eilish', 'Harry Styles', 'Taylor Swift', 'Dua Lipa', 'Bruno Mars', 'Ariana Grande', 'Justin Bieber', 'Miley Cyrus', 'Lady Gaga', 'Rihanna', 'Beyoncé', 'Katy Perry', 'Shakira', 'Michael Jackson', 'Madonna', 'Britney Spears', 'Coldplay'],
-      rap: ['Eminem', 'Dr. Dre', 'Snoop Dogg', 'Tupac', 'Jay-Z', 'Kendrick Lamar', 'Drake', 'Kanye West', 'Travis Scott', '50 Cent', 'Lil Wayne', 'Post Malone', 'Mac Miller'],
-      disco: ['ABBA', 'Bee Gees', 'Boney M', 'Chic', 'Earth, Wind & Fire', 'Donna Summer', 'Gloria Gaynor', 'Kool & The Gang', 'Diana Ross', 'Sister Sledge', 'Jamiroquai', 'Prince', 'Stevie Wonder', 'Rick James'],
-      rock: ['Queen', 'Pink Floyd', 'Led Zeppelin', 'AC/DC', 'The Rolling Stones', 'Nirvana', 'Radiohead', 'U2', 'Coldplay', 'Muse', 'The Beatles', 'Oasis', 'Blur', 'Arctic Monkeys', 'The Strokes', 'Red Hot Chili Peppers', 'Green Day', 'Foo Fighters', 'Linkin Park', 'Gorillaz'],
-      jazz: ['Miles Davis', 'John Coltrane', 'Ella Fitzgerald', 'Louis Armstrong', 'Billie Holiday', 'Nina Simone', 'Ray Charles', 'B.B. King', 'Etta James', 'Frank Sinatra', 'Norah Jones', 'Gregory Porter', 'Chet Baker', 'Aretha Franklin', 'Otis Redding', 'Al Green'],
-      soundtrack: ['Hans Zimmer', 'John Williams', 'Ennio Morricone', 'Ludovico Einaudi', 'Joe Hisaishi', 'Yann Tiersen', 'Ramin Djawadi', 'Danny Elfman', 'Howard Shore', 'Alan Silvestri'],
-      classical: ['Mozart', 'Beethoven', 'Bach', 'Chopin', 'Vivaldi', 'Debussy', 'Tchaikovsky'],
-      rnb: ['Marvin Gaye', 'Amy Winehouse', 'Alicia Keys', 'John Legend', 'Usher', 'Ne-Yo', 'Destiny\'s Child', 'TLC', 'SZA', 'Frank Ocean', 'Erykah Badu', 'Lauryn Hill', 'Leon Bridges', 'Silk Sonic'],
-      synthwave: ['Depeche Mode', 'New Order', 'The Cure', 'Tears for Fears', 'Eurythmics', 'Pet Shop Boys', 'A-ha', 'Duran Duran', 'Kavinsky', 'The Midnight', 'Carpenter Brut', 'Gunship', 'FM-84', 'Perturbator'],
-      latin: ['Daddy Yankee', 'Bad Bunny', 'J Balvin', 'Maluma', 'Karol G', 'Rosalia', 'Enrique Iglesias', 'Ricky Martin', 'Luis Fonsi', 'Pitbull', 'Don Omar', 'Marc Anthony', 'Celia Cruz', 'Santana', 'Buena Vista Social Club', 'Manu Chao', 'Juanes'],
-      lofi: ['Nujabes', 'J Dilla', 'Lofi Girl', 'Idealism', 'Jinsang', 'Kudasai', 'Saib', 'Elijah Who', 'SwuM', 'Wun Two', 'Tomppabeats'],
-      grunge: ['Pearl Jam', 'Soundgarden', 'Alice in Chains', 'Stone Temple Pilots', 'Smashing Pumpkins', 'Sonic Youth', 'PJ Harvey', 'Garbage', 'Weezer', 'Beck', 'Incubus', 'Audioslave', 'Rage Against the Machine'],
-      afrobeats: ['Burna Boy', 'Wizkid', 'Davido', 'Rema', 'Asake', 'Fireboy DML', 'Tems', 'Tiwa Savage', 'CKay', 'Omah Lay', 'Fela Kuti', 'Magic System', 'Fally Ipupa', 'Salif Keita', 'Youssou N\'Dour'],
-      kpop: ['BTS', 'BLACKPINK', 'Twice', 'NewJeans', 'Stray Kids', 'IU', 'Utada Hikaru', 'Kenshi Yonezu', 'Yoasobi', 'Babymetal', 'Perfume', 'One Ok Rock', 'Radwimps', 'LiSA', 'Aimer'],
-      country: ['Johnny Cash', 'Dolly Parton', 'Willie Nelson', 'Shania Twain', 'Luke Combs', 'Morgan Wallen', 'Zach Bryan', 'Chris Stapleton', 'Bob Dylan', 'Neil Young', 'Joni Mitchell', 'Simon & Garfunkel', 'Mumford & Sons', 'The Lumineers', 'Fleet Foxes', 'Bon Iver', 'Vance Joy'],
-      punk: ['The Clash', 'Ramones', 'Sex Pistols', 'Blink-182', 'Sum 41', 'The Offspring', 'Rancid', 'NOFX', 'Bad Religion', 'Rise Against', 'Sublime', 'Madness', 'The Specials', 'Reel Big Fish'],
-      french_rap: ['IAM', 'Supreme NTM', 'Booba', 'Kaaris', 'PNL', 'Nekfeu', 'Lomepal', 'Vald', 'Niska', 'SCH', 'Gims', 'PLK', 'Hamza', 'Freeze Corleone', 'Laylow', 'Josman', 'Dinos', 'Kery James'],
-      math_rock: ['Tricot', 'Covet', 'Chon', 'Elephant Gym', 'TTNG', 'Delta Sleep', 'American Football'],
-      shoegaze: ['Slowdive', 'My Bloody Valentine', 'Cocteau Twins', 'Alcest', 'DIIV', 'Ride', 'Lush'],
-      idm_glitch: ['Boards of Canada', 'Autechre', 'Venetian Snares', 'Squarepusher', 'Jon Hopkins', 'Lorn'],
-      vaporwave: ['Saint Pepsi', 'Macross 82-99', 'Yung Bae', 'Luxury Elite', 'Blank Banshee', 'Vektroid'],
-      post_rock: ['Godspeed You! Black Emperor', 'Mono', 'Explosions in the Sky', 'Mogwai', 'Caspian', 'Russian Circles'],
-      dark_folk: ['Colter Wall', 'Tyler Childers', 'Orville Peck', 'Amigo the Devil', 'Chelsea Wolfe', 'Emma Ruth Rundle'],
-      chiptune: ['Anamanaguchi', 'Sabrepulse', 'Chipzel', 'Disasterpeace', 'Dubmood', 'Slagsmålsklubben'],
-      krautrock: ['Can', 'Neu!', 'Faust', 'Amon Düül II', 'Tangerine Dream'],
-      dungeon_synth: ['Mortiis', 'Depressive Silence', 'Fief', 'Lustmord', 'Atrium Carceri']
-    };
-    
+    const bots = players.filter((player) => player.is_bot);
     const genres = Object.keys(GENRE_QUERIES);
+    const limit = session.max_musics_per_player;
+    const deadline = Date.now() + DEEZER.botGenerationBudgetMs;
 
-    for (const bot of bots) {
-      const favoriteGenre = genres[bot.id % genres.length];
-      const artistPool = [...GENRE_QUERIES[favoriteGenre]].sort(() => Math.random() - 0.5);
-      
-      const limit = session.max_musics_per_player;
-      let submittedCount = 0;
-      
-      for (let i = 0; i < artistPool.length && submittedCount < limit; i++) {
-        const artist = artistPool[i];
-        try {
-          const searchUrl = `https://api.deezer.com/search?q=${encodeURIComponent(artist)}&limit=25`;
-          const response = await fetch(searchUrl);
-          if (response.ok) {
-            const payload = await response.json();
-            const results = (payload?.data || []).filter(r => r.preview);
-            
-            if (results.length > 0) {
-              const randomTrack = results[Math.floor(Math.random() * results.length)];
-              
-              await Music.create({
-                sessionId: session.id,
-                playerId: bot.id,
-                title: randomTrack.title,
-                artist: randomTrack.artist.name,
-                filePath: randomTrack.preview ? randomTrack.preview.replace('http://', 'https://') : '',
-                coverUrl: randomTrack.album?.cover_medium ? randomTrack.album.cover_medium.replace('http://', 'https://') : null
-              });
-              
-              submittedCount++;
-              this.log(session.code, `Bot ${bot.name} (${favoriteGenre}) submitted: ${randomTrack.title} by ${randomTrack.artist.name}`);
-            }
-          }
-        } catch (err) {
-          console.warn(`Failed to fetch custom genre track for bot: ${bot.name}`, err);
-        }
+    const generated = await mapWithConcurrency(bots, DEEZER.botConcurrency, async (bot) => {
+      const genre = genres[bot.id % genres.length];
+      try {
+        return {
+          bot,
+          genre,
+          tracks: await getBotTracks(genre, limit, deadline),
+        };
+      } catch (error) {
+        console.warn(`Bot generation failed for ${bot.name}:`, error.message);
+        return { bot, genre, tracks: [] };
       }
-      
-      // Fallback in case we couldn't get enough tracks for the bot
-      if (submittedCount < limit) {
-        const shuffledTracks = [...BOT_TRACKS].sort(() => Math.random() - 0.5);
-        for (let i = submittedCount; i < limit; i++) {
-          const track = shuffledTracks[i % shuffledTracks.length];
-          
-          let freshFilePath = null;
-          let coverUrl = null;
-          try {
-            const searchUrl = `https://api.deezer.com/search?q=${encodeURIComponent(`${track.title} ${track.artist}`)}&limit=1`;
-            const response = await fetch(searchUrl);
-            if (response.ok) {
-              const payload = await response.json();
-              if (payload?.data?.[0]?.preview) {
-                freshFilePath = payload.data[0].preview.replace('http://', 'https://');
-                coverUrl = payload.data[0].album?.cover_medium ? payload.data[0].album.cover_medium.replace('http://', 'https://') : null;
-              }
-            }
-          } catch (err) {
-            console.warn(`Failed to fetch fresh preview for bot fallback track: ${track.title}`, err);
-          }
+    });
 
-          // If the primary search failed, try to query for a known popular track to get a fresh working preview URL
-          if (!freshFilePath) {
-            try {
-              const fallbackSearchUrl = `https://api.deezer.com/search?q=artist:"The Weeknd" track:"Blinding Lights"&limit=1`;
-              const response = await fetch(fallbackSearchUrl);
-              if (response.ok) {
-                const payload = await response.json();
-                if (payload?.data?.[0]?.preview) {
-                  freshFilePath = payload.data[0].preview.replace('http://', 'https://');
-                  coverUrl = payload.data[0].album?.cover_medium ? payload.data[0].album.cover_medium.replace('http://', 'https://') : null;
-                }
-              }
-            } catch (err) {
-              console.warn("Failed to fetch absolute fallback track:", err);
-            }
-          }
-
-          // Absolute last resort (using the hardcoded file_path)
-          if (!freshFilePath) {
-            freshFilePath = track.file_path.replace('http://', 'https://');
-          }
-
+    for (const { bot, genre, tracks } of generated) {
+      for (const track of tracks.slice(0, limit)) {
+        try {
           await Music.create({
             sessionId: session.id,
             playerId: bot.id,
             title: track.title,
             artist: track.artist,
-            filePath: freshFilePath,
-            coverUrl
+            filePath: requireMusicSource(track.file_path, 'filePath'),
+            coverUrl: track.cover_url ? requireCoverUrl(track.cover_url, 'coverUrl') : null,
+            fileSize: 0,
           });
-          this.log(session.code, `Bot ${bot.name} (fallback) submitted: ${track.title}`);
+          this.log(code, `Bot ${bot.name} (${genre}) submitted: ${track.title} by ${track.artist}`);
+        } catch (error) {
+          console.warn(`Unable to save bot track ${track.title}:`, error.message);
         }
       }
     }
 
-    // Set selection timer
     const endsAt = this.startTimer(code, session.selection_duration, async () => {
       this.log(code, 'Selection timer finished, transitioning to voting');
-      await this.startVoting(code);
+      await this.startVoting(code, null, { internal: true });
     });
 
     await Session.updateVotingState(code, {
       currentMusicIndex: -1,
       votingStatus: 'idle',
-      timerEndsAt: endsAt
+      timerEndsAt: endsAt,
     });
+    await Session.extendExpiry(code, SESSION_TTLS.selection);
 
     this.log(code, 'Selection phase started');
     await this.broadcastState(code);
     if (this.ioNamespace) {
       this.ioNamespace.to(code).emit('sound:play', { type: 'phase_change' });
     }
-    return this.getState(code);
+    return this.getState(code, actorId);
   }
 
-  async startVoting(code) {
-    const session = await Session.findByCode(code);
-    if (!session) {
-      throw httpError(404, 'Session introuvable');
+  async startVoting(code, actorId, { internal = false } = {}) {
+    code = normalizeSessionCode(code);
+    const session = internal
+      ? await Session.findByCode(code)
+      : await this.assertHost(code, actorId);
+    if (!session) throw httpError(404, 'Session introuvable');
+    if (session.phase !== 'selection') {
+      throw httpError(409, 'Le vote ne peut démarrer qu’après la sélection');
     }
 
-    // Clear selection timer just in case
     this.clearTimer(code);
+    this.clearBotVoteTimers(code);
 
     const players = await Player.findBySession(session.id);
     const musics = await Music.findBySession(session.id);
-
-    // Identify players who have enough musics
-    const minMusics = session.max_musics_per_player;
     const activeMusics = [];
-    
+
     for (const player of players) {
-      const pMusics = musics.filter(m => m.player_id === player.id);
-      
-      // If player is disconnected or doesn't have enough music, they become observers
-      // Wait, if they are disconnected during selection, their musics are not counted.
-      // But if they are connected, we check if they have enough musics.
-      const hasEnough = pMusics.length >= minMusics;
+      const playerMusics = musics.filter((music) => music.player_id === player.id);
+      const hasEnough = playerMusics.length >= session.max_musics_per_player;
       if (!player.is_connected || !hasEnough) {
-        await Player.setObserver(player.id, true);
+        await Player.setObserver(player.id, true, session.id);
         this.log(code, `Player ${player.name} marked as observer (enough: ${hasEnough}, connected: ${player.is_connected})`);
       } else {
-        await Player.setObserver(player.id, false);
-        activeMusics.push(...pMusics);
+        await Player.setObserver(player.id, false, session.id);
+        activeMusics.push(...playerMusics);
       }
     }
 
-    // Shuffle and save play order for musics
-    const shuffledMusics = activeMusics.sort(() => Math.random() - 0.5);
-    for (let i = 0; i < shuffledMusics.length; i++) {
-      await Music.updatePlayOrder(shuffledMusics[i].id, i);
-      
-      // If blind test is enabled, generate options
+    const shuffledMusics = shuffle(activeMusics);
+    for (let index = 0; index < shuffledMusics.length; index += 1) {
+      const track = shuffledMusics[index];
+      await Music.updatePlayOrder(track.id, index);
+
       if (session.enable_blind_test) {
-        try {
-          const track = shuffledMusics[i];
-          const searchUrl = `https://api.deezer.com/search?q=artist:"${encodeURIComponent(track.artist)}"&limit=15`;
-          const response = await fetch(searchUrl);
-          let options = [];
-          
-          const normCorrectTitle = normalizeTitle(track.title);
-
-          if (response.ok) {
-            const payload = await response.json();
-            const results = payload?.data || [];
-            
-            // Filter out tracks that have the same normalized title as the correct one
-            const filtered = results.filter(r => {
-              const normOptionTitle = normalizeTitle(r.title);
-              return normOptionTitle !== normCorrectTitle;
-            });
-
-            // Shuffle filtered tracks
-            const shuffledFiltered = filtered.sort(() => Math.random() - 0.5);
-
-            // Add unique normalized titles to options
-            for (const r of shuffledFiltered) {
-              if (options.length >= 3) break;
-              const normOptionTitle = normalizeTitle(r.title);
-              const isDuplicate = options.some(o => normalizeTitle(o.title) === normOptionTitle);
-              if (!isDuplicate) {
-                options.push({ title: r.title, artist: r.artist.name });
-              }
-            }
-          }
-
-          // Fallbacks if we don't have 3 unique options
-          while (options.length < 3) {
-             const fallback = BOT_TRACKS[Math.floor(Math.random() * BOT_TRACKS.length)];
-             const normFallbackTitle = normalizeTitle(fallback.title);
-             
-             if (normFallbackTitle !== normCorrectTitle) {
-               const isDuplicate = options.some(o => normalizeTitle(o.title) === normFallbackTitle);
-               if (!isDuplicate) {
-                 options.push({ title: fallback.title, artist: fallback.artist });
-               }
-             }
-          }
-
-          // Add the correct track
-          options.push({ title: track.title, artist: track.artist });
-          // Shuffle
-          options.sort(() => Math.random() - 0.5);
-          
-          await query('UPDATE musics SET blind_test_options = $1 WHERE id = $2', [JSON.stringify(options), track.id]);
-        } catch (err) {
-          this.log(code, `Failed to generate blind test options for music ${shuffledMusics[i].id}: ${err.message}`);
-        }
+        const options = buildBlindTestOptions(track, musics);
+        await query('UPDATE musics SET blind_test_options = $1 WHERE id = $2', [
+          JSON.stringify(options),
+          track.id,
+        ]);
       }
     }
 
-    // Clear previous votes
     await query('DELETE FROM votes WHERE session_id = $1', [session.id]);
     await query('DELETE FROM blind_test_answers WHERE session_id = $1', [session.id]);
-
-    await Session.updatePhase(code, 'voting');
+    await Session.updatePhase(code, 'voting', SESSION_TTLS.voting);
 
     if (shuffledMusics.length === 0) {
       this.log(code, 'No musics available, transitioning directly to results');
-      return this.finishSession(code);
+      return this.finishSession(code, null, { internal: true });
     }
 
     const initialStatus = session.auto_advance ? 'listening' : 'idle';
     this.log(code, `Voting phase started, entering first subphase: ${initialStatus}`);
     await this.enterVotingSubphase(code, 0, initialStatus);
+    return this.getState(code, actorId);
   }
 
   async enterVotingSubphase(code, musicIndex, status) {
@@ -533,42 +802,47 @@ export default class GameService {
     }
 
     this.clearTimer(code);
+    this.clearBotVoteTimers(code);
 
     let endsAt = null;
     if (duration > 0) {
       const callback = async () => {
+        const freshSession = await Session.findByCode(code);
+        if (!freshSession
+          || freshSession.phase !== 'voting'
+          || freshSession.voting_status !== status
+          || freshSession.current_music_index !== musicIndex) {
+          return;
+        }
+
         this.log(code, `Subphase timer finished for music index ${musicIndex}, status ${status}`);
         if (status === 'listening') {
-          // Transition to voting
           await this.enterVotingSubphase(code, musicIndex, 'voting');
         } else if (status === 'voting') {
-          // Transition to revelation or next music
-          if (session.show_answers) {
+          if (freshSession.show_answers) {
             await this.enterVotingSubphase(code, musicIndex, 'revelation');
           } else {
             await this.nextRound(code, musicIndex);
           }
         } else if (status === 'revelation') {
-          // Transition to next music
           await this.nextRound(code, musicIndex);
         }
       };
       endsAt = this.startTimer(code, duration, callback);
     }
 
-    const updatedSession = await Session.updateVotingState(code, {
+    await Session.updateVotingState(code, {
       currentMusicIndex: musicIndex,
       votingStatus: status,
-      timerEndsAt: endsAt
+      timerEndsAt: endsAt,
     });
-
+    await Session.extendExpiry(code, SESSION_TTLS.voting);
     await this.broadcastState(code);
 
     if (this.ioNamespace) {
       if (status === 'listening') {
         this.ioNamespace.to(code).emit('sound:play', { type: 'phase_change' });
       } else if (status === 'voting') {
-        // Trigger bot votes automatically after a random delay
         this.triggerBotVotes(code, musicIndex);
       } else if (status === 'revelation') {
         this.ioNamespace.to(code).emit('sound:play', { type: 'vote_closed' });
@@ -581,42 +855,44 @@ export default class GameService {
     if (!session) return;
 
     const musics = await Music.findBySession(session.id);
-    const activeMusics = musics.filter(m => m.play_order >= 0);
+    const activeMusics = musics
+      .filter((music) => music.play_order >= 0)
+      .sort((first, second) => first.play_order - second.play_order);
     const nextIndex = currentIndex + 1;
 
     if (nextIndex < activeMusics.length) {
       const nextStatus = session.auto_advance ? 'listening' : 'idle';
       await this.enterVotingSubphase(code, nextIndex, nextStatus);
     } else {
-      await this.finishSession(code);
+      await this.finishSession(code, null, { internal: true });
     }
   }
 
-  async startRound(code) {
-    const session = await Session.findByCode(code);
-    if (!session) {
-      throw httpError(404, 'Session introuvable');
-    }
+  async startRound(code, actorId) {
+    code = normalizeSessionCode(code);
+    const session = await this.assertHost(code, actorId);
     if (session.phase !== 'voting' || session.voting_status !== 'idle') {
       throw httpError(409, 'Impossible de lancer la manche depuis ce statut');
     }
     await this.enterVotingSubphase(code, session.current_music_index, 'listening');
-    return this.getState(code);
+    return this.getState(code, actorId);
   }
 
-  async advanceRound(code) {
-    const session = await Session.findByCode(code);
-    if (!session) {
-      throw httpError(404, 'Session introuvable');
-    }
+  async advanceRound(code, actorId) {
+    code = normalizeSessionCode(code);
+    const session = await this.assertHost(code, actorId);
     if (session.phase !== 'voting') {
-      throw httpError(409, 'La phase de vote n\'est pas active');
+      throw httpError(409, 'La phase de vote n’est pas active');
     }
 
     const status = session.voting_status;
     const musicIndex = session.current_music_index;
+    if (!['listening', 'voting', 'revelation'].includes(status)) {
+      throw httpError(409, 'Aucune manche active à avancer');
+    }
 
     this.clearTimer(code);
+    this.clearBotVoteTimers(code);
 
     if (status === 'listening') {
       await this.enterVotingSubphase(code, musicIndex, 'voting');
@@ -627,94 +903,70 @@ export default class GameService {
         await this.nextRound(code, musicIndex);
       }
     } else if (status === 'revelation') {
-      const musics = await Music.findBySession(session.id);
-      const activeMusics = musics.filter(m => m.play_order >= 0);
-      const nextIndex = musicIndex + 1;
-
-      if (nextIndex < activeMusics.length) {
-        await this.enterVotingSubphase(code, nextIndex, 'listening');
-      } else {
-        await this.finishSession(code);
-      }
+      await this.nextRound(code, musicIndex);
     }
-    return this.getState(code);
+    return this.getState(code, actorId);
   }
 
-  async triggerBotVotes(code, musicIndex) {
-    const session = await Session.findByCode(code);
-    if (!session) return;
+  triggerBotVotes(code, musicIndex) {
+    const run = async () => {
+      const session = await Session.findByCode(code);
+      if (!session) return;
 
-    const players = await Player.findBySession(session.id);
-    const musics = await Music.findBySession(session.id);
-    const currentMusic = musics.find(m => m.play_order === musicIndex);
-    if (!currentMusic) return;
+      const players = await Player.findBySession(session.id);
+      const musics = await Music.findBySession(session.id);
+      const currentMusic = musics.find((music) => music.play_order === musicIndex);
+      if (!currentMusic) return;
 
-    const bots = players.filter(p => p.is_bot && !p.is_observer && p.is_connected);
-    const eligibleTargets = players.filter(p => !p.is_observer);
+      const bots = players.filter((player) => player.is_bot && !player.is_observer && player.is_connected);
+      const eligibleTargets = players.filter((player) => !player.is_observer);
 
-    for (const bot of bots) {
-      // Choose random player except themselves
-      const targets = eligibleTargets.filter(t => t.id !== bot.id);
-      if (targets.length === 0) continue;
+      this.clearBotVoteTimers(code);
+      for (const bot of bots) {
+        const targets = eligibleTargets.filter((target) => target.id !== bot.id);
+        if (targets.length === 0) continue;
 
-      const chosenTarget = targets[Math.floor(Math.random() * targets.length)];
-      const randomDelay = Math.random() * session.voting_duration * 1000 * 0.8;
+        const chosenTarget = targets[Math.floor(Math.random() * targets.length)];
+        const randomDelay = Math.random() * session.voting_duration * 1000 * 0.8;
 
-      setTimeout(async () => {
-        try {
-          // Verify session state before voting
+        this.scheduleBotVote(code, randomDelay, async () => {
           const freshSession = await Session.findByCode(code);
-          if (freshSession.phase === 'voting' && freshSession.voting_status === 'voting' && freshSession.current_music_index === musicIndex) {
+          if (freshSession.phase === 'voting'
+            && freshSession.voting_status === 'voting'
+            && freshSession.current_music_index === musicIndex) {
             await this.submitVote(code, bot.id, currentMusic.id, chosenTarget.id);
           }
-        } catch (err) {
-          // Bot vote failed (e.g. state already changed), ignore
-        }
-      }, randomDelay);
-    }
+        });
+      }
+    };
+
+    run().catch((error) => this.log(code, `Bot vote scheduling failed: ${error.message}`));
   }
 
   async submitVote(code, voterId, musicId, guessedPlayerId) {
-    const session = await Session.findByCode(code);
-    if (!session) {
-      throw httpError(404, 'Session introuvable');
-    }
+    const session = await Session.findByCode(normalizeSessionCode(code));
+    if (!session) throw httpError(404, 'Session introuvable');
+    if (session.phase !== 'voting') throw httpError(409, 'La phase de vote n’est pas active');
+    if (session.voting_status !== 'voting') throw httpError(409, 'Les votes sont fermés pour ce morceau');
 
-    if (session.phase !== 'voting') {
-      throw httpError(409, 'La phase de vote n\'est pas active');
-    }
-
-    if (session.voting_status !== 'voting') {
-      throw httpError(409, 'Les votes sont fermés pour ce morceau');
-    }
-
-    // Check if voter is observer
     const players = await Player.findBySession(session.id);
-    const voter = players.find(p => p.id === voterId);
+    const voter = players.find((player) => player.id === voterId);
     if (!voter || voter.is_observer) {
       throw httpError(403, 'Vous êtes observateur et ne pouvez pas voter');
     }
 
-    const music = await Music.findById(musicId);
-    if (!music || music.session_id !== session.id) {
-      throw httpError(400, 'Musique invalide');
-    }
-
+    const music = await Music.findById(musicId, session.id);
+    if (!music) throw httpError(400, 'Musique invalide');
     if (music.play_order !== session.current_music_index) {
-      throw httpError(400, 'Cette musique n\'est pas en cours de vote');
+      throw httpError(400, 'Cette musique n’est pas en cours de vote');
     }
 
-    const target = players.find(p => p.id === guessedPlayerId && !p.is_observer);
-    if (!target) {
-      throw httpError(400, 'Le joueur ciblé est invalide');
-    }
+    const target = players.find((player) => player.id === guessedPlayerId && !player.is_observer);
+    if (!target) throw httpError(400, 'Le joueur ciblé est invalide');
 
-    // Check if timer expired
     if (session.timer_ends_at && new Date() > new Date(session.timer_ends_at)) {
       throw httpError(409, 'Le temps est écoulé pour ce vote');
     }
-
-    // Validate vote
     if (voterId === guessedPlayerId) {
       throw httpError(400, 'Vous ne pouvez pas voter pour vous-même');
     }
@@ -727,66 +979,66 @@ export default class GameService {
       [session.id, voterId, musicId, guessedPlayerId]
     );
 
+    await Session.extendExpiry(code, SESSION_TTLS.voting);
     this.log(code, `Vote submitted: player ${voterId} voted for player ${guessedPlayerId} on music ${musicId}`);
-
     await this.broadcastState(code);
-    if (this.ioNamespace) {
-      this.ioNamespace.to(code).emit('vote:submit', { voterId, musicId, guessedPlayerId });
-    }
     return this.getState(code, voterId);
   }
 
   async submitBlindTestAnswer(code, playerId, musicId, answerTitle, answerArtist) {
-    const session = await Session.findByCode(code);
+    const session = await Session.findByCode(normalizeSessionCode(code));
     if (!session || session.phase !== 'voting' || session.voting_status !== 'listening' || !session.enable_blind_test) {
       throw httpError(403, 'Action non autorisée');
     }
-    
-    // Check if player is an observer
+
     const players = await Player.findBySession(session.id);
-    const player = players.find(p => p.id === playerId);
+    const player = players.find((entry) => entry.id === playerId);
     if (!player || player.is_observer) throw httpError(403, 'Action non autorisée');
-    
-    const music = await Music.findById(musicId);
-    if (!music || music.session_id !== session.id) throw httpError(404, 'Musique introuvable');
+
+    const music = await Music.findById(musicId, session.id);
+    if (!music) throw httpError(404, 'Musique introuvable');
     if (music.play_order !== session.current_music_index) {
-      throw httpError(400, 'Cette musique n\'est pas en cours de lecture');
+      throw httpError(400, 'Cette musique n’est pas en cours de lecture');
     }
     if (music.player_id === playerId) {
       throw httpError(400, 'Vous ne pouvez pas participer au blind test pour votre propre musique');
     }
-    
+
     const isCorrect = music.title === answerTitle && music.artist === answerArtist;
-    
     await query(
       `INSERT INTO blind_test_answers (session_id, player_id, music_id, answer_title, answer_artist, is_correct)
        VALUES ($1, $2, $3, $4, $5, $6)
-       ON CONFLICT (session_id, player_id, music_id) DO UPDATE SET answer_title = EXCLUDED.answer_title, answer_artist = EXCLUDED.answer_artist, is_correct = EXCLUDED.is_correct`,
+       ON CONFLICT (session_id, player_id, music_id)
+       DO UPDATE SET answer_title = EXCLUDED.answer_title, answer_artist = EXCLUDED.answer_artist, is_correct = EXCLUDED.is_correct`,
       [session.id, playerId, musicId, answerTitle, answerArtist, isCorrect]
     );
-    
-    this.log(code, `Blind test answer submitted: player ${playerId} answered ${answerTitle} for music ${musicId}`);
 
+    await Session.extendExpiry(code, SESSION_TTLS.voting);
+    this.log(code, `Blind test answer submitted: player ${playerId} answered ${answerTitle} for music ${musicId}`);
     await this.broadcastState(code);
     return this.getState(code, playerId);
   }
 
-  async finishSession(code) {
-    const session = await Session.findByCode(code);
-    if (!session) {
-      throw httpError(404, 'Session introuvable');
+  async finishSession(code, actorId, { internal = false } = {}) {
+    code = normalizeSessionCode(code);
+    const session = internal
+      ? await Session.findByCode(code)
+      : await this.assertHost(code, actorId);
+    if (!session) throw httpError(404, 'Session introuvable');
+    if (session.phase !== 'voting') {
+      throw httpError(409, 'La partie ne peut être terminée que pendant le vote');
     }
 
     this.clearTimer(code);
-    await Session.updatePhase(code, 'results');
+    this.clearBotVoteTimers(code);
+    await Session.updatePhase(code, 'results', SESSION_TTLS.results);
     await Session.updateVotingState(code, {
       currentMusicIndex: -1,
       votingStatus: 'idle',
-      timerEndsAt: null
+      timerEndsAt: null,
     });
 
-    // Save final calculated scores to DB for consistency
-    const results = await this.getResults(code);
+    const results = await this.getResults(code, actorId);
     for (const player of results.ranking) {
       await query('UPDATE players SET score = $1 WHERE id = $2', [player.score, player.id]);
     }
@@ -799,225 +1051,49 @@ export default class GameService {
     return results;
   }
 
-  async resetSession(code) {
-    const session = await Session.findByCode(code);
-    if (!session) {
-      throw httpError(404, 'Session introuvable');
-    }
-
+  async resetSession(code, actorId) {
+    code = normalizeSessionCode(code);
+    const session = await this.assertHost(code, actorId);
     this.clearTimer(code);
-    await Session.reset(code);
+    this.clearBotVoteTimers(code);
+    this.cancelHostDisconnect(code);
+
+    const deletedMusics = await Music.deleteAllBySession(session.id);
+    await Session.reset(code, SESSION_TTLS.waiting);
     await Player.resetScoresAndStatusBySession(session.id);
-    await Music.deleteAllBySession(session.id);
+    await deleteUploadsForMusics(deletedMusics);
 
     this.log(code, 'Session reset');
     await this.broadcastState(code);
     if (this.ioNamespace) {
       this.ioNamespace.to(code).emit('sound:play', { type: 'phase_change' });
     }
-    return this.getState(code);
+    return this.getState(code, actorId);
   }
 
-  async getState(code, playerId = null) {
-    const session = await Session.findByCode(code);
-    if (!session) {
-      throw httpError(404, 'Session introuvable');
+  async getResults(code, playerId = null) {
+    const session = await Session.findByCode(normalizeSessionCode(code));
+    if (!session) throw httpError(404, 'Session introuvable');
+    if (session.phase !== 'results') {
+      throw httpError(409, 'Les résultats ne sont disponibles qu’en fin de partie');
     }
-
-    const players = await Player.findBySession(session.id);
-    const rawMusics = await Music.findBySession(session.id);
-    const votes = await query('SELECT * FROM votes WHERE session_id = $1', [session.id]).then(res => res.rows);
-    const blindTestAnswers = await query('SELECT * FROM blind_test_answers WHERE session_id = $1', [session.id]).then(res => res.rows);
-
-    // Compute dynamic scores
-    const playerMap = new Map(players.map(p => [p.id, {
-      ...p,
-      score: 0,
-      votesReceived: 0,
-      correctGuesses: 0
-    }]));
-
-    const musicProposers = new Map(rawMusics.map(m => [m.id, m.player_id]));
-
-    for (const vote of votes) {
-      const proposerId = musicProposers.get(vote.music_id);
-      
-      // Skip proposer's vote from scoring as it is just bluff
-      if (vote.voter_id === proposerId) {
-        continue;
-      }
-
-      const guessed = playerMap.get(vote.guessed_player_id);
-      if (guessed) {
-        guessed.votesReceived += 1;
-      }
-
-      if (proposerId && vote.guessed_player_id === proposerId) {
-        const voter = playerMap.get(vote.voter_id);
-        if (voter) {
-          voter.correctGuesses += 1;
-        }
-      }
-    }
-
-    // Add blind test scores
-    if (session.enable_blind_test) {
-      for (const answer of blindTestAnswers) {
-        if (answer.is_correct) {
-          const player = playerMap.get(answer.player_id);
-          if (player) {
-            player.correctGuesses += 1;
-          }
-        }
-      }
-    }
-
-    for (const p of playerMap.values()) {
-      p.score = p.correctGuesses;
-    }
-
-    // Sort players in the ranking list: highest score first, then order of arrival (created_at)
-    const computedPlayers = Array.from(playerMap.values()).sort((a, b) => {
-      if (b.score !== a.score) {
-        return b.score - a.score;
-      }
-      return new Date(a.created_at) - new Date(b.created_at);
-    });
-
-    const parsedPlayerId = playerId !== null && playerId !== undefined && playerId !== ''
-      ? Number.parseInt(playerId, 10)
-      : null;
-    const playerSelf = Number.isInteger(parsedPlayerId)
-      ? computedPlayers.find(p => p.id === parsedPlayerId) || null
-      : null;
-
-    // Filter musics depending on phase to prevent cheating
-    let filteredMusics = [];
-    let currentMusic = null;
-    let votesForCurrentMusic = [];
-    let statePayload = {};
-
-    if (session.phase === 'selection') {
-      // During selection, players only see their own musics.
-      // We also return a summary of music counts for all players
-      const musicCounts = {};
-      players.forEach(p => {
-        musicCounts[p.id] = rawMusics.filter(m => m.player_id === p.id).length;
-      });
-
-      if (playerId) {
-        filteredMusics = rawMusics.filter(m => m.player_id === parsedPlayerId);
-      }
-
-      statePayload = {
-        session,
-        players: computedPlayers,
-        musics: filteredMusics,
-        musicCounts
-      };
-    } else if (session.phase === 'voting') {
-      // Return only the current music, play order
-      const currentTrack = rawMusics.find(m => m.play_order === session.current_music_index);
-      if (currentTrack) {
-        currentMusic = { ...currentTrack };
-        
-        currentMusic.is_proposer = parsedPlayerId === currentTrack.player_id;
-        
-        // Hide proposer (player_id) unless we are in the revelation subphase AND show_answers is true
-        const isReveal = session.voting_status === 'revelation' && session.show_answers;
-        if (!isReveal) {
-          delete currentMusic.player_id;
-        }
-
-        // Return votes for the current track
-        const currentVotes = votes.filter(v => v.music_id === currentMusic.id);
-        const currentBlindTestAnswers = blindTestAnswers.filter(b => b.music_id === currentMusic.id);
-        
-        if (session.enable_blind_test) {
-          currentMusic.blind_test_answers = currentBlindTestAnswers;
-          // Hide other players' answers unless revelation
-          if (session.voting_status === 'listening' || session.voting_status === 'voting') {
-             if (parsedPlayerId) {
-                currentMusic.blind_test_answers = currentBlindTestAnswers.filter(b => b.player_id === parsedPlayerId);
-             } else {
-                currentMusic.blind_test_answers = [];
-             }
-          }
-        }
-        
-        if (session.voting_status === 'voting') {
-          // During voting, return vote counts received by each player, but mask who voted for whom
-          const voteCounts = {};
-          players.forEach(p => { voteCounts[p.id] = 0; });
-          currentVotes.forEach(v => {
-            if (voteCounts[v.guessed_player_id] !== undefined) {
-              voteCounts[v.guessed_player_id]++;
-            }
-          });
-          votesForCurrentMusic = voteCounts;
-        } else if (session.voting_status === 'revelation' && session.show_answers) {
-          // During revelation, show full details of who guessed what
-          votesForCurrentMusic = currentVotes;
-        }
-      }
-
-      // Hide all player musics during voting phase to prevent cheat
-      statePayload = {
-        session,
-        players: computedPlayers,
-        currentMusic,
-        votes: votesForCurrentMusic
-      };
-    } else if (session.phase === 'results') {
-      // Reveal everything
-      statePayload = {
-        session,
-        players: computedPlayers,
-        musics: rawMusics,
-        votes
-      };
-    } else {
-      // waiting phase
-      statePayload = {
-        session,
-        players: computedPlayers,
-        musics: rawMusics
-      };
-    }
-
-    return {
-      ...statePayload,
-      player: playerSelf,
-      serverTime: new Date().toISOString()
-    };
-  }
-
-  async getResults(code) {
-    const state = await this.getState(code);
-    return {
-      ...state,
-      ranking: state.players
-    };
+    return this.getState(code, playerId);
   }
 
   async promotePlayer(code, requesterId, targetPlayerId) {
-    const session = await Session.findByCode(code);
-    if (!session) throw httpError(404, 'Session introuvable');
-
-    const players = await Player.findBySession(session.id);
-    const requester = players.find(p => p.id === requesterId);
-    if (!requester || requester.name !== session.host_name) {
-      throw httpError(403, 'Seul l\'hôte actuel peut promouvoir un autre joueur');
+    code = normalizeSessionCode(code);
+    const session = await this.assertHost(code, requesterId);
+    if (session.phase !== 'waiting') {
+      throw httpError(409, 'Le transfert d’hôte n’est possible que dans le salon d’attente');
     }
 
-    const targetPlayer = players.find(p => p.id === targetPlayerId);
+    const players = await Player.findBySession(session.id);
+    const targetPlayer = players.find((player) => player.id === targetPlayerId);
     if (!targetPlayer) throw httpError(404, 'Joueur cible introuvable');
     if (targetPlayer.is_bot) throw httpError(400, 'Impossible de promouvoir un bot');
 
-    await query(
-      'UPDATE sessions SET host_name = $1, updated_at = NOW() WHERE code = $2',
-      [targetPlayer.name, code]
-    );
+    await Session.setHost(code, targetPlayer.id, targetPlayer.name);
+    this.cancelHostDisconnect(code);
 
     this.log(code, `Host promoted: ${targetPlayer.name}`);
     await this.broadcastState(code);
@@ -1025,103 +1101,113 @@ export default class GameService {
   }
 
   async kickPlayer(code, requesterId, targetPlayerId) {
-    const session = await Session.findByCode(code);
-    if (!session) throw httpError(404, 'Session introuvable');
+    code = normalizeSessionCode(code);
+    const session = await this.assertHost(code, requesterId);
+    if (session.phase !== 'waiting') {
+      throw httpError(409, 'L’exclusion n’est possible que dans le salon d’attente');
+    }
 
     const players = await Player.findBySession(session.id);
-    const requester = players.find(p => p.id === requesterId);
-    if (!requester || requester.name !== session.host_name) {
-      throw httpError(403, 'Seul l\'hôte actuel peut kick un joueur');
-    }
-
-    const targetPlayer = players.find(p => p.id === targetPlayerId);
+    const targetPlayer = players.find((player) => player.id === targetPlayerId);
     if (!targetPlayer) throw httpError(404, 'Joueur cible introuvable');
-
-    if (targetPlayer.name === session.host_name) {
-      throw httpError(400, 'L\'hôte ne peut pas se kick lui-même. Transférez d\'abord le rôle d\'hôte.');
+    if (targetPlayer.id === session.host_player_id) {
+      throw httpError(400, 'L’hôte ne peut pas se kick lui-même. Transférez d’abord le rôle d’hôte.');
     }
 
-    // Disconnect socket for the kicked player
+    const targetMusics = await Music.findByPlayer(targetPlayer.id, session.id);
+
     if (this.ioNamespace) {
       const sockets = await this.ioNamespace.in(code).fetchSockets();
-      const targetSockets = sockets.filter(s => s.playerId === targetPlayerId);
-      for (const s of targetSockets) {
-        s.emit('player:kicked');
-        s.disconnect(true);
+      for (const socket of sockets.filter((entry) => entry.playerId === targetPlayerId)) {
+        socket.emit('player:kicked');
+        socket.disconnect(true);
       }
     }
 
-    // Delete player (ON DELETE CASCADE will clean up musics/votes)
-    await Player.deletePlayer(targetPlayerId);
-
+    await Player.deletePlayer(targetPlayerId, session.id);
+    await deleteUploadsForMusics(targetMusics);
     this.log(code, `Player kicked: ${targetPlayer.name}`);
-
-    // If the game is in selection or voting, adjust music play orders
-    const remainingMusics = await Music.findBySession(session.id);
-    if (session.phase === 'voting' && remainingMusics.length > 0) {
-      const activeRemaining = remainingMusics.filter(m => m.play_order >= 0);
-      activeRemaining.sort((a, b) => a.play_order - b.play_order);
-      for (let index = 0; index < activeRemaining.length; index++) {
-        await query('UPDATE musics SET play_order = $1 WHERE id = $2', [index, activeRemaining[index].id]);
-      }
-      
-      if (session.current_music_index >= remainingMusics.length) {
-        await this.finishSession(code);
-      }
-    } else if (session.phase === 'voting' && remainingMusics.length === 0) {
-      await this.finishSession(code);
-    }
-
     await this.broadcastState(code);
     return this.getState(code, requesterId);
   }
-  async regenerateAvatar(code, playerId) {
+
+  async regenerateAvatar(code, playerId, actorId) {
+    code = normalizeSessionCode(code);
     const session = await Session.findByCode(code);
     if (!session) throw httpError(404, 'Session introuvable');
-
-    const newSeed = Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
-    const updatedPlayer = await Player.updateAvatarSeed(playerId, newSeed);
-    
-    if (!updatedPlayer) {
-      throw httpError(404, 'Joueur introuvable');
+    if (playerId !== actorId) {
+      throw httpError(403, 'Vous ne pouvez modifier que votre propre avatar');
     }
+
+    const player = await Player.findById(playerId, session.id);
+    if (!player) throw httpError(404, 'Joueur introuvable');
+
+    const updatedPlayer = await Player.updateAvatarSeed(playerId, generateAvatarSeed(), session.id);
+    if (!updatedPlayer) throw httpError(404, 'Joueur introuvable');
 
     this.log(code, `Player ${updatedPlayer.name} regenerated avatar`);
     await this.broadcastState(code);
     return this.getState(code, playerId);
   }
 
+  async deleteSession(code, { reason = 'deleted' } = {}) {
+    const normalizedCode = normalizeSessionCode(code);
+    const session = await Session.findByCode(normalizedCode);
+    if (!session) return false;
+
+    this.clearTimer(normalizedCode);
+    this.clearBotVoteTimers(normalizedCode);
+    this.cancelHostDisconnect(normalizedCode);
+
+    const musics = await Music.findBySession(session.id);
+    await Session.deleteByCode(normalizedCode);
+    await deleteUploadsForMusics(musics);
+
+    if (this.ioNamespace) {
+      this.ioNamespace.to(normalizedCode).emit('session:deleted');
+    }
+    this.log(normalizedCode, `Session deleted (${reason})`);
+    return true;
+  }
+
   async recoverSessions() {
     try {
       const activeSessions = await query(
-        `SELECT * FROM sessions 
-         WHERE phase IN ('selection', 'voting') 
+        `SELECT * FROM sessions
+         WHERE phase IN ('selection', 'voting')
+           AND expires_at > NOW()
            AND timer_ends_at IS NOT NULL`
-      ).then(res => res.rows);
+      ).then((result) => result.rows);
 
       for (const session of activeSessions) {
         const code = session.code;
-        const endsAtTime = new Date(session.timer_ends_at).getTime();
-        const nowTime = Date.now();
-        const remainingSeconds = Math.max(0, Math.round((endsAtTime - nowTime) / 1000));
+        if (this.activeTimers.has(code)) continue;
 
+        const endsAtTime = new Date(session.timer_ends_at).getTime();
+        const remainingSeconds = Math.max(0, Math.round((endsAtTime - Date.now()) / 1000));
         this.log(code, `Recovering session phase: ${session.phase}, remaining seconds: ${remainingSeconds}`);
 
         if (session.phase === 'selection') {
           this.startTimer(code, remainingSeconds, async () => {
             this.log(code, 'Recovered selection timer finished, transitioning to voting');
-            await this.startVoting(code);
+            await this.startVoting(code, null, { internal: true });
           });
         } else if (session.phase === 'voting') {
           const index = session.current_music_index;
           const status = session.voting_status;
-          
+
           this.startTimer(code, remainingSeconds, async () => {
-            this.log(code, `Recovered timer finished for music index ${index}, status ${status}`);
+            const freshSession = await Session.findByCode(code);
+            if (!freshSession
+              || freshSession.phase !== 'voting'
+              || freshSession.voting_status !== status
+              || freshSession.current_music_index !== index) {
+              return;
+            }
             if (status === 'listening') {
               await this.enterVotingSubphase(code, index, 'voting');
             } else if (status === 'voting') {
-              if (session.show_answers) {
+              if (freshSession.show_answers) {
                 await this.enterVotingSubphase(code, index, 'revelation');
               } else {
                 await this.nextRound(code, index);
@@ -1130,10 +1216,72 @@ export default class GameService {
               await this.nextRound(code, index);
             }
           });
+
+          if (status === 'voting') {
+            this.triggerBotVotes(code, index);
+          }
         }
       }
-    } catch (err) {
-      console.error('Error recovering active sessions:', err);
+
+      const waitingSessions = await query(
+        "SELECT code FROM sessions WHERE phase = 'waiting' AND expires_at > NOW()"
+      ).then((result) => result.rows);
+      for (const session of waitingSessions) {
+        this.scheduleHostDisconnect(session.code);
+      }
+    } catch (error) {
+      console.error('Error recovering active sessions:', error);
     }
+  }
+
+  async reapExpiredSessions() {
+    if (this.isReaping) return;
+    this.isReaping = true;
+
+    try {
+      const lock = await query("SELECT pg_try_advisory_lock(hashtext('cekikilami-session-reaper')) AS locked");
+      if (!lock.rows[0].locked) return;
+
+      try {
+        const expired = await Session.findExpired(50);
+        for (const session of expired) {
+          await this.deleteSession(session.code, { reason: 'expired' });
+        }
+        await cleanupOrphanUploads();
+        if (expired.length > 0) {
+          this.log('reaper', `Deleted ${expired.length} expired session(s)`);
+        }
+      } finally {
+        await query("SELECT pg_advisory_unlock(hashtext('cekikilami-session-reaper'))");
+      }
+    } catch (error) {
+      console.error('Session reaper failed:', error);
+    } finally {
+      this.isReaping = false;
+    }
+  }
+
+  startMaintenance() {
+    if (this.maintenanceInterval) return;
+    this.maintenanceInterval = setInterval(() => {
+      this.reapExpiredSessions().catch((error) => {
+        console.error('Scheduled session reaper failed:', error);
+      });
+    }, MAINTENANCE_INTERVAL_MS);
+    this.maintenanceInterval.unref?.();
+  }
+
+  stopMaintenance() {
+    if (this.maintenanceInterval) {
+      clearInterval(this.maintenanceInterval);
+      this.maintenanceInterval = null;
+    }
+  }
+
+  shutdown() {
+    this.stopMaintenance();
+    for (const code of [...this.activeTimers.keys()]) this.clearTimer(code);
+    for (const code of [...this.botVoteTimers.keys()]) this.clearBotVoteTimers(code);
+    for (const code of [...this.hostDisconnectTimeouts.keys()]) this.cancelHostDisconnect(code);
   }
 }
