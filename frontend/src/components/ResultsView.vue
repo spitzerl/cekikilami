@@ -426,7 +426,7 @@ const exportImage = () => {
   const third = ranking[2];
 
   const remainingPlayersCount = Math.max(0, ranking.length - 3);
-  const panelHeight = Math.max(240, 85 + remainingPlayersCount * 40);
+  const panelHeight = Math.max(220, 85 + remainingPlayersCount * 40);
   const canvasHeight = 450 + panelHeight + 110;
 
   const canvas = document.createElement('canvas');
@@ -468,102 +468,72 @@ const exportImage = () => {
   ctx.lineWidth = 1;
   ctx.stroke();
 
+  const podiumStats = (player) => {
+    const parts = [];
+    if (player.correctAccusations) {
+      parts.push(`${player.correctAccusations} accusation${player.correctAccusations > 1 ? 's' : ''}`);
+    }
+    if (player.bluffPoints) parts.push(`${player.bluffPoints} bluff`);
+    if (player.blindTestCorrect) parts.push(`${player.blindTestCorrect} blind`);
+    return parts.length ? parts.join(' · ') : 'Aucun point';
+  };
+
   // Podium
-  const drawPodiumColumn = (x, y, w, h, radius, fillColor, borderStyle, player, rankEmoji) => {
+  const drawPodiumCard = (x, y, w, h, radius, player, rank, accent, border) => {
     if (!player) return;
 
-    const colGrad = ctx.createLinearGradient(x, y, x, y + h);
-    colGrad.addColorStop(0, fillColor);
-    colGrad.addColorStop(1, 'rgba(255, 248, 237, 0.4)');
-    drawRoundedRect(ctx, x, y, w, h, radius, colGrad, borderStyle, 1.5);
-
-    const medalRadius = rankEmoji === '🥇' ? 28 : rankEmoji === '🥈' ? 24 : 22;
-    const medalY = y;
-
-    ctx.beginPath();
-    ctx.arc(x + w / 2, medalY, medalRadius + 3, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(46, 27, 63, 0.08)';
-    ctx.fill();
-
-    const medalGrad = ctx.createLinearGradient(x + w / 2 - medalRadius, medalY - medalRadius, x + w / 2 + medalRadius, medalY + medalRadius);
-    if (rankEmoji === '🥇') {
-      medalGrad.addColorStop(0, '#fde047');
-      medalGrad.addColorStop(1, '#ca8a04');
-    } else if (rankEmoji === '🥈') {
-      medalGrad.addColorStop(0, '#e2e8f0');
-      medalGrad.addColorStop(1, '#64748b');
-    } else {
-      medalGrad.addColorStop(0, '#f97316');
-      medalGrad.addColorStop(1, '#9a3412');
-    }
+    ctx.save();
+    ctx.shadowColor = 'rgba(46, 27, 63, 0.12)';
+    ctx.shadowBlur = 26;
+    ctx.shadowOffsetY = 12;
+    drawRoundedRect(ctx, x, y, w, h, radius, 'rgba(255, 248, 237, 0.94)', border, 1.5);
+    ctx.restore();
 
     ctx.beginPath();
-    ctx.arc(x + w / 2, medalY, medalRadius, 0, Math.PI * 2);
-    ctx.fillStyle = medalGrad;
+    ctx.arc(x + w / 2, y + 26, 17, 0, Math.PI * 2);
+    ctx.fillStyle = accent;
     ctx.fill();
-    ctx.strokeStyle = rankEmoji === '🥇' ? '#facc15' : rankEmoji === '🥈' ? '#cbd5e1' : '#ea580c';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    ctx.font = `${rankEmoji === '🥇' ? 20 : rankEmoji === '🥈' ? 18 : 16}px system-ui`;
+    ctx.fillStyle = '#fff';
+    ctx.font = '700 14px Archivo, system-ui, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(rankEmoji, x + w / 2, medalY);
+    ctx.fillText(String(rank), x + w / 2, y + 26);
     ctx.textBaseline = 'alphabetic';
 
-    if (rankEmoji === '🥇') {
-      ctx.font = '28px system-ui';
-      ctx.fillText('👑', x + w / 2, medalY - medalRadius - 8);
+    if (rank === 1) {
+      ctx.fillStyle = '#6f5b7a';
+      ctx.font = '600 9px Archivo, sans-serif';
+      ctx.fillText('VAINQUEUR', x + w / 2, y + 60);
     }
 
     ctx.fillStyle = '#2e1b3f';
-    ctx.font = '700 14px Archivo, system-ui, sans-serif';
-    ctx.textAlign = 'center';
-    let displayName = player.name;
-    displayName = truncateText(displayName, player.is_bot ? 10 : 12);
-    ctx.fillText(displayName, x + w / 2, y + h - 90);
+    ctx.font = '700 15px Archivo, system-ui, sans-serif';
+    ctx.fillText(truncateText(player.name, player.is_bot ? 14 : 16), x + w / 2, y + h - 92);
 
-    ctx.fillStyle = rankEmoji === '🥇' ? '#6b3ce0' : rankEmoji === '🥈' ? '#2b8ed6' : '#b8315f';
-    ctx.font = '700 22px ui-monospace, monospace';
-    ctx.fillText(`${player.score}`, x + w / 2 - 10, y + h - 55);
+    const scoreText = String(player.score ?? 0);
+    ctx.fillStyle = accent;
+    ctx.font = '700 26px ui-monospace, monospace';
+    ctx.fillText(scoreText, x + w / 2 - 12, y + h - 58);
     ctx.fillStyle = '#644f72';
     ctx.font = '500 11px Archivo, sans-serif';
-    ctx.fillText('pts', x + w / 2 + (player.score.toString().length * 6) + 4, y + h - 55);
+    ctx.fillText('pts', x + w / 2 + (scoreText.length * 8), y + h - 58);
 
-    const statsY = y + h - 25;
-    const correctVal = player.correctGuesses || 0;
-    const votesVal = player.votesReceived || 0;
-
-    const bW = 48;
-    const bH = 18;
-    const bRad = 9;
-    const startX = x + w / 2 - bW - 3;
-
-    drawRoundedRect(ctx, startX, statsY - 12, bW, bH, bRad, 'rgba(44, 122, 110, 0.06)', 'rgba(44, 122, 110, 0.2)', 1);
-    ctx.fillStyle = '#2c7a6e';
-    ctx.font = '600 9px Archivo, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(`🎯 ${correctVal}`, startX + bW / 2, statsY);
-
-    const startX2 = x + w / 2 + 3;
-    drawRoundedRect(ctx, startX2, statsY - 12, bW, bH, bRad, 'rgba(107, 60, 224, 0.06)', 'rgba(107, 60, 224, 0.2)', 1);
-    ctx.fillStyle = '#5227c4';
-    ctx.font = '600 9px Archivo, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(`💜 ${votesVal}`, startX2 + bW / 2, statsY);
+    ctx.fillStyle = '#6f5b7a';
+    ctx.font = '500 10px Archivo, sans-serif';
+    ctx.fillText(podiumStats(player), x + w / 2, y + h - 32);
   };
 
   ctx.textAlign = 'center';
-  drawPodiumColumn(175, 260, 130, 160, 16, 'rgba(43, 142, 214, 0.10)', 'rgba(43, 142, 214, 0.28)', second, '🥈');
-  drawPodiumColumn(325, 220, 150, 200, 20, 'rgba(107, 60, 224, 0.12)', 'rgba(107, 60, 224, 0.40)', first, '🥇');
-  drawPodiumColumn(495, 290, 130, 130, 16, 'rgba(228, 86, 159, 0.08)', 'rgba(228, 86, 159, 0.25)', third, '🥉');
+  drawPodiumCard(110, 240, 180, 180, 18, second, 2, '#2b8ed6', 'rgba(43, 142, 214, 0.28)');
+  drawPodiumCard(310, 200, 180, 220, 20, first, 1, '#6b3ce0', 'rgba(107, 60, 224, 0.40)');
+  drawPodiumCard(510, 270, 180, 150, 16, third, 3, '#b8315f', 'rgba(228, 86, 159, 0.25)');
   ctx.textAlign = 'left';
 
   drawRoundedRect(ctx, 50, 450, 700, panelHeight, 16, 'rgba(255, 248, 237, 0.9)', 'rgba(46, 27, 63, 0.12)', 1);
 
   ctx.fillStyle = '#6f5b7a';
   ctx.font = '600 11px ui-monospace, monospace';
-  ctx.fillText('Classement', 70, 485);
+  ctx.fillText('Suite du classement', 70, 485);
 
   let yOffset = 515;
   if (ranking.length <= 3) {
@@ -688,14 +658,10 @@ const exportImage = () => {
   ctx.lineWidth = 1;
   ctx.stroke();
 
+  ctx.textAlign = 'center';
   ctx.fillStyle = '#6f5b7a';
   ctx.font = '500 13px Archivo, system-ui, sans-serif';
-  ctx.fillText('Cékikilami, jeu de musique en ligne', 50, 450 + panelHeight + 65);
-
-  ctx.textAlign = 'right';
-  ctx.fillStyle = '#6f5b7a';
-  ctx.font = '500 12px ui-monospace, monospace';
-  ctx.fillText('cekikilami.lucasspitzer.fr', 750, 450 + panelHeight + 65);
+  ctx.fillText('Cékikilami · jeu de musique entre amis', 400, 450 + panelHeight + 65);
   ctx.textAlign = 'left';
 
   exportImageUrl.value = canvas.toDataURL('image/png');
