@@ -48,7 +48,7 @@ Application disponible sur `http://localhost:3000`.
 
 ## Production Docker
 
-Créer le `.env` racine avec des secrets forts, puis :
+Créer le `.env` racine avec des secrets forts (URL-safe, ou encoder les caractères spéciaux dans les URLs), puis :
 
 ```bash
 docker compose up --build -d
