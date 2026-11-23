@@ -30,120 +30,95 @@
           </h1>
 
           <p class="hero-tagline balance">
-            Chacun glisse un morceau. Tout le monde devine qui l’a choisi.
+            Connaissez vous vraiment les goûts musicaux de vos amis ?
           </p>
         </div>
 
         <div class="console reveal-late" role="region" aria-label="Créer ou rejoindre un salon">
-          <div class="menu-slider" role="group" aria-label="Choisir entre créer et rejoindre un salon">
-            <span
-              class="menu-slider-thumb"
-              :style="{ transform: activeAction === 'join' ? 'translateX(100%)' : 'translateX(0)' }"
-              aria-hidden="true"
-            ></span>
-            <button
-              type="button"
-              :class="['menu-slider-btn', activeAction === 'create' ? 'is-active' : '']"
-              :aria-pressed="activeAction === 'create'"
-              @click="setAction('create')"
+          <Transition name="console-step" mode="out-in" @after-enter="focusStep">
+            <form
+              v-if="step === 'identity'"
+              key="identity"
+              class="console-step"
+              @submit.prevent="onCreate"
+              novalidate
             >
-              Créer un salon
-            </button>
-            <button
-              type="button"
-              :class="['menu-slider-btn', activeAction === 'join' ? 'is-active' : '']"
-              :aria-pressed="activeAction === 'join'"
-              @click="setAction('join')"
-            >
-              Rejoindre un salon
-            </button>
-          </div>
-
-          <div class="menu-viewport">
-            <div
-              class="menu-slide menu-slide-create"
-              :class="{ 'is-active': activeAction === 'create' }"
-              :inert="activeAction !== 'create'"
-              :aria-hidden="activeAction !== 'create'"
-            >
-                <p class="menu-slide-sub">Choisissez un pseudo. Vous serez l’hôte du salon.</p>
-                <form class="console-form console-form-create" @submit.prevent="onCreate" novalidate>
-                  <div class="field">
-                    <label for="create-name" class="label">Votre pseudo</label>
-                    <input
-                      id="create-name"
-                      v-model="createName"
-                      required
-                      class="input"
-                      placeholder="Ex. Lucas"
-                      :aria-invalid="!!error && activeAction === 'create'"
-                      autocomplete="nickname"
-                      maxlength="32"
-                    />
-                  </div>
-                  <div class="create-aside">
-                    <p><strong>Votre salon est prêt tout de suite.</strong> Un code à 6 caractères et un lien à partager.</p>
-                  </div>
-                  <button
-                    type="submit"
-                    class="btn btn-primary btn-block btn-lg menu-submit"
-                    :disabled="!createName.trim()"
-                  >
-                    <AppIcon name="play" :size="18" />
-                    Créer le salon
-                  </button>
-                </form>
+              <div class="console-head">
+                <h2 class="console-heading">On joue ?</h2>
               </div>
 
-            <div
-              class="menu-slide menu-slide-join"
-              :class="{ 'is-active': activeAction === 'join' }"
-              :inert="activeAction !== 'join'"
-              :aria-hidden="activeAction !== 'join'"
-            >
-                <p class="menu-slide-sub">Entrez le code de l’hôte et choisissez un pseudo.</p>
-                <form class="console-form console-form-join" @submit.prevent="onJoin" novalidate>
-                  <div class="field">
-                    <div class="field-label-row">
-                      <label for="join-code" class="label">Code du salon</label>
-                      <button type="button" class="menu-paste" @click="pasteCode">Coller</button>
-                    </div>
-                    <input
-                      id="join-code"
-                      v-model="joinCode"
-                      required
-                      maxlength="6"
-                      class="input input-code"
-                      placeholder="ABCDEF"
-                      :aria-invalid="!!error && activeAction === 'join'"
-                      autocomplete="off"
-                      autocapitalize="characters"
-                      spellcheck="false"
-                    />
+              <div class="field">
+                <label for="player-name" class="label">Votre pseudo</label>
+                <input
+                  id="player-name"
+                  ref="pseudoInput"
+                  v-model="pseudo"
+                  class="input"
+                  placeholder="Ex. Lucas"
+                  autocomplete="nickname"
+                  maxlength="32"
+                  :aria-invalid="!!error"
+                  @input="clearError"
+                />
+              </div>
+
+              <div class="console-actions">
+                <button type="submit" class="btn btn-primary btn-lg">
+                  <AppIcon name="plus" :size="18" />
+                  Créer le salon
+                </button>
+                <button type="button" class="btn btn-secondary btn-lg" @click="startJoin">
+                  <AppIcon name="log-in" :size="18" />
+                  Rejoindre avec un code
+                </button>
+              </div>
+            </form>
+
+            <div v-else key="join" class="console-step">
+              <div class="console-head">
+                <button
+                  type="button"
+                  class="console-back"
+                  aria-label="Revenir au pseudo"
+                  @click="backToIdentity"
+                >
+                  <AppIcon name="arrow-left" :size="17" />
+                </button>
+                <div>
+                  <h2 class="console-heading">Rejoindre un salon</h2>
+                  <p class="console-identity">
+                    Vous jouez en tant que <strong>{{ pseudo.trim() }}</strong>.
+                  </p>
+                </div>
+              </div>
+
+              <form class="console-form" @submit.prevent="onJoin" novalidate>
+                <div class="field">
+                  <div class="field-label-row">
+                    <label for="join-code" class="label">Code du salon</label>
+                    <button type="button" class="console-paste" @click="pasteCode">Coller</button>
                   </div>
-                  <div class="field">
-                    <label for="join-name" class="label">Votre pseudo</label>
-                    <input
-                      id="join-name"
-                      v-model="joinName"
-                      required
-                      class="input"
-                      placeholder="Ex. Lucas"
-                      autocomplete="nickname"
-                      maxlength="32"
-                    />
-                  </div>
-                  <button
-                    type="submit"
-                    class="btn btn-primary btn-block btn-lg menu-submit"
-                    :disabled="!joinCode.trim() || !joinName.trim()"
-                  >
-                    <AppIcon name="log-in" :size="18" />
-                    Rejoindre le salon
-                  </button>
-                </form>
+                  <input
+                    id="join-code"
+                    ref="codeInput"
+                    v-model="joinCode"
+                    class="input input-code"
+                    placeholder="ABCDEF"
+                    maxlength="6"
+                    autocomplete="off"
+                    autocapitalize="characters"
+                    spellcheck="false"
+                    :aria-invalid="!!error"
+                    @input="clearError"
+                  />
+                </div>
+                <button type="submit" class="btn btn-primary btn-block btn-lg console-submit">
+                  <AppIcon name="log-in" :size="18" />
+                  Rejoindre le salon
+                </button>
+              </form>
             </div>
-          </div>
+          </Transition>
 
           <Transition name="fade">
             <div v-if="error" class="form-error" role="alert">
@@ -152,16 +127,15 @@
             </div>
           </Transition>
 
-          <div class="menu-footer">
-            <span class="menu-footer-disc" aria-hidden="true"></span>
-            Pas de compte. Juste un pseudo.
+          <div class="console-footer">
+            <span class="console-footer-disc" aria-hidden="true"></span>
+            Pas besoin de créer de compte. Juste un pseudo !
           </div>
         </div>
 
         <p class="hero-note pretty">
           <strong>Une playlist que personne n’a vue venir.</strong>
-          Écoutez, accusez, marquez. Le blind test est optionnel ; le bluff,
-          beaucoup moins.
+          Écoutez, accusez, marquez des points. Le blind test est optionnel, le bluff beaucoup moins.
         </p>
       </section>
 
@@ -265,7 +239,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, watch } from 'vue';
+import { ref, nextTick, onMounted, onUnmounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useGameStore } from '../stores/gameStore';
 import api from '../services/apiService';
@@ -275,27 +249,49 @@ import ThemeToggle from './ThemeToggle.vue';
 const store = useGameStore();
 const router = useRouter();
 
-const activeAction = ref('create');
-const createName = ref('');
+const step = ref('identity');
+const pseudo = ref('');
 const joinCode = ref('');
-const joinName = ref('');
+const pseudoInput = ref(null);
+const codeInput = ref(null);
 const error = ref(null);
 const showHelp = ref(false);
 
-const setAction = (action) => {
-  if (action === activeAction.value) return;
+const clearError = () => {
   error.value = null;
-  activeAction.value = action;
+};
+
+const focusStep = () => {
+  if (step.value === 'join') codeInput.value?.focus();
+  else pseudoInput.value?.focus();
+};
+
+const startJoin = () => {
+  if (!pseudo.value.trim()) {
+    error.value = 'Choisissez un pseudo avant de rejoindre un salon.';
+    pseudoInput.value?.focus();
+    return;
+  }
+  error.value = null;
+  step.value = 'join';
+};
+
+const backToIdentity = () => {
+  error.value = null;
+  step.value = 'identity';
 };
 
 const pasteCode = async () => {
   try {
     const text = await navigator.clipboard.readText();
     const match = text.toUpperCase().match(/[A-Z0-9]{6}/);
-    if (match) joinCode.value = match[0];
-    else document.getElementById('join-code')?.focus();
+    if (match) {
+      joinCode.value = match[0];
+      clearError();
+    }
+    codeInput.value?.focus();
   } catch {
-    document.getElementById('join-code')?.focus();
+    codeInput.value?.focus();
   }
 };
 
@@ -314,10 +310,10 @@ const installPWA = async () => {
 };
 
 const rules = [
-  { id: 1, title: 'Chacun propose', desc: 'Chaque joueur glisse un morceau, en secret.' },
-  { id: 2, title: 'On écoute', desc: 'Les extraits défilent. Personne ne sait qui a choisi quoi.' },
-  { id: 3, title: 'On dénonce', desc: 'Votez pour le joueur que vous soupçonnez d’avoir proposé le titre.' },
-  { id: 4, title: 'On révèle', desc: 'Les auteurs sont démasqués. Bonnes accusations et blind test rapportent des points.' },
+  { id: 1, title: 'Proposition', desc: 'Chaque joueur choisis ses morceaux parmis ceux proposé sur Deezer.' },
+  { id: 2, title: 'Ecoute', desc: 'Les extraits défilent dans un ordre complétement aléatoire.' },
+  { id: 3, title: 'Vote', desc: 'Votez pour le joueur que vous soupçonnez d’avoir proposé le titre.' },
+  { id: 4, title: 'Révélation', desc: 'Les joueurs sont démasqués. Chaque bon vote vous rapporte des points !' },
 ];
 
 const mockSuspects = [
@@ -403,8 +399,14 @@ onUnmounted(() => {
 
 const onCreate = async () => {
   error.value = null;
+  const name = pseudo.value.trim();
+  if (!name) {
+    error.value = 'Choisissez un pseudo avant de créer le salon.';
+    pseudoInput.value?.focus();
+    return;
+  }
   try {
-    const { session } = await store.createSession(createName.value);
+    const { session } = await store.createSession(name);
     store.connectSocket(session.code);
     router.push(`/game/${session.code}`);
   } catch (err) {
@@ -415,8 +417,13 @@ const onCreate = async () => {
 const onJoin = async () => {
   error.value = null;
   const code = joinCode.value.trim().toUpperCase();
+  if (!code) {
+    error.value = 'Entrez le code partagé par l’hôte.';
+    codeInput.value?.focus();
+    return;
+  }
   try {
-    await store.joinSession(code, joinName.value);
+    await store.joinSession(code, pseudo.value.trim());
     store.connectSocket(code);
     router.push(`/game/${code}`);
   } catch (err) {
