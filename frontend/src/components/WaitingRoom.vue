@@ -60,23 +60,41 @@
       :subtitle="headerSubtitle"
       :step="1"
       :show-code="false"
-    />
+    >
+      <template #actions>
+        <div class="lobby-invite reveal-late">
+          <p class="lobby-kicker">Code du salon</p>
+          <div :class="['lobby-code', { 'is-revealed': codeRevealed }]">
+            <span class="lobby-code-text">{{ route.params.code }}</span>
+            <span class="lobby-code-actions">
+              <button
+                type="button"
+                class="lobby-code-btn"
+                :aria-label="codeRevealed ? 'Masquer le code' : 'Afficher le code'"
+                :title="codeRevealed ? 'Masquer le code' : 'Afficher le code'"
+                :aria-pressed="codeRevealed"
+                @click="codeRevealed = !codeRevealed"
+              >
+                <AppIcon :name="codeRevealed ? 'eye-off' : 'eye'" :size="17" />
+              </button>
+              <button
+                type="button"
+                class="lobby-code-btn"
+                :class="{ 'is-done': copied }"
+                :aria-label="copied ? 'Lien copié' : 'Copier le lien d’invitation'"
+                :title="copied ? 'Lien copié' : 'Copier le lien d’invitation'"
+                @click="copyCode"
+              >
+                <AppIcon :name="copied ? 'check' : 'copy'" :size="16" />
+              </button>
+            </span>
+            <span class="sr-only" role="status">{{ copied ? 'Lien d’invitation copié.' : '' }}</span>
+          </div>
+        </div>
+      </template>
+    </GameHeader>
 
     <main class="game-shell game-body lobby">
-      <!-- Invitation -->
-      <section class="lobby-hero reveal" aria-labelledby="invite-heading">
-        <div class="lobby-hero-copy">
-          <p id="invite-heading" class="lobby-kicker">Code du salon</p>
-          <p class="lobby-code">{{ route.params.code }}</p>
-          <p class="hint">Vos amis ouvrent le lien d’invitation ou saisissent ce code.</p>
-        </div>
-        <button type="button" class="btn btn-secondary" @click="copyCode">
-          <AppIcon :name="copied ? 'check' : 'copy'" :size="15" />
-          {{ copied ? 'Lien copié' : 'Copier le lien' }}
-        </button>
-        <span class="sr-only" role="status">{{ copied ? 'Lien d’invitation copié.' : '' }}</span>
-      </section>
-
       <!-- Players -->
       <section class="lobby-section" aria-labelledby="players-heading">
         <div class="lobby-section-head">
@@ -140,34 +158,63 @@
             >
               <AppIcon name="refresh-cw" :size="14" />
             </button>
+
+            <span
+              v-if="isHost && player.id !== store.player?.id"
+              class="player-actions"
+            >
+              <button
+                v-if="!player.is_bot"
+                type="button"
+                class="btn btn-ghost btn-sm player-action"
+                title="Transférer les droits d’hôte"
+                :aria-label="`Promouvoir ${player.name} comme hôte`"
+                @click="promotePlayer(player.id)"
+              >
+                <AppIcon name="crown" :size="14" />
+                <span class="player-action-label">Promouvoir</span>
+              </button>
+              <button
+                type="button"
+                class="btn btn-ghost btn-sm player-action is-danger"
+                title="Exclure de la partie"
+                :aria-label="`Exclure ${player.name}`"
+                @click="kickPlayer(player.id)"
+              >
+                <AppIcon name="user-x" :size="14" />
+                <span class="player-action-label">Exclure</span>
+              </button>
+            </span>
           </li>
         </TransitionGroup>
       </section>
 
       <!-- Settings summary + start -->
-      <section class="lobby-footer" aria-label="Réglages et lancement">
-        <div class="lobby-settings">
-          <button type="button" class="btn btn-ghost btn-sm" @click="openSettings">
-            <AppIcon name="sliders" :size="15" />
-            Réglages
-          </button>
-          <p class="hint">{{ settingsSummary }}</p>
-        </div>
+      <footer class="lobby-footer" aria-label="Réglages et lancement">
+        <div class="lobby-footer-inner">
+          <div class="lobby-settings">
+            <button type="button" class="btn btn-ghost btn-sm" @click="openSettings">
+              <AppIcon name="sliders" :size="15" />
+              Réglages
+            </button>
+            <p class="hint">{{ settingsSummary }}</p>
+          </div>
 
-        <div v-if="isHost" class="lobby-actions">
-          <button type="button" class="btn btn-secondary" @click="addBot">
-            <AppIcon name="robot" :size="15" />
-            Ajouter un bot
-          </button>
-          <button type="button" class="btn btn-primary btn-lg" @click="startSelection">
-            <AppIcon name="play" :size="16" />
-            Lancer la sélection
-          </button>
+          <div v-if="isHost" class="lobby-actions">
+            <button type="button" class="btn btn-secondary" @click="addBot">
+              <AppIcon name="robot" :size="15" />
+              Ajouter un bot
+            </button>
+            <button type="button" class="btn btn-primary btn-lg" @click="startSelection">
+              <AppIcon name="play" :size="16" />
+              Lancer la sélection
+            </button>
+          </div>
+          <p v-else class="lobby-wait">
+            En attente de <strong>{{ store.session?.host_name }}</strong> pour lancer la sélection.
+          </p>
         </div>
-        <p v-else class="lobby-wait">
-          En attente de <strong>{{ store.session?.host_name }}</strong> pour lancer la sélection.
-        </p>
-      </section>
+      </footer>
     </main>
 
     <!-- Mobile host actions -->
@@ -345,6 +392,8 @@ const errorMsg = ref(null);
 const isLoading = ref(true);
 const showSettings = ref(false);
 const copied = ref(false);
+const codeRevealed = ref(false);
+
 
 const toggleOptions = [
   { key: 'enableBlindTest', label: 'Blind test', desc: 'Devinez aussi le titre pendant l’écoute. Une bonne réponse rapporte un point.' },
@@ -354,6 +403,7 @@ const toggleOptions = [
 ];
 
 const copyCode = async () => {
+  codeRevealed.value = true;
   try {
     await navigator.clipboard.writeText(`${window.location.origin}/game/${route.params.code}`);
     copied.value = true;
@@ -483,6 +533,10 @@ watch(showSettings, (open) => {
   document.body.style.overflow = open ? 'hidden' : '';
 });
 
+watch(() => route.params.code, () => {
+  codeRevealed.value = false;
+});
+
 const joinDirectly = async () => {
   errorMsg.value = null;
   try {
@@ -505,4 +559,20 @@ const saveConfig = async () => {
 const addBot = async () => { if (isHost.value) try { await store.addBot(); } catch { /* noop */ } };
 const startSelection = async () => { if (isHost.value) try { await store.startSelection(); } catch { /* noop */ } };
 const regenerateAvatar = async (id) => { try { await store.regenerateAvatar(id); } catch { /* noop */ } };
+
+const promotePlayer = async (targetId) => {
+  try {
+    await store.promotePlayer(targetId);
+  } catch (err) {
+    console.error('Failed to promote player:', err);
+  }
+};
+
+const kickPlayer = async (targetId) => {
+  try {
+    await store.kickPlayer(targetId);
+  } catch (err) {
+    console.error('Failed to kick player:', err);
+  }
+};
 </script>
