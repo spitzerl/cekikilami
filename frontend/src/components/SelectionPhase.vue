@@ -278,7 +278,7 @@ watch([tracks, isSearching], async () => {
   updateTrackFades();
 });
 
-const isHost = computed(() => store.player && store.session && store.player.name === store.session.host_name);
+const isHost = computed(() => store.isHost);
 
 const maxMusics = computed(() => store.session?.max_musics_per_player || 2);
 
@@ -309,8 +309,11 @@ const handleKeyDown = (e) => {
 };
 
 onMounted(async () => {
-  if (!store.player) { router.push(`/game/${route.params.code}`); return; }
   await store.loadSession(route.params.code);
+  if (!store.token || !store.player || store.player.session_id !== store.session?.id) {
+    router.push(`/game/${route.params.code}`);
+    return;
+  }
   store.connectSocket(route.params.code);
   updateTimer();
   timerInterval = setInterval(updateTimer, 1000);
@@ -369,7 +372,6 @@ const chooseTrack = async (track) => {
   if (audioObject) { audioObject.pause(); isPlaying.value = false; }
   try {
     await apiService.addMusic(route.params.code, {
-      playerId: String(store.player.id),
       title: track.title, artist: track.artist,
       deezerPreviewUrl: track.preview, coverUrl: track.cover,
     });

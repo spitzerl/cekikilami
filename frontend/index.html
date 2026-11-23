@@ -6,17 +6,7 @@
     <title>Cékikilami — Blind test entre amis</title>
     <meta name="description" content="Chacun glisse un morceau, tout le monde devine qui l'a choisi. Un blind test social à jouer entre amis, sans inscription." />
     <meta name="theme-color" content="#150f24" />
-    <script>
-      (() => {
-        try {
-          const theme = localStorage.getItem('cekikilami_theme') === 'light' ? 'light' : 'dark';
-          document.documentElement.dataset.theme = theme;
-          document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'light' ? '#f6ead9' : '#150f24');
-        } catch {
-          document.documentElement.dataset.theme = 'dark';
-        }
-      })();
-    </script>
+    <script src="/theme-init.js"></script>
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Cékikilami" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -25,15 +15,7 @@
     <link rel="manifest" href="/manifest.json" />
     <link rel="preload" href="/fonts/bricolage-latin.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="/fonts/archivo-latin.woff2" as="font" type="font/woff2" crossorigin />
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
-            .then(reg => console.log('SW registered:', reg.scope))
-            .catch(err => console.error('SW registration failed:', err));
-        });
-      }
-    </script>
+    <script src="/sw-register.js" defer></script>
   </head>
   <body>
     <div id="app"></div>

@@ -67,7 +67,7 @@
             </p>
             <div class="dock-detail-stats">
               <span v-if="activePlayer.is_bot">Bot</span>
-              <span v-if="activePlayer.name === store.session?.host_name">Hôte</span>
+              <span v-if="activePlayer.id === store.session?.host_player_id">Hôte</span>
               <span v-if="!isSelectionPhase">🎯 {{ activePlayer.correctGuesses || 0 }} bonne{{ (activePlayer.correctGuesses || 0) > 1 ? 's' : '' }} réponse{{ (activePlayer.correctGuesses || 0) > 1 ? 's' : '' }}</span>
               <span v-if="!isSelectionPhase">💜 {{ activePlayer.votesReceived || 0 }} vote{{ (activePlayer.votesReceived || 0) > 1 ? 's' : '' }} reçu{{ (activePlayer.votesReceived || 0) > 1 ? 's' : '' }}</span>
               <span v-if="isSelectionPhase">{{ getMusicCount(activePlayer) }} / {{ maxMusics }} morceaux</span>
@@ -84,6 +84,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useGameStore } from '../stores/gameStore';
 import { getPlayersRankings } from '../utils/ranking';
+import { avatarUrl } from '../utils/avatar';
 import AppIcon from './AppIcon.vue';
 
 const store = useGameStore();
@@ -114,9 +115,6 @@ const initials = (name) =>
     .map((part) => part.charAt(0))
     .join('')
     .toUpperCase();
-
-const avatarUrl = (seed) =>
-  `https://api.dicebear.com/9.x/notionists-neutral/svg?seed=${encodeURIComponent(seed)}&backgroundColor=e6dcff,d9e8ff,f8d9ea`;
 
 const toggleActive = (playerId) => {
   activePlayerId.value = activePlayerId.value === playerId ? null : playerId;

@@ -1,41 +1,64 @@
 import { io } from 'socket.io-client';
 
 let socket;
+let currentCode = null;
 
 const socketUrl = import.meta.env.VITE_SOCKET_URL || window.location.origin;
 
+function tokenFromStorage() {
+  return localStorage.getItem('music_game_token');
+}
+
+function onConnect() {
+  if (socket && currentCode) {
+    socket.emit('join', { code: currentCode });
+  }
+}
+
+function connect() {
+  if (!socket) {
+    socket = io(`${socketUrl}/game`, {
+      transports: ['websocket', 'polling'],
+      auth: (callback) => callback({ token: tokenFromStorage() }),
+    });
+  }
+  return socket;
+}
+
 export default {
   connect() {
-    if (!socket) {
-      socket = io(`${socketUrl}/game`, {
-        transports: ['websocket', 'polling'],
-      });
-    }
-    return socket;
+    return connect();
   },
-  join(code, playerId = null) {
-    const s = this.connect();
-    // Clean up any old connect listener to avoid duplicate joins on reconnect
-    s.off('connect');
-    // When the socket connects or reconnects, emit the join event
-    s.on('connect', () => {
-      s.emit('join', { code, playerId });
-    });
-    // If socket is already connected, emit join immediately
-    if (s.connected) {
-      s.emit('join', { code, playerId });
+  join(code, token = null) {
+    const nextToken = token || tokenFromStorage();
+
+    if (socket && socket.auth?.token !== nextToken) {
+      socket.off('connect', onConnect);
+      socket.disconnect();
+      socket = null;
     }
+
+    currentCode = code;
+    if (token) localStorage.setItem('music_game_token', token);
+
+    const activeSocket = connect();
+    activeSocket.auth = { token: nextToken };
+    activeSocket.off('connect', onConnect);
+    activeSocket.on('connect', onConnect);
+    if (activeSocket.connected) onConnect();
   },
   on(event, callback) {
-    this.connect().on(event, callback);
+    connect().on(event, callback);
   },
   off(event, callback) {
     if (!socket) return;
     socket.off(event, callback);
   },
   disconnect() {
+    currentCode = null;
     if (!socket) return;
+    socket.off('connect', onConnect);
     socket.disconnect();
     socket = null;
-  }
+  },
 };

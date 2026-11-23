@@ -242,7 +242,6 @@
 import { ref, nextTick, onMounted, onUnmounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useGameStore } from '../stores/gameStore';
-import api from '../services/apiService';
 import AppIcon from './AppIcon.vue';
 import ThemeToggle from './ThemeToggle.vue';
 
@@ -347,22 +346,18 @@ const toggleHelp = () => {
 };
 
 const initSimulator = async () => {
-  try {
-    const res = await api.searchDeezer();
-    const tracks = res.data.tracks;
-    if (tracks?.length) {
-      mockTrack.value = tracks[Math.floor(Math.random() * tracks.length)];
-      if (mockTrack.value.preview) {
-        mockAudio.value = new Audio(mockTrack.value.preview);
-        mockAudio.value.loop = true;
-        mockAudio.value.volume = 0.4;
-        if (showHelp.value) {
-          mockPlaying.value = true;
-          mockAudio.value.play().catch(() => { mockPlaying.value = false; });
-        }
-      }
-    }
-  } catch { /* demo is optional */ }
+  mockTrack.value = {
+    title: 'Blinding Lights',
+    artist: 'The Weeknd',
+    preview: 'https://cdns-preview-e.dzcdn.net/stream/c-e12ac87d5b1b748f06f7ad86903f262b-6.mp3',
+  };
+  mockAudio.value = new Audio(mockTrack.value.preview);
+  mockAudio.value.loop = true;
+  mockAudio.value.volume = 0.4;
+  if (showHelp.value) {
+    mockPlaying.value = true;
+    mockAudio.value.play().catch(() => { mockPlaying.value = false; });
+  }
 };
 
 watch(showHelp, async (val) => {
@@ -406,6 +401,7 @@ const onCreate = async () => {
     return;
   }
   try {
+    if (store.session) store.leaveSession();
     const { session } = await store.createSession(name);
     store.connectSocket(session.code);
     router.push(`/game/${session.code}`);
@@ -423,6 +419,7 @@ const onJoin = async () => {
     return;
   }
   try {
+    if (store.session && store.session.code !== code) store.leaveSession();
     await store.joinSession(code, pseudo.value.trim());
     store.connectSocket(code);
     router.push(`/game/${code}`);
