@@ -2,6 +2,17 @@
 
 Jeu musical multijoueur (Vue 3 + Node.js + Socket.IO + PostgreSQL + Redis).
 
+## Version
+
+Le projet suit le versioning sémantique (SemVer). La version courante est **`1.0.0-beta.1`** : le jeu est en bêta, proche de la première release stable `1.0.0`.
+
+- source de vérité : `package.json` à la racine, `frontend/package.json` et `backend/package.json` (version alignée) ;
+- l’API expose la version sur `GET /api/version` et dans `GET /health` ;
+- l’interface affiche un badge **Bêta** et le numéro de version sur l’accueil, ainsi que la version dans le menu pause ;
+- les versions publiées sont taguées dans Git (`v1.0.0-beta.1`).
+
+Voir [CHANGELOG.md](CHANGELOG.md).
+
 ## Structure
 
 - `frontend` : client Vue 3 + Vite + Pinia + Socket.IO client

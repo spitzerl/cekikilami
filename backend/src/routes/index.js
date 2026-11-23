@@ -24,6 +24,7 @@ import {
 } from '../services/uploadService.js';
 import { saveTrackPreview, searchTracks } from '../services/deezerService.js';
 import { getAvatar } from '../services/avatarService.js';
+import { APP_CHANNEL, APP_VERSION } from '../config/version.js';
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -60,6 +61,11 @@ function sessionResponse(session) {
 export default function buildRoutes(gameService, ioNamespace) {
   const router = Router();
   const limits = createRateLimiters();
+
+  router.get('/version', limits.summary, (_req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({ version: APP_VERSION, channel: APP_CHANNEL });
+  });
 
   router.get('/avatars/:seed', limits.avatar, async (req, res, next) => {
     try {

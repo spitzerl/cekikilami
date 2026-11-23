@@ -4,6 +4,9 @@
       <span class="brand">
         <span class="brand-mark" aria-hidden="true"></span>
         Cékikilami
+        <span class="version-badge" :title="`Version ${APP_VERSION}`">
+          {{ APP_CHANNEL === 'beta' ? APP_CHANNEL_LABEL : `v${APP_VERSION}` }}
+        </span>
       </span>
       <span class="spacer"></span>
       <ThemeToggle />
@@ -130,6 +133,8 @@
           <div class="console-footer">
             <span class="console-footer-disc" aria-hidden="true"></span>
             Pas besoin de créer de compte. Juste un pseudo !
+            <span class="spacer"></span>
+            <span class="version-text">v{{ APP_VERSION }}</span>
           </div>
         </div>
 
@@ -244,6 +249,7 @@ import { useRouter } from 'vue-router';
 import { useGameStore } from '../stores/gameStore';
 import AppIcon from './AppIcon.vue';
 import ThemeToggle from './ThemeToggle.vue';
+import { APP_CHANNEL, APP_CHANNEL_LABEL, APP_VERSION } from '../version';
 
 const store = useGameStore();
 const router = useRouter();

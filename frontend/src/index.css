@@ -736,6 +736,33 @@ img { display: block; }
   background: var(--brand-disc);
   flex-shrink: 0;
 }
+.version-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  border: 1px solid var(--accent-line);
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.version-text {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.version-line {
+  margin-top: 10px;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--ink-3);
+}
 .brand-mark::after {
   content: "";
   position: absolute;
@@ -1042,6 +1069,7 @@ img { display: block; }
 .console-paste:hover { color: var(--ink); }
 .console-footer {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   margin-top: 26px;

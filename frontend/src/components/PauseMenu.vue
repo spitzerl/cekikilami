@@ -113,6 +113,7 @@
                 Quitter la partie
               </button>
               <p class="hint">Vous pourrez revenir avec le code du salon.</p>
+              <p class="version-line">Cékikilami v{{ APP_VERSION }} · {{ APP_CHANNEL_LABEL }}</p>
             </div>
           </template>
 
@@ -198,6 +199,7 @@ import { useGameStore } from '../stores/gameStore';
 import { theme, setTheme } from '../services/themeService';
 import { avatarUrl } from '../utils/avatar';
 import AppIcon from './AppIcon.vue';
+import { APP_CHANNEL_LABEL, APP_VERSION } from '../version';
 
 const route = useRoute();
 const router = useRouter();
