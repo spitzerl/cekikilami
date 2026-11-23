@@ -54,7 +54,7 @@
                   ref="pseudoInput"
                   v-model="pseudo"
                   class="input"
-                  placeholder="Ex. Lucas"
+                  placeholder="Ex. Jean-Eude"
                   autocomplete="nickname"
                   maxlength="32"
                   :aria-invalid="!!error"
