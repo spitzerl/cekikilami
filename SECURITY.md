@@ -2,7 +2,7 @@
 
 > Audit de sécurité du **23 novembre 2026**, commit `250da1e` (branche `develop`), synthèse destinée à la branche `security-fix`.
 >
-> **Statut : provisoire / incomplet.** La revue de source et les reproductions locales sont terminées. La double passe de vérification indépendante et le critic final de couverture n'ont pas été exécutés avant la rédaction de ce résumé. Les constats ci-dessous sont étayés par la source et par un laboratoire isolé, mais ne doivent pas être présentés comme un audit certifié.
+> **Statut de remédiation : appliqué sur `security-fix`.** Les 10 constats confirmés, les 4 pistes à valider et les 6 unités différées sont couverts par les commits `b85fb5f` (dépendances), `8c8139d` (Socket.IO), `70baa02` (backend), `6bba54c` (frontend), `6f3a80e` (déploiement) et `1e3e54f` (tests/CI). La suite compte **42 tests de régression** (`cd backend && npm test`) et le build frontend passe. Les actions qui dépendent de l'infrastructure de production restent listées en fin de document. L'audit initial était provisoire et n'est pas présenté comme une certification indépendante.
 
 ## Périmètre et méthode
 
@@ -79,7 +79,7 @@
 - **Cause :** `requireHttpUrl` ne valide que le schéma. L'URL est stockée, renvoyée dans l'état, puis chargée par `new Audio()` / `<img>` chez tous les participants. Aucune allowlist d'hôtes, aucun rejet des adresses privées/loopback, aucune CSP `media-src`/`img-src`, aucun `Referrer-Policy`.
 - **Reproduction :** le vrai frontend buildé, piloté par Chrome headless, émet deux GET vers `https://127.0.0.1:9999/track-...mp3` avec l'origine de l'app en Referer.
 - **Impact :** divulgation d'IP/User-Agent/origine des participants, requêtes GET arbitraires vers des hôtes accessibles depuis leur navigateur (LAN, services locaux), tracking.
-- **Correctif minimal :** allowlist Dexer CDN ou proxy serveur, rejet loopback/private/link-local après résolution DNS, CSP `media-src`/`img-src`, `Referrer-Policy`.
+- **Correctif minimal :** allowlist Deezer CDN ou proxy serveur, rejet loopback/private/link-local après résolution DNS, CSP `media-src`/`img-src`, `Referrer-Policy`.
 
 ### 7. Low — Réponse du blind test, scores et votes exposés avant la révélation
 
@@ -187,3 +187,53 @@ Le critic de couverture a identifié six unités supplémentaires, enregistrées
 10. Ajouter les tests de régression et le durcissement de déploiement.
 
 > Ce document est un résumé. Les preuves détaillées, scénarios de laboratoire et artefacts sont conservés hors du dépôt dans le run d'audit ; le workflow de vérification indépendante reste à terminer.
+
+## Statut de remédiation
+
+| # | Constat | Statut | Mise en œuvre | Preuve |
+|---|---|---|---|---|
+| 1 | `join` Socket.IO sans payload crashe le backend | **Corrigé** | payload validé dans le handler (`payload || {}`), middleware d'authentification Socket.IO, gardes `unhandledRejection`/`uncaughtException` | `8c8139d`, `70baa02`, `test/integration/socket.test.js` |
+| 2 | Identité joueur fournie par le client | **Corrigé** | jeton opaque par joueur (SHA-256 en base), `Authorization: Bearer`, `socket.handshake.auth.token`, `sessions.host_player_id`, ids dérivés côté serveur, appartenance session, avatar self-only, endpoint public `/summary` | `70baa02`, `6bba54c`, `test/integration/auth.test.js` |
+| 3 | Contrôles host non autorisés | **Corrigé** | middleware `requireHost`, `GameService.assertHost`, matrice de phases, tests invité → 403 | `70baa02`, `test/integration/auth.test.js`, `test/integration/lifecycle.test.js` |
+| 4 | Suppression de musique cross-session | **Corrigé** | `DELETE ... WHERE id AND session_id AND player_id`, vérification du propriétaire authentifié, test cross-session → 404 | `70baa02`, `test/integration/auth.test.js` |
+| 5 | Uploads non authentifiés, écrits avant validation, jamais nettoyés | **Corrigé** | auth obligatoire, stockage mémoire, magic bytes `file-type`, quotas global/session/joueur, `unlink` sur erreur, suppression sur delete/reset/kick/session/reaper, volume dédié | `70baa02`, `6f3a80e`, `test/integration/uploads.test.js` |
+| 6 | URLs média arbitraires chargées par les navigateurs | **Corrigé** | allowlist HTTPS des CDN Deezer, chemins locaux `/uploads/<32 hex>`, CSP `media-src`/`img-src`, `Referrer-Policy: no-referrer`, avatars proxifiés | `70baa02`, `6f3a80e`, `test/unit/security.test.js` |
+| 7 | Blind test, scores et votes exposés avant révélation | **Corrigé** | titre/artiste/cover masqués en écoute et vote, `is_correct` masqué, scores et `votesReceived` supprimés jusqu'aux résultats, `show_vote_count` appliqué côté serveur, `/results` uniquement en phase results | `70baa02`, `test/integration/redaction.test.js` |
+| 8 | `startVoting` sans garde de phase | **Corrigé** | transition uniquement depuis `selection`, route host-only, timer interne explicite | `70baa02`, `test/integration/redaction.test.js` |
+| 9 | Redis indisponible bloque le démarrage | **Corrigé** | `connectTimeout` 2 s, `reconnectStrategy: false`, connexion non bloquante, arrêt propre ; démarrage vérifié sans Redis dans le conteneur | `70baa02`, `test/unit/redis.test.js` |
+| 10 | Création de sessions non bornée et persistante | **Corrigé** | rate limit create/join/lookup, cap global, `expires_at` + reaper toutes les 5 min, index de récupération, tests cap/TTL | `70baa02`, `test/integration/lifecycle.test.js` |
+| 11 | Code de session `Math.random` / fuite PRNG | **Corrigé** | code et seeds générés par `crypto.randomInt`/`randomBytes`, rate limits join/lookup | `70baa02`, `test/unit/security.test.js` |
+| 12 | Fan-out Deezer / bots sans timeout, cache ni quota | **Corrigé** | fetch avec `AbortSignal.timeout(5 s)`, cache 5 min, concurrence bornée, `/deezer/search` authentifié et rate-limité, une à deux recherches par bot, options de blind test générées localement | `70baa02`, `test/unit/security.test.js`, `test/integration/lifecycle.test.js` |
+| 13 | `maxMusicsPerPlayer` non borné | **Corrigé** | bornes serveur 1–5, bornes `maxPlayers` 4–16 et durées, clamp des valeurs existantes au démarrage, boucles de bots bornées | `70baa02`, `test/integration/lifecycle.test.js` |
+| 14 | Déploiement PostgreSQL `trust`/superuser, Redis sans auth, ports dev, root, TLS/headers | **Corrigé dans le dépôt** | rôle applicatif non-superuser, mots de passe requis, Redis `requirepass`, ports dev sur `127.0.0.1`, images épinglées, conteneurs non-root/read-only, cap-drop, `.dockerignore`, CSP/HSTS/headers, limites Nginx | `6f3a80e`, `deploy/postgres/init-app-role.sh` |
+| D1 | `finishSession` sans garde et vue results | **Corrigé** | fin uniquement pendant le vote, host-only, résultats en phase results | `70baa02`, `test/integration/redaction.test.js` |
+| D2 | Bornes numériques de `Session.updateConfig` | **Corrigé** | validation stricte des entiers/booléens et valeurs inconnues ignorées | `70baa02`, `test/integration/lifecycle.test.js` |
+| D3 | `disconnect`, timer host, identité non liée | **Corrigé** | socket authentifié, host lié par `host_player_id`, timer host uniquement en `waiting`, timers restaurés au boot | `70baa02`, `test/integration/socket.test.js` |
+| D4 | `broadcastState` par socket et absence de limite | **Corrigé** | état chargé une fois par room, projection par joueur, limites de connexions/join Socket.IO | `70baa02` |
+| D5 | `recoverSessions` sans lock/marquage | **Corrigé** | skip des timers déjà actifs, vérification fraîche de la phase/status, reprise des votes bots, timers host des salons en attente | `70baa02` |
+| D6 | Fetch DiceBear tiers | **Corrigé** | proxy backend avec cache, timeout, validation PNG, CSP `img-src 'self'`, pas de Referer navigateur | `70baa02`, `test/unit/avatar.test.js` |
+
+### Vérifications exécutées
+
+- `cd backend && npm test` : **42 tests**, 0 échec (unitaires + intégration PostgreSQL).
+- `cd frontend && npm run build` : build production OK.
+- `npm audit --omit=dev` (backend) et `npm audit` (frontend) : **0 vulnérabilité**.
+- Build Podman des images backend/frontend, test `nginx -t`, démarrage backend read-only sans Redis, script d'init PostgreSQL (rôle non-superuser, création de table).
+- Smoke tests HTTP/Socket.IO : auth, 403 host, redaction listening/voting/revelation, suppression cross-session, upload invalide supprimé.
+
+### Actions de production restantes
+
+1. **Volume PostgreSQL existant** : exécuter la migration de rôle documentée dans `README.md` (le script `docker-entrypoint-initdb.d` ne s'exécute que sur une base neuve).
+2. **Reverse proxy** : cibler `cekikilami-frontend:8080` (au lieu de `:80`), terminer TLS et transmettre `X-Forwarded-Proto`.
+3. **Secrets** : créer le `.env` racine avec `POSTGRES_PASSWORD`, `APP_DB_PASSWORD` et `REDIS_PASSWORD` ; ne pas réutiliser les placeholders.
+4. **Sessions existantes** : les joueurs sans jeton devront rejoindre à nouveau ; les identités `localStorage` antérieures sont invalidées par design.
+5. **Rate limiting multi-instance** : les compteurs sont en mémoire. En cas de scale horizontal, utiliser un store partagé (Redis) pour `express-rate-limit` et les limites Socket.IO.
+
+### Risques résiduels acceptés
+
+- Jeton joueur stocké en `localStorage` : un XSS pourrait le lire. Aucun XSS n'a été trouvé, la CSP interdit le script inline et les entrées sont échappées par Vue ; un cookie HttpOnly serait une évolution possible mais introduirait du CSRF.
+- `style-src 'unsafe-inline'` reste nécessaire pour les styles dynamiques Vue ; `script-src` est limité à `'self'`.
+- Le code de session reste à 6 caractères (~30 bits) : la génération est cryptographique et les tentatives sont rate-limitées, mais un code partagé reste un secret de salon.
+- `Math.random` reste utilisé pour mélanger des listes non sensibles (ordre des morceaux, choix de bots) ; les codes et jetons utilisent `crypto`.
+- Le store de rate limiting est local au processus (voir action 5).
+- `npm audit` signale encore `nodemon/minimatch` en dépendance **de développement** ; l'image de production utilise `npm ci --omit=dev` et l'audit de production est propre.
