@@ -11,6 +11,15 @@ dotenv.config();
 
 const PORT = Number.parseInt(process.env.PORT || '3001', 10);
 
+// A malformed client event must never take down every room and timer. Log
+// unexpected failures instead of letting Node terminate the whole process.
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled promise rejection:', reason);
+});
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught exception:', error);
+});
+
 async function initSchema() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS sessions (

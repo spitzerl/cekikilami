@@ -30,9 +30,17 @@ export default function createApp(gameService, ioNamespace) {
   app.use('/api', buildRoutes(gameService, ioNamespace));
 
   app.use((error, _req, res, _next) => {
-    const status = error.status || 500;
+    const requestedStatus = Number(error.status);
+    const status = Number.isInteger(requestedStatus) && requestedStatus >= 400 && requestedStatus < 600
+      ? requestedStatus
+      : 500;
+
+    if (status >= 500) {
+      console.error('Unhandled request error:', error);
+    }
+
     res.status(status).json({
-      error: error.message || 'Erreur interne du serveur',
+      error: status >= 500 ? 'Erreur interne du serveur' : (error.message || 'Requête invalide'),
     });
   });
 

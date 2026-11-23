@@ -6,9 +6,12 @@ const hostDisconnectTimeouts = new Map();
 
 export default function registerGameSocket(ioNamespace, gameService) {
   ioNamespace.on('connection', (socket) => {
-    socket.on('join', async ({ code, playerId }) => {
+    socket.on('join', async (payload) => {
       try {
-        if (!code || typeof code !== 'string') {
+        const { code, playerId } = payload && typeof payload === 'object' ? payload : {};
+
+        if (!code || typeof code !== 'string' || code.length > 12) {
+          socket.emit('game:error', { message: 'Requête de connexion invalide' });
           return;
         }
 
