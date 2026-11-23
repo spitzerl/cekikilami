@@ -206,7 +206,7 @@
                   key="success"
                   class="demo-result is-success"
                 >
-                  <strong>Bien vu.</strong> C’est Alice qui a proposé ce morceau. +1 point.
+                  <strong>Bien vu.</strong> C’est Alice qui a proposé ce morceau.
                   <button type="button" class="text-link" style="display: block; margin-top: 6px" @click="resetMockGame">
                     Rejouer
                   </button>
@@ -312,7 +312,7 @@ const rules = [
   { id: 1, title: 'Proposition', desc: 'Chaque joueur choisis ses morceaux parmis ceux proposé sur Deezer.' },
   { id: 2, title: 'Ecoute', desc: 'Les extraits défilent dans un ordre complétement aléatoire.' },
   { id: 3, title: 'Vote', desc: 'Votez pour le joueur que vous soupçonnez d’avoir proposé le titre.' },
-  { id: 4, title: 'Révélation', desc: 'Les joueurs sont démasqués. Chaque bon vote vous rapporte des points !' },
+  { id: 4, title: 'Révélation', desc: 'Les joueurs sont démasqués. Bonnes accusations et bluffs réussis rapportent des points selon le mode choisi !' },
 ];
 
 const mockSuspects = [

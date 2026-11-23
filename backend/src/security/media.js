@@ -1,7 +1,7 @@
 import { httpError } from './errors.js';
 
-const AUDIO_HOST = /^cdns-preview-[a-z0-9-]+\.dzcdn\.net$/i;
-const COVER_HOST = /^(?:e-cdns-images|cdns-images)\.dzcdn\.net$/i;
+const AUDIO_HOST = /^(?:cdns-preview-[a-z0-9-]+|cdnt-preview)\.dzcdn\.net$/i;
+const COVER_HOST = /^(?:e-cdns-images|cdns-images|cdn-images)\.dzcdn\.net$/i;
 const LOCAL_UPLOAD_PATH = /^\/uploads\/[a-f0-9]{32}\.(?:mp3|wav|ogg|m4a)$/;
 
 function parseAllowedUrl(value, fieldName) {

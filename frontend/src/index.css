@@ -292,6 +292,7 @@ img { display: block; }
 }
 
 .game-layout { min-height: 100dvh; }
+.game-layout.no-dock .game-shell { padding-bottom: calc(clamp(32px, 6vh, 72px) + env(safe-area-inset-bottom)); }
 .page-wrap { min-height: 100dvh; }
 
 .game-body {
@@ -1553,12 +1554,22 @@ img { display: block; }
   flex: 1;
   min-width: 0;
   overflow-x: auto;
-  scrollbar-width: none;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
 }
-.dock-scroll::-webkit-scrollbar { display: none; }
+.dock-scroll::-webkit-scrollbar { height: 6px; }
+.dock-scroll::-webkit-scrollbar-track { background: transparent; }
+.dock-scroll::-webkit-scrollbar-thumb {
+  border-radius: 99px;
+  background: var(--line-strong);
+}
 .dock-player {
   position: relative;
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
   gap: 7px;
   min-width: 0;
@@ -1596,15 +1607,14 @@ img { display: block; }
   font-weight: 700;
 }
 .dock-name {
-  max-width: 76px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  flex-shrink: 0;
   white-space: nowrap;
   font-size: 12px;
   font-weight: 550;
   color: var(--ink-2);
 }
 .dock-score {
+  flex-shrink: 0;
   font-family: var(--font-mono);
   font-size: 12px;
   font-weight: 600;
@@ -1640,9 +1650,7 @@ img { display: block; }
 }
 
 @media (max-width: 479px) {
-  .dock-name { display: none; }
   .dock-label { display: none; }
-  .dock-player { padding-right: 6px; }
 }
 
 
@@ -1994,6 +2002,93 @@ img { display: block; }
   color: var(--ink-3);
 }
 
+.scoring-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.scoring-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface-strong);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.scoring-card.is-active {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.scoring-card.is-disabled { opacity: 0.7; }
+.scoring-card-btn {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.scoring-card-btn:disabled { cursor: default; }
+.scoring-card-name {
+  display: block;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--ink);
+}
+.scoring-card-summary {
+  display: block;
+  margin-top: 2px;
+  font-size: 11.5px;
+  color: var(--ink-3);
+}
+.info-tip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  color: var(--ink-3);
+  cursor: help;
+}
+.info-tip:hover,
+.info-tip:focus-visible { color: var(--ink); }
+.info-tooltip {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 5;
+  width: max-content;
+  max-width: min(240px, 70vw);
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-strong);
+  box-shadow: var(--shadow-float);
+  font-size: 11.5px;
+  font-weight: 450;
+  line-height: 1.4;
+  color: var(--ink-2);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-3px);
+  transition: opacity 0.15s ease, transform 0.15s ease, visibility 0.15s ease;
+  pointer-events: none;
+}
+.info-tip:hover .info-tooltip,
+.info-tip:focus .info-tooltip,
+.info-tip:focus-visible .info-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+}
+
 .toggle-row {
   display: flex;
   align-items: center;
@@ -2254,7 +2349,19 @@ img { display: block; }
   height: 156px;
   margin-bottom: 24px;
   border-radius: 50%;
-  background: var(--disc);
+  background-color: var(--disc);
+  background-image:
+    conic-gradient(
+      from 220deg,
+      transparent 0 64%,
+      rgba(255, 248, 237, 0.12) 76%,
+      transparent 90%
+    ),
+    repeating-radial-gradient(
+      circle at center,
+      transparent 0 7px,
+      rgba(255, 248, 237, 0.08) 7px 8px
+    );
   box-shadow: 0 0 0 1px var(--line);
 }
 .mystery-record::before {
@@ -2277,6 +2384,29 @@ img { display: block; }
   font-family: var(--font-display);
   font-size: 26px;
   font-weight: 700;
+}
+.mystery-record.is-playing {
+  animation:
+    record-spin 3.2s linear infinite,
+    record-beat 1.5s ease-in-out infinite;
+  will-change: transform;
+}
+.mystery-record.is-playing::after {
+  animation: record-counter-spin 3.2s linear infinite;
+}
+@keyframes record-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes record-counter-spin {
+  to { transform: rotate(-360deg); }
+}
+@keyframes record-beat {
+  0%, 100% { box-shadow: 0 0 0 1px var(--line), 0 0 0 0 transparent; }
+  50% { box-shadow: 0 0 0 1px var(--line), 0 0 34px -8px var(--accent); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mystery-record.is-playing,
+  .mystery-record.is-playing::after { animation: none; }
 }
 @media (max-width: 899px) {
   .artwork { width: min(100%, 190px); margin-bottom: 16px; }

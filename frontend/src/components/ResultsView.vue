@@ -42,7 +42,7 @@
               <div style="min-width: 0">
                 <p class="winner-name">{{ podium[0].name }}</p>
                 <p class="winner-meta">
-                  {{ podium[0].correctGuesses || 0 }} bonnes réponses, {{ podium[0].votesReceived || 0 }} votes reçus
+                  {{ scoreDetails(podium[0]) }}
                 </p>
               </div>
             </div>
@@ -57,7 +57,7 @@
               :key="player.id"
               class="runner"
             >
-              <span class="runner-rank">{{ String(index + 2).padStart(2, '0') }}</span>
+              <span class="runner-rank">{{ String(player.rank ?? (index + 2)).padStart(2, '0') }}</span>
               <img
                 v-if="player.avatar_seed"
                 :src="avatarUrl(player.avatar_seed)"
@@ -67,10 +67,7 @@
               <span v-else class="avatar avatar-sm avatar-fallback">{{ initials(player.name) }}</span>
               <div style="min-width: 0">
                 <p class="rank-name">{{ player.name }}</p>
-                <p class="rank-sub">
-                  {{ player.correctGuesses || 0 }} bonne{{ (player.correctGuesses || 0) > 1 ? 's' : '' }} réponse{{ (player.correctGuesses || 0) > 1 ? 's' : '' }},
-                  {{ player.votesReceived || 0 }} vote{{ (player.votesReceived || 0) > 1 ? 's' : '' }} reçu{{ (player.votesReceived || 0) > 1 ? 's' : '' }}
-                </p>
+                <p class="rank-sub">{{ scoreDetails(player) }}</p>
               </div>
               <p class="runner-score">{{ player.score }}<small class="faint"> pts</small></p>
             </div>
@@ -85,13 +82,16 @@
                 <AppIcon name="bar-chart" :size="16" />
                 Classement complet
               </h2>
-              <p class="panel-sub">{{ store.ranking.length }} joueur{{ store.ranking.length > 1 ? 's' : '' }} classé{{ store.ranking.length > 1 ? 's' : '' }}, du premier au dernier.</p>
+              <p class="panel-sub">
+                {{ store.ranking.length }} joueur{{ store.ranking.length > 1 ? 's' : '' }} classé{{ store.ranking.length > 1 ? 's' : '' }},
+                du premier au dernier · mode {{ scoringModeLabel }}.
+              </p>
             </div>
           </div>
 
           <div>
             <div v-for="(player, idx) in store.ranking" :key="player.id" class="rank-row">
-              <span class="rank-index">{{ String(idx + 1).padStart(2, '0') }}</span>
+              <span class="rank-index">{{ String(player.rank ?? (idx + 1)).padStart(2, '0') }}</span>
               <div class="rank-main">
                 <img
                   v-if="player.avatar_seed"
@@ -108,10 +108,7 @@
                     <span v-if="player.is_bot" class="tag" style="margin-left: 4px">Bot</span>
                     <span v-if="player.is_observer" class="tag" style="margin-left: 4px">Spectateur</span>
                   </p>
-                  <p class="rank-sub">
-                    {{ player.correctGuesses || 0 }} bonne{{ (player.correctGuesses || 0) > 1 ? 's' : '' }} réponse{{ (player.correctGuesses || 0) > 1 ? 's' : '' }},
-                    {{ player.votesReceived || 0 }} vote{{ (player.votesReceived || 0) > 1 ? 's' : '' }} reçu{{ (player.votesReceived || 0) > 1 ? 's' : '' }}
-                  </p>
+                  <p class="rank-sub">{{ scoreDetails(player) }}</p>
                 </div>
               </div>
               <p class="rank-score">{{ player.score }}<small> pts</small></p>
@@ -129,7 +126,7 @@
             <p class="stat-label">Meilleur détective</p>
             <p v-if="bestDetective" class="stat-value">
               {{ bestDetective.name }}
-              <span>({{ bestDetective.correctGuesses }} bonne{{ bestDetective.correctGuesses > 1 ? 's' : '' }} réponse{{ bestDetective.correctGuesses > 1 ? 's' : '' }})</span>
+              <span>({{ bestDetective.correctAccusations }} accusation{{ bestDetective.correctAccusations > 1 ? 's' : '' }})</span>
             </p>
             <p v-else class="stat-value faint">Aucun</p>
           </div>
@@ -235,14 +232,32 @@ const isHost = computed(() => store.isHost);
 
 const podium = computed(() => store.ranking.slice(0, 3));
 
+const scoringModeLabel = computed(() => ({
+  detective: 'Détective',
+  balanced: 'Équilibré',
+  bluff: 'Bluff',
+}[store.session?.scoring_mode] || 'Équilibré'));
+
 const totalTracks = computed(() => store.musics.length);
+
+const scoreDetails = (player) => {
+  if (!player) return '';
+  const accusations = player.correctAccusations || 0;
+  const bluff = player.bluffPoints || 0;
+  const blind = player.blindTestCorrect || 0;
+  const parts = [`${accusations} accusation${accusations > 1 ? 's' : ''}`];
+  if (bluff > 0) parts.push(`${bluff} pt${bluff > 1 ? 's' : ''} de bluff`);
+  if (blind > 0) parts.push(`${blind} blind test${blind > 1 ? 's' : ''}`);
+  return parts.join(' · ');
+};
 
 const bestDetective = computed(() => {
   let best = null;
   let maxCorrect = -1;
   store.ranking.forEach(p => {
-    if (p.correctGuesses > maxCorrect) {
-      maxCorrect = p.correctGuesses;
+    const correct = p.correctAccusations || 0;
+    if (correct > maxCorrect) {
+      maxCorrect = correct;
       best = p;
     }
   });
@@ -291,11 +306,11 @@ const handleKeyDown = (e) => {
 onMounted(async () => {
   if (route.path === '/test-export') {
     store.ranking = [
-      { id: '1', name: 'Lucas', score: 120, correctGuesses: 5, votesReceived: 2, is_bot: false },
-      { id: '2', name: 'Sophie (Bot)', score: 95, correctGuesses: 4, votesReceived: 3, is_bot: true },
-      { id: '3', name: 'Alex', score: 80, correctGuesses: 3, votesReceived: 4, is_bot: false },
-      { id: '4', name: 'Thomas', score: 65, correctGuesses: 2, votesReceived: 1, is_bot: false },
-      { id: '5', name: 'Emma', score: 40, correctGuesses: 1, votesReceived: 5, is_bot: false },
+      { id: '1', name: 'Lucas', score: 120, correctAccusations: 5, bluffPoints: 3, blindTestCorrect: 1, votesReceived: 2, is_bot: false, avatar_seed: 'fVyG60h8GX5iVQBD' },
+      { id: '2', name: 'Sophie (Bot)', score: 95, correctAccusations: 4, bluffPoints: 2, blindTestCorrect: 1, votesReceived: 3, is_bot: true, avatar_seed: 'or6bBXdiiaz0jng4' },
+      { id: '3', name: 'Alex', score: 80, correctAccusations: 3, bluffPoints: 2, blindTestCorrect: 0, votesReceived: 4, is_bot: false, avatar_seed: 'Cm0YdR_hifPYKJX1' },
+      { id: '4', name: 'Thomas', score: 65, correctAccusations: 2, bluffPoints: 1, blindTestCorrect: 0, votesReceived: 1, is_bot: false, avatar_seed: 'Ooique6iYoWUQtPm' },
+      { id: '5', name: 'Emma', score: 40, correctAccusations: 1, bluffPoints: 1, blindTestCorrect: 0, votesReceived: 5, is_bot: false, avatar_seed: 'bLBps-pksgS4ROQp' },
     ];
     store.players = [
       { id: '1', name: 'Lucas', is_connected: true, is_bot: false },
@@ -371,6 +386,60 @@ const truncateText = (text, maxLength) => {
   return text.length > maxLength ? text.substring(0, maxLength - 1) + '…' : text;
 };
 
+const avatarImageCache = new Map();
+
+const loadAvatarImage = (seed) => {
+  if (!seed) return Promise.resolve(null);
+  if (avatarImageCache.has(seed)) return avatarImageCache.get(seed);
+
+  const promise = new Promise((resolve) => {
+    const image = new Image();
+    const timer = setTimeout(() => resolve(null), 5000);
+    image.onload = () => {
+      clearTimeout(timer);
+      resolve(image);
+    };
+    image.onerror = () => {
+      clearTimeout(timer);
+      resolve(null);
+    };
+    image.src = avatarUrl(seed);
+  });
+  avatarImageCache.set(seed, promise);
+  return promise;
+};
+
+const drawAvatar = (ctx, image, cx, cy, radius, fallback, ringColor = 'rgba(255, 248, 237, 0.95)') => {
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.closePath();
+  ctx.clip();
+
+  if (image) {
+    const scale = Math.max((radius * 2) / image.width, (radius * 2) / image.height);
+    const width = image.width * scale;
+    const height = image.height * scale;
+    ctx.drawImage(image, cx - width / 2, cy - height / 2, width, height);
+  } else {
+    ctx.fillStyle = 'rgba(46, 27, 63, 0.08)';
+    ctx.fill();
+    ctx.fillStyle = '#644f72';
+    ctx.font = `700 ${Math.max(9, Math.round(radius * 0.55))}px Archivo, system-ui, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(fallback, cx, cy);
+    ctx.textBaseline = 'alphabetic';
+  }
+  ctx.restore();
+
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.strokeStyle = ringColor;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+};
+
 const drawRoundedRect = (ctx, x, y, width, height, radius, fillStyle, strokeStyle, strokeWidth = 1) => {
   ctx.beginPath();
   ctx.moveTo(x + radius, y);
@@ -404,14 +473,20 @@ const drawGlowBlob = (ctx, x, y, r, color) => {
   ctx.fill();
 };
 
-const exportImage = () => {
+const exportImage = async () => {
   const ranking = store.ranking || [];
   const first = ranking[0];
   const second = ranking[1];
   const third = ranking[2];
 
+  const avatarImages = new Map();
+  await Promise.all(ranking.map(async (player) => {
+    const image = await loadAvatarImage(player.avatar_seed);
+    if (image) avatarImages.set(player.id, image);
+  }));
+
   const remainingPlayersCount = Math.max(0, ranking.length - 3);
-  const panelHeight = Math.max(240, 85 + remainingPlayersCount * 40);
+  const panelHeight = Math.max(220, 85 + remainingPlayersCount * 40);
   const canvasHeight = 450 + panelHeight + 110;
 
   const canvas = document.createElement('canvas');
@@ -453,102 +528,89 @@ const exportImage = () => {
   ctx.lineWidth = 1;
   ctx.stroke();
 
+  const podiumStats = (player) => {
+    const parts = [];
+    if (player.correctAccusations) {
+      parts.push(`${player.correctAccusations} accusation${player.correctAccusations > 1 ? 's' : ''}`);
+    }
+    if (player.bluffPoints) parts.push(`${player.bluffPoints} bluff`);
+    if (player.blindTestCorrect) parts.push(`${player.blindTestCorrect} blind`);
+    return parts.length ? parts.join(' · ') : 'Aucun point';
+  };
+
   // Podium
-  const drawPodiumColumn = (x, y, w, h, radius, fillColor, borderStyle, player, rankEmoji) => {
+  const drawPodiumCard = (x, y, w, h, radius, player, rank, accent, border) => {
     if (!player) return;
 
-    const colGrad = ctx.createLinearGradient(x, y, x, y + h);
-    colGrad.addColorStop(0, fillColor);
-    colGrad.addColorStop(1, 'rgba(255, 248, 237, 0.4)');
-    drawRoundedRect(ctx, x, y, w, h, radius, colGrad, borderStyle, 1.5);
+    ctx.save();
+    ctx.shadowColor = 'rgba(46, 27, 63, 0.12)';
+    ctx.shadowBlur = 26;
+    ctx.shadowOffsetY = 12;
+    drawRoundedRect(ctx, x, y, w, h, radius, 'rgba(255, 248, 237, 0.94)', border, 1.5);
+    ctx.restore();
 
-    const medalRadius = rankEmoji === '🥇' ? 28 : rankEmoji === '🥈' ? 24 : 22;
-    const medalY = y;
+    const avatarX = x + w / 2;
+    const avatarY = y + 44;
+    drawAvatar(
+      ctx,
+      avatarImages.get(player.id),
+      avatarX,
+      avatarY,
+      26,
+      initials(player.name),
+      'rgba(255, 248, 237, 0.95)'
+    );
 
+    const badgeX = avatarX + 21;
+    const badgeY = avatarY + 21;
     ctx.beginPath();
-    ctx.arc(x + w / 2, medalY, medalRadius + 3, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(46, 27, 63, 0.08)';
+    ctx.arc(badgeX, badgeY, 11, 0, Math.PI * 2);
+    ctx.fillStyle = accent;
     ctx.fill();
-
-    const medalGrad = ctx.createLinearGradient(x + w / 2 - medalRadius, medalY - medalRadius, x + w / 2 + medalRadius, medalY + medalRadius);
-    if (rankEmoji === '🥇') {
-      medalGrad.addColorStop(0, '#fde047');
-      medalGrad.addColorStop(1, '#ca8a04');
-    } else if (rankEmoji === '🥈') {
-      medalGrad.addColorStop(0, '#e2e8f0');
-      medalGrad.addColorStop(1, '#64748b');
-    } else {
-      medalGrad.addColorStop(0, '#f97316');
-      medalGrad.addColorStop(1, '#9a3412');
-    }
-
-    ctx.beginPath();
-    ctx.arc(x + w / 2, medalY, medalRadius, 0, Math.PI * 2);
-    ctx.fillStyle = medalGrad;
-    ctx.fill();
-    ctx.strokeStyle = rankEmoji === '🥇' ? '#facc15' : rankEmoji === '🥈' ? '#cbd5e1' : '#ea580c';
+    ctx.strokeStyle = 'rgba(255, 248, 237, 0.95)';
     ctx.lineWidth = 2;
     ctx.stroke();
-
-    ctx.font = `${rankEmoji === '🥇' ? 20 : rankEmoji === '🥈' ? 18 : 16}px system-ui`;
+    ctx.fillStyle = '#fff';
+    ctx.font = '700 11px Archivo, system-ui, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(rankEmoji, x + w / 2, medalY);
+    ctx.fillText(String(rank), badgeX, badgeY);
     ctx.textBaseline = 'alphabetic';
 
-    if (rankEmoji === '🥇') {
-      ctx.font = '28px system-ui';
-      ctx.fillText('👑', x + w / 2, medalY - medalRadius - 8);
+    if (rank === 1) {
+      ctx.fillStyle = '#6f5b7a';
+      ctx.font = '600 9px Archivo, sans-serif';
+      ctx.fillText('VAINQUEUR', avatarX, y + 86);
     }
 
     ctx.fillStyle = '#2e1b3f';
-    ctx.font = '700 14px Archivo, system-ui, sans-serif';
-    ctx.textAlign = 'center';
-    let displayName = player.name;
-    displayName = truncateText(displayName, player.is_bot ? 10 : 12);
-    ctx.fillText(displayName, x + w / 2, y + h - 90);
+    ctx.font = '700 15px Archivo, system-ui, sans-serif';
+    ctx.fillText(truncateText(player.name, player.is_bot ? 14 : 16), avatarX, y + h - 72);
 
-    ctx.fillStyle = rankEmoji === '🥇' ? '#6b3ce0' : rankEmoji === '🥈' ? '#2b8ed6' : '#b8315f';
-    ctx.font = '700 22px ui-monospace, monospace';
-    ctx.fillText(`${player.score}`, x + w / 2 - 10, y + h - 55);
+    const scoreText = String(player.score ?? 0);
+    ctx.fillStyle = accent;
+    ctx.font = '700 26px ui-monospace, monospace';
+    ctx.fillText(scoreText, avatarX - 12, y + h - 42);
     ctx.fillStyle = '#644f72';
     ctx.font = '500 11px Archivo, sans-serif';
-    ctx.fillText('pts', x + w / 2 + (player.score.toString().length * 6) + 4, y + h - 55);
+    ctx.fillText('pts', avatarX + (scoreText.length * 8), y + h - 42);
 
-    const statsY = y + h - 25;
-    const correctVal = player.correctGuesses || 0;
-    const votesVal = player.votesReceived || 0;
-
-    const bW = 48;
-    const bH = 18;
-    const bRad = 9;
-    const startX = x + w / 2 - bW - 3;
-
-    drawRoundedRect(ctx, startX, statsY - 12, bW, bH, bRad, 'rgba(44, 122, 110, 0.06)', 'rgba(44, 122, 110, 0.2)', 1);
-    ctx.fillStyle = '#2c7a6e';
-    ctx.font = '600 9px Archivo, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(`🎯 ${correctVal}`, startX + bW / 2, statsY);
-
-    const startX2 = x + w / 2 + 3;
-    drawRoundedRect(ctx, startX2, statsY - 12, bW, bH, bRad, 'rgba(107, 60, 224, 0.06)', 'rgba(107, 60, 224, 0.2)', 1);
-    ctx.fillStyle = '#5227c4';
-    ctx.font = '600 9px Archivo, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(`💜 ${votesVal}`, startX2 + bW / 2, statsY);
+    ctx.fillStyle = '#6f5b7a';
+    ctx.font = '500 10px Archivo, sans-serif';
+    ctx.fillText(podiumStats(player), avatarX, y + h - 16);
   };
 
   ctx.textAlign = 'center';
-  drawPodiumColumn(175, 260, 130, 160, 16, 'rgba(43, 142, 214, 0.10)', 'rgba(43, 142, 214, 0.28)', second, '🥈');
-  drawPodiumColumn(325, 220, 150, 200, 20, 'rgba(107, 60, 224, 0.12)', 'rgba(107, 60, 224, 0.40)', first, '🥇');
-  drawPodiumColumn(495, 290, 130, 130, 16, 'rgba(228, 86, 159, 0.08)', 'rgba(228, 86, 159, 0.25)', third, '🥉');
+  drawPodiumCard(110, 235, 180, 185, 18, second, 2, '#2b8ed6', 'rgba(43, 142, 214, 0.28)');
+  drawPodiumCard(310, 195, 180, 225, 20, first, 1, '#6b3ce0', 'rgba(107, 60, 224, 0.40)');
+  drawPodiumCard(510, 250, 180, 170, 16, third, 3, '#b8315f', 'rgba(228, 86, 159, 0.25)');
   ctx.textAlign = 'left';
 
   drawRoundedRect(ctx, 50, 450, 700, panelHeight, 16, 'rgba(255, 248, 237, 0.9)', 'rgba(46, 27, 63, 0.12)', 1);
 
   ctx.fillStyle = '#6f5b7a';
   ctx.font = '600 11px ui-monospace, monospace';
-  ctx.fillText('Classement', 70, 485);
+  ctx.fillText('Suite du classement', 70, 485);
 
   let yOffset = 515;
   if (ranking.length <= 3) {
@@ -566,19 +628,15 @@ const exportImage = () => {
       ctx.textAlign = 'center';
       ctx.fillText(`#${i + 1}`, 86, yOffset - 1);
 
-      ctx.beginPath();
-      ctx.arc(122, yOffset - 5, 12, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(46, 27, 63, 0.06)';
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(46, 27, 63, 0.12)';
-      ctx.stroke();
-
-      ctx.fillStyle = '#644f72';
-      ctx.font = '700 9px Archivo, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(p.name.substring(0, 2).toUpperCase(), 122, yOffset - 5);
-      ctx.textBaseline = 'alphabetic';
+      drawAvatar(
+        ctx,
+        avatarImages.get(p.id),
+        122,
+        yOffset - 5,
+        12,
+        initials(p.name),
+        'rgba(46, 27, 63, 0.12)'
+      );
 
       ctx.fillStyle = '#2e1b3f';
       ctx.font = '600 13px Archivo, system-ui, sans-serif';
@@ -619,8 +677,9 @@ const exportImage = () => {
   let bestDetective = null;
   let maxCorrect = 0;
   ranking.forEach(p => {
-    if (p.correctGuesses > maxCorrect) {
-      maxCorrect = p.correctGuesses;
+    const correct = p.correctAccusations || 0;
+    if (correct > maxCorrect) {
+      maxCorrect = correct;
       bestDetective = p.name;
     }
   });
@@ -654,9 +713,9 @@ const exportImage = () => {
   drawStatItem('🎵', 'Morceaux joués', `${totalTracks} titres proposés`, '#644f72');
 
   if (bestDetective) {
-    drawStatItem('🎯', 'Meilleur détective', `${bestDetective} (${maxCorrect} bonne${maxCorrect > 1 ? 's' : ''} réponse${maxCorrect > 1 ? 's' : ''})`, '#2c7a6e');
+    drawStatItem('🎯', 'Meilleur détective', `${bestDetective} (${maxCorrect} accusation${maxCorrect > 1 ? 's' : ''})`, '#2c7a6e');
   } else {
-    drawStatItem('🎯', 'Meilleur détective', 'Aucune bonne réponse', '#6f5b7a');
+    drawStatItem('🎯', 'Meilleur détective', 'Aucune accusation réussie', '#6f5b7a');
   }
 
   if (mostSuspected) {
@@ -672,14 +731,10 @@ const exportImage = () => {
   ctx.lineWidth = 1;
   ctx.stroke();
 
+  ctx.textAlign = 'center';
   ctx.fillStyle = '#6f5b7a';
   ctx.font = '500 13px Archivo, system-ui, sans-serif';
-  ctx.fillText('Cékikilami, jeu de musique en ligne', 50, 450 + panelHeight + 65);
-
-  ctx.textAlign = 'right';
-  ctx.fillStyle = '#6f5b7a';
-  ctx.font = '500 12px ui-monospace, monospace';
-  ctx.fillText('cekikilami.lucasspitzer.fr', 750, 450 + panelHeight + 65);
+  ctx.fillText('Cékikilami · jeu de musique entre amis', 400, 450 + panelHeight + 65);
   ctx.textAlign = 'left';
 
   exportImageUrl.value = canvas.toDataURL('image/png');

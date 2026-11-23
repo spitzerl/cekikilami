@@ -23,11 +23,19 @@ import {
   HOST_DISCONNECT_GRACE_MS,
   MAINTENANCE_INTERVAL_MS,
   MAX_SESSIONS,
+  SCORING,
+  SCORING_MODES,
   SESSION_TTLS,
+  TRACK_INFO_MODES,
   UPLOAD_LIMITS,
 } from '../config/game.js';
 import { BOT_NAMES_POOL, GENRE_QUERIES } from '../data/botCatalog.js';
-import { buildBlindTestOptions, getBotTracks, mapWithConcurrency } from './deezerService.js';
+import {
+  buildBlindTestOptions,
+  getBotTracks,
+  mapWithConcurrency,
+  saveTrackPreview,
+} from './deezerService.js';
 import { cleanupOrphanUploads, deleteUpload, deleteUploadsForMusics } from './uploadService.js';
 import { shuffle } from '../utils/normalize.js';
 
@@ -58,6 +66,18 @@ function sanitizeOwnMusic(music) {
 
 function sessionLogTag(code) {
   return crypto.createHash('sha256').update(String(code)).digest('hex').slice(0, 8);
+}
+
+function comparePlayersByScore(first, second) {
+  if (second.score !== first.score) return second.score - first.score;
+  if (second.correctAccusations !== first.correctAccusations) {
+    return second.correctAccusations - first.correctAccusations;
+  }
+  if (second.bluffPoints !== first.bluffPoints) return second.bluffPoints - first.bluffPoints;
+  if (second.blindTestCorrect !== first.blindTestCorrect) {
+    return second.blindTestCorrect - first.blindTestCorrect;
+  }
+  return 0;
 }
 
 function playerIdOrNull(value) {
@@ -197,44 +217,87 @@ export default class GameService {
     };
   }
 
-  computeRanking(data) {
+  computeRanking(data, { maxPlayOrder = Infinity } = {}) {
+    const scoring = SCORING[data.session.scoring_mode] || SCORING.balanced;
     const playerMap = new Map(data.players.map((player) => [player.id, {
-      ...player,
+      ...sanitizePlayer(player),
       score: 0,
-      votesReceived: 0,
+      correctAccusations: 0,
+      blindTestCorrect: 0,
       correctGuesses: 0,
+      bluffPoints: 0,
+      votesReceived: 0,
+      timesFound: 0,
     }]));
-    const musicProposers = new Map(data.musics.map((music) => [music.id, music.player_id]));
+
+    const trackStats = new Map();
+    for (const music of data.musics) {
+      if (!Number.isInteger(music.play_order)
+        || music.play_order < 0
+        || music.play_order > maxPlayOrder) continue;
+      trackStats.set(music.id, {
+        proposerId: music.player_id,
+        votes: 0,
+        found: 0,
+      });
+    }
 
     for (const vote of data.votes) {
-      const proposerId = musicProposers.get(vote.music_id);
-      if (vote.voter_id === proposerId) continue;
+      const track = trackStats.get(vote.music_id);
+      if (!track || vote.voter_id === track.proposerId) continue;
 
+      track.votes += 1;
       const guessed = playerMap.get(vote.guessed_player_id);
       if (guessed) guessed.votesReceived += 1;
 
-      if (proposerId && vote.guessed_player_id === proposerId) {
+      if (vote.guessed_player_id === track.proposerId) {
+        track.found += 1;
         const voter = playerMap.get(vote.voter_id);
-        if (voter) voter.correctGuesses += 1;
+        if (voter) voter.correctAccusations += 1;
+      }
+    }
+
+    for (const track of trackStats.values()) {
+      if (track.votes === 0) continue;
+      const proposer = playerMap.get(track.proposerId);
+      if (!proposer) continue;
+
+      proposer.timesFound += track.found;
+      if (scoring.proposerMode === 'threeMinusFound') {
+        proposer.bluffPoints += Math.max(0, scoring.proposerMax - track.found);
+      } else if (scoring.proposerMode === 'perMiss') {
+        proposer.bluffPoints += Math.min(scoring.proposerMax, track.votes - track.found);
       }
     }
 
     if (data.session.enable_blind_test) {
       for (const answer of data.blindTestAnswers) {
         if (!answer.is_correct) continue;
+        const track = trackStats.get(answer.music_id);
+        if (!track || track.proposerId === answer.player_id) continue;
         const player = playerMap.get(answer.player_id);
-        if (player) player.correctGuesses += 1;
+        if (player) player.blindTestCorrect += 1;
       }
     }
 
     for (const player of playerMap.values()) {
-      player.score = player.correctGuesses;
+      player.correctGuesses = player.correctAccusations + player.blindTestCorrect;
+      player.score = player.correctAccusations * scoring.correctAccusation
+        + player.bluffPoints
+        + player.blindTestCorrect * scoring.blindTest;
     }
 
-    return Array.from(playerMap.values()).sort((first, second) => {
-      if (second.score !== first.score) return second.score - first.score;
-      return new Date(first.created_at) - new Date(second.created_at);
+    const ranking = Array.from(playerMap.values()).sort((first, second) => {
+      const comparison = comparePlayersByScore(first, second);
+      if (comparison !== 0) return comparison;
+      return String(first.name).localeCompare(String(second.name), 'fr', { sensitivity: 'base' });
     });
+
+    for (const player of ranking) {
+      player.rank = 1 + ranking.filter((other) => comparePlayersByScore(other, player) < 0).length;
+    }
+
+    return ranking;
   }
 
   buildStateForPlayer(data, playerId = null) {
@@ -273,13 +336,42 @@ export default class GameService {
     }
 
     if (session.phase === 'voting') {
+      const status = session.voting_status;
+      // Only expose scores from completed rounds. The current round stays
+      // hidden until the revelation so players cannot infer whether their
+      // vote or blind-test answer was correct while they can still change it.
+      const liveThrough = status === 'revelation'
+        ? session.current_music_index
+        : session.current_music_index - 1;
+      const liveScores = liveThrough >= 0
+        ? new Map(
+          this.computeRanking(data, { maxPlayOrder: liveThrough })
+            .map((player) => [player.id, player])
+        )
+        : new Map();
+
       const votingPlayers = sanitizedPlayers.map((player) => {
-        const { score, ...rest } = player;
-        return rest;
+        const { score: _persistedScore, ...rest } = player;
+        const live = liveScores.get(player.id);
+        if (!live) return rest;
+        return {
+          ...rest,
+          score: live.score,
+          rank: live.rank,
+          correctAccusations: live.correctAccusations,
+          blindTestCorrect: live.blindTestCorrect,
+          correctGuesses: live.correctGuesses,
+          bluffPoints: live.bluffPoints,
+          votesReceived: live.votesReceived,
+          timesFound: live.timesFound,
+        };
       });
       const currentTrack = musics.find((music) => music.play_order === session.current_music_index);
-      const status = session.voting_status;
       const isReveal = status === 'revelation' && session.show_answers;
+      const trackInfoMode = session.track_info_mode || 'after';
+      const revealTrackInfo = trackInfoMode === 'before'
+        ? (status === 'voting' || status === 'revelation')
+        : trackInfoMode === 'after' && status === 'revelation';
       let currentMusic = null;
       let votesForCurrentMusic = null;
 
@@ -295,11 +387,14 @@ export default class GameService {
           if (session.enable_blind_test) {
             currentMusic.blind_test_options = currentTrack.blind_test_options || [];
           }
-        } else if (status === 'revelation') {
+        } else if (revealTrackInfo) {
           currentMusic.title = currentTrack.title;
           currentMusic.artist = currentTrack.artist;
           currentMusic.cover_url = currentTrack.cover_url;
-          if (isReveal) currentMusic.player_id = currentTrack.player_id;
+        }
+
+        if (status === 'revelation' && isReveal) {
+          currentMusic.player_id = currentTrack.player_id;
         }
 
         if (session.enable_blind_test) {
@@ -515,6 +610,21 @@ export default class GameService {
     if (Object.hasOwn(config, 'enableBlindTest')) {
       sanitized.enableBlindTest = requireBoolean(config.enableBlindTest, 'enableBlindTest');
     }
+    if (Object.hasOwn(config, 'scoringMode')) {
+      if (!SCORING_MODES.includes(config.scoringMode)) {
+        throw httpError(400, 'Mode de points invalide');
+      }
+      sanitized.scoringMode = config.scoringMode;
+    }
+    if (Object.hasOwn(config, 'showScoreboard')) {
+      sanitized.showScoreboard = requireBoolean(config.showScoreboard, 'showScoreboard');
+    }
+    if (Object.hasOwn(config, 'trackInfoMode')) {
+      if (!TRACK_INFO_MODES.includes(config.trackInfoMode)) {
+        throw httpError(400, 'Moment de révélation du morceau invalide');
+      }
+      sanitized.trackInfoMode = config.trackInfoMode;
+    }
 
     return sanitized;
   }
@@ -691,22 +801,41 @@ export default class GameService {
       }
     });
 
-    for (const { bot, genre, tracks } of generated) {
-      for (const track of tracks.slice(0, limit)) {
+    const botTracks = generated.flatMap(({ bot, genre, tracks }) => tracks
+      .slice(0, limit)
+      .map((track) => ({ bot, genre, track })));
+
+    const materialized = await mapWithConcurrency(
+      botTracks,
+      DEEZER.botConcurrency,
+      async ({ bot, genre, track }) => {
         try {
-          await Music.create({
-            sessionId: session.id,
-            playerId: bot.id,
-            title: track.title,
-            artist: track.artist,
-            filePath: requireMusicSource(track.file_path, 'filePath'),
-            coverUrl: track.cover_url ? requireCoverUrl(track.cover_url, 'coverUrl') : null,
-            fileSize: 0,
-          });
-          this.log(code, `Bot ${bot.name} (${genre}) submitted: ${track.title} by ${track.artist}`);
+          const saved = await saveTrackPreview(requireMusicSource(track.file_path, 'filePath'));
+          return { bot, genre, track, filePath: saved.filePath, fileSize: saved.fileSize };
         } catch (error) {
-          console.warn(`Unable to save bot track ${track.title}:`, error.message);
+          console.warn(`Unable to download bot track ${track.title}:`, error.message);
+          return null;
         }
+      }
+    );
+
+    for (const entry of materialized) {
+      if (!entry) continue;
+      const { bot, genre, track, filePath, fileSize } = entry;
+      try {
+        await Music.create({
+          sessionId: session.id,
+          playerId: bot.id,
+          title: track.title,
+          artist: track.artist,
+          filePath,
+          coverUrl: track.cover_url ? requireCoverUrl(track.cover_url, 'coverUrl') : null,
+          fileSize,
+        });
+        this.log(code, `Bot ${bot.name} (${genre}) submitted: ${track.title} by ${track.artist}`);
+      } catch (error) {
+        await deleteUpload(filePath);
+        console.warn(`Unable to save bot track ${track.title}:`, error.message);
       }
     }
 
@@ -999,6 +1128,9 @@ export default class GameService {
     if (!music) throw httpError(404, 'Musique introuvable');
     if (music.play_order !== session.current_music_index) {
       throw httpError(400, 'Cette musique n’est pas en cours de lecture');
+    }
+    if (session.timer_ends_at && new Date() > new Date(session.timer_ends_at)) {
+      throw httpError(409, 'Le temps du blind test est écoulé');
     }
     if (music.player_id === playerId) {
       throw httpError(400, 'Vous ne pouvez pas participer au blind test pour votre propre musique');

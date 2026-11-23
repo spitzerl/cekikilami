@@ -1,5 +1,5 @@
 <template>
-  <div class="game-layout">
+  <div :class="{ 'game-layout': true, 'no-dock': !showScoreboard }">
     <GameHeader
       title="Sélection"
       :subtitle="selectionSubtitle"
@@ -237,6 +237,8 @@ import AppIcon from './AppIcon.vue';
 const route = useRoute();
 const router = useRouter();
 const store = useGameStore();
+
+const showScoreboard = computed(() => store.session?.show_scoreboard !== false);
 
 const searchQuery = ref('');
 const tracks = ref([]);
