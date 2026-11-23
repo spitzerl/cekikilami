@@ -133,10 +133,10 @@
           </div>
         </div>
 
-        <p class="hero-note pretty">
+        <!-- <p class="hero-note pretty">
           <strong>Une playlist que personne n’a vue venir.</strong>
           Écoutez, accusez, marquez des points. Le blind test est optionnel, le bluff beaucoup moins.
-        </p>
+        </p> -->
       </section>
 
       <section class="home-steps" aria-labelledby="steps-title">
