@@ -27,6 +27,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Check version alignment
+        run: node scripts/check-version.cjs
+
       - name: Use Node.js 22
         uses: actions/setup-node@v4
         with:

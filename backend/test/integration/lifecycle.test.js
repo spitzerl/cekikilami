@@ -10,6 +10,7 @@ import {
   testAudioBuffer,
 } from '../helpers/app.js';
 import pool from '../../src/config/database.js';
+import { APP_VERSION } from '../../src/config/version.js';
 import { clearDeezerCache } from '../../src/services/deezerService.js';
 
 let context;
@@ -29,6 +30,16 @@ beforeEach(async () => {
 test('session codes keep the expected format', async () => {
   const created = await createSession(context.request, 'Host');
   assert.match(created.session.code, /^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{6}$/);
+});
+
+test('the API and health endpoints expose the current beta version', async () => {
+  const version = await context.request.get('/api/version').expect(200);
+  assert.equal(version.body.version, APP_VERSION);
+  assert.equal(version.body.channel, 'beta');
+
+  const health = await context.request.get('/health').expect(200);
+  assert.equal(health.body.ok, true);
+  assert.equal(health.body.version, APP_VERSION);
 });
 
 test('configuration values are bounded server-side', async () => {

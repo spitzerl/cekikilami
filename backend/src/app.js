@@ -3,6 +3,7 @@ import express from 'express';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import { CORS_ORIGIN, TRUST_PROXY } from './config/game.js';
+import { APP_VERSION } from './config/version.js';
 import buildRoutes from './routes/index.js';
 import { UPLOAD_DIR } from './services/uploadService.js';
 
@@ -62,7 +63,7 @@ export default function createApp(gameService, ioNamespace) {
   );
 
   app.get('/health', (_req, res) => {
-    res.json({ ok: true });
+    res.json({ ok: true, version: APP_VERSION });
   });
 
   app.use('/api', buildRoutes(gameService, ioNamespace));
