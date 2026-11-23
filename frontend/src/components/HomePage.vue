@@ -34,118 +34,114 @@
           </p>
         </div>
 
-        <div class="console reveal-late">
-          <div class="console-tabs" role="tablist" aria-label="Créer ou rejoindre un salon">
+        <div class="console reveal-late" role="region" aria-label="Créer ou rejoindre un salon">
+          <div class="menu-slider" role="group" aria-label="Choisir entre créer et rejoindre un salon">
+            <span
+              class="menu-slider-thumb"
+              :style="{ transform: activeAction === 'join' ? 'translateX(100%)' : 'translateX(0)' }"
+              aria-hidden="true"
+            ></span>
             <button
-              id="tab-create"
               type="button"
-              role="tab"
-              :aria-selected="activeAction === 'create'"
-              aria-controls="panel-create"
-              :class="['console-tab', activeAction === 'create' ? 'is-active' : '']"
-              @click="activeAction = 'create'"
+              :class="['menu-slider-btn', activeAction === 'create' ? 'is-active' : '']"
+              :aria-pressed="activeAction === 'create'"
+              @click="setAction('create')"
             >
-              Créer
+              Créer un salon
             </button>
             <button
-              id="tab-join"
               type="button"
-              role="tab"
-              :aria-selected="activeAction === 'join'"
-              aria-controls="panel-join"
-              :class="['console-tab', activeAction === 'join' ? 'is-active' : '']"
-              @click="activeAction = 'join'"
+              :class="['menu-slider-btn', activeAction === 'join' ? 'is-active' : '']"
+              :aria-pressed="activeAction === 'join'"
+              @click="setAction('join')"
             >
-              Rejoindre
+              Rejoindre un salon
             </button>
           </div>
 
-          <div class="console-panel-stack">
+          <div class="menu-viewport">
             <div
-              id="panel-create"
-              class="console-panel"
+              class="menu-slide menu-slide-create"
               :class="{ 'is-active': activeAction === 'create' }"
-              role="tabpanel"
-              aria-labelledby="tab-create"
+              :inert="activeAction !== 'create'"
               :aria-hidden="activeAction !== 'create'"
             >
-              <h2 class="console-title">Créer un salon</h2>
-              <p class="console-sub">Choisissez un pseudo. Vous serez l’hôte du salon.</p>
-
-              <form class="console-form console-form-create" @submit.prevent="onCreate" novalidate>
-                <div class="field">
-                  <label for="create-name" class="label">Votre pseudo</label>
-                  <input
-                    id="create-name"
-                    v-model="createName"
-                    required
-                    class="input"
-                    placeholder="Ex. Lucas"
-                    :aria-invalid="!!error && activeAction === 'create'"
-                    autocomplete="nickname"
-                    maxlength="32"
-                  />
-                </div>
-                <p class="console-note">Un code à 6 caractères sera généré pour inviter vos amis.</p>
-                <button
-                  type="submit"
-                  class="btn btn-primary btn-block btn-lg"
-                  :disabled="!createName.trim()"
-                >
-                  <AppIcon name="play" :size="16" />
-                  Créer le salon
-                </button>
-              </form>
-            </div>
+                <p class="menu-slide-sub">Choisissez un pseudo. Vous serez l’hôte du salon.</p>
+                <form class="console-form console-form-create" @submit.prevent="onCreate" novalidate>
+                  <div class="field">
+                    <label for="create-name" class="label">Votre pseudo</label>
+                    <input
+                      id="create-name"
+                      v-model="createName"
+                      required
+                      class="input"
+                      placeholder="Ex. Lucas"
+                      :aria-invalid="!!error && activeAction === 'create'"
+                      autocomplete="nickname"
+                      maxlength="32"
+                    />
+                  </div>
+                  <div class="create-aside">
+                    <p><strong>Votre salon est prêt tout de suite.</strong> Un code à 6 caractères et un lien à partager.</p>
+                  </div>
+                  <button
+                    type="submit"
+                    class="btn btn-primary btn-block btn-lg menu-submit"
+                    :disabled="!createName.trim()"
+                  >
+                    <AppIcon name="play" :size="18" />
+                    Créer le salon
+                  </button>
+                </form>
+              </div>
 
             <div
-              id="panel-join"
-              class="console-panel"
+              class="menu-slide menu-slide-join"
               :class="{ 'is-active': activeAction === 'join' }"
-              role="tabpanel"
-              aria-labelledby="tab-join"
+              :inert="activeAction !== 'join'"
               :aria-hidden="activeAction !== 'join'"
             >
-              <h2 class="console-title">Rejoindre un salon</h2>
-              <p class="console-sub">Entrez le code partagé par l’hôte, puis votre pseudo.</p>
-
-              <form class="console-form console-form-join" @submit.prevent="onJoin" novalidate>
-                <div class="field">
-                  <label for="join-code" class="label">Code du salon</label>
-                  <input
-                    id="join-code"
-                    v-model="joinCode"
-                    required
-                    maxlength="6"
-                    class="input input-code"
-                    placeholder="ABCDEF"
-                    :aria-invalid="!!error && activeAction === 'join'"
-                    autocomplete="off"
-                    autocapitalize="characters"
-                    spellcheck="false"
-                  />
-                </div>
-                <div class="field">
-                  <label for="join-name" class="label">Votre pseudo</label>
-                  <input
-                    id="join-name"
-                    v-model="joinName"
-                    required
-                    class="input"
-                    placeholder="Ex. Lucas"
-                    autocomplete="nickname"
-                    maxlength="32"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  class="btn btn-primary btn-block btn-lg"
-                  :disabled="!joinCode.trim() || !joinName.trim()"
-                >
-                  <AppIcon name="log-in" :size="16" />
-                  Rejoindre le salon
-                </button>
-              </form>
+                <p class="menu-slide-sub">Entrez le code de l’hôte et choisissez un pseudo.</p>
+                <form class="console-form console-form-join" @submit.prevent="onJoin" novalidate>
+                  <div class="field">
+                    <div class="field-label-row">
+                      <label for="join-code" class="label">Code du salon</label>
+                      <button type="button" class="menu-paste" @click="pasteCode">Coller</button>
+                    </div>
+                    <input
+                      id="join-code"
+                      v-model="joinCode"
+                      required
+                      maxlength="6"
+                      class="input input-code"
+                      placeholder="ABCDEF"
+                      :aria-invalid="!!error && activeAction === 'join'"
+                      autocomplete="off"
+                      autocapitalize="characters"
+                      spellcheck="false"
+                    />
+                  </div>
+                  <div class="field">
+                    <label for="join-name" class="label">Votre pseudo</label>
+                    <input
+                      id="join-name"
+                      v-model="joinName"
+                      required
+                      class="input"
+                      placeholder="Ex. Lucas"
+                      autocomplete="nickname"
+                      maxlength="32"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    class="btn btn-primary btn-block btn-lg menu-submit"
+                    :disabled="!joinCode.trim() || !joinName.trim()"
+                  >
+                    <AppIcon name="log-in" :size="18" />
+                    Rejoindre le salon
+                  </button>
+                </form>
             </div>
           </div>
 
@@ -155,6 +151,11 @@
               {{ error }}
             </div>
           </Transition>
+
+          <div class="menu-footer">
+            <span class="menu-footer-disc" aria-hidden="true"></span>
+            Pas de compte. Juste un pseudo.
+          </div>
         </div>
 
         <p class="hero-note pretty">
@@ -280,6 +281,23 @@ const joinCode = ref('');
 const joinName = ref('');
 const error = ref(null);
 const showHelp = ref(false);
+
+const setAction = (action) => {
+  if (action === activeAction.value) return;
+  error.value = null;
+  activeAction.value = action;
+};
+
+const pasteCode = async () => {
+  try {
+    const text = await navigator.clipboard.readText();
+    const match = text.toUpperCase().match(/[A-Z0-9]{6}/);
+    if (match) joinCode.value = match[0];
+    else document.getElementById('join-code')?.focus();
+  } catch {
+    document.getElementById('join-code')?.focus();
+  }
+};
 
 const deferredPrompt = ref(null);
 const isAppInstallable = ref(false);
