@@ -5,7 +5,10 @@
   "main": "src/server.js",
   "scripts": {
     "dev": "nodemon src/server.js",
-    "start": "node src/server.js"
+    "start": "node src/server.js",
+    "test": "node --import ./test/setup.js --test --test-concurrency=1 --test-force-exit test/unit/*.test.js test/integration/*.test.js",
+    "test:unit": "node --import ./test/setup.js --test --test-concurrency=1 --test-force-exit test/unit/*.test.js",
+    "test:integration": "node --import ./test/setup.js --test --test-concurrency=1 --test-force-exit test/integration/*.test.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
