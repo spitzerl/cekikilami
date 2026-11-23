@@ -306,11 +306,11 @@ const handleKeyDown = (e) => {
 onMounted(async () => {
   if (route.path === '/test-export') {
     store.ranking = [
-      { id: '1', name: 'Lucas', score: 120, correctAccusations: 5, bluffPoints: 3, blindTestCorrect: 1, votesReceived: 2, is_bot: false },
-      { id: '2', name: 'Sophie (Bot)', score: 95, correctAccusations: 4, bluffPoints: 2, blindTestCorrect: 1, votesReceived: 3, is_bot: true },
-      { id: '3', name: 'Alex', score: 80, correctAccusations: 3, bluffPoints: 2, blindTestCorrect: 0, votesReceived: 4, is_bot: false },
-      { id: '4', name: 'Thomas', score: 65, correctAccusations: 2, bluffPoints: 1, blindTestCorrect: 0, votesReceived: 1, is_bot: false },
-      { id: '5', name: 'Emma', score: 40, correctAccusations: 1, bluffPoints: 1, blindTestCorrect: 0, votesReceived: 5, is_bot: false },
+      { id: '1', name: 'Lucas', score: 120, correctAccusations: 5, bluffPoints: 3, blindTestCorrect: 1, votesReceived: 2, is_bot: false, avatar_seed: 'fVyG60h8GX5iVQBD' },
+      { id: '2', name: 'Sophie (Bot)', score: 95, correctAccusations: 4, bluffPoints: 2, blindTestCorrect: 1, votesReceived: 3, is_bot: true, avatar_seed: 'or6bBXdiiaz0jng4' },
+      { id: '3', name: 'Alex', score: 80, correctAccusations: 3, bluffPoints: 2, blindTestCorrect: 0, votesReceived: 4, is_bot: false, avatar_seed: 'Cm0YdR_hifPYKJX1' },
+      { id: '4', name: 'Thomas', score: 65, correctAccusations: 2, bluffPoints: 1, blindTestCorrect: 0, votesReceived: 1, is_bot: false, avatar_seed: 'Ooique6iYoWUQtPm' },
+      { id: '5', name: 'Emma', score: 40, correctAccusations: 1, bluffPoints: 1, blindTestCorrect: 0, votesReceived: 5, is_bot: false, avatar_seed: 'bLBps-pksgS4ROQp' },
     ];
     store.players = [
       { id: '1', name: 'Lucas', is_connected: true, is_bot: false },
@@ -386,6 +386,60 @@ const truncateText = (text, maxLength) => {
   return text.length > maxLength ? text.substring(0, maxLength - 1) + '…' : text;
 };
 
+const avatarImageCache = new Map();
+
+const loadAvatarImage = (seed) => {
+  if (!seed) return Promise.resolve(null);
+  if (avatarImageCache.has(seed)) return avatarImageCache.get(seed);
+
+  const promise = new Promise((resolve) => {
+    const image = new Image();
+    const timer = setTimeout(() => resolve(null), 5000);
+    image.onload = () => {
+      clearTimeout(timer);
+      resolve(image);
+    };
+    image.onerror = () => {
+      clearTimeout(timer);
+      resolve(null);
+    };
+    image.src = avatarUrl(seed);
+  });
+  avatarImageCache.set(seed, promise);
+  return promise;
+};
+
+const drawAvatar = (ctx, image, cx, cy, radius, fallback, ringColor = 'rgba(255, 248, 237, 0.95)') => {
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.closePath();
+  ctx.clip();
+
+  if (image) {
+    const scale = Math.max((radius * 2) / image.width, (radius * 2) / image.height);
+    const width = image.width * scale;
+    const height = image.height * scale;
+    ctx.drawImage(image, cx - width / 2, cy - height / 2, width, height);
+  } else {
+    ctx.fillStyle = 'rgba(46, 27, 63, 0.08)';
+    ctx.fill();
+    ctx.fillStyle = '#644f72';
+    ctx.font = `700 ${Math.max(9, Math.round(radius * 0.55))}px Archivo, system-ui, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(fallback, cx, cy);
+    ctx.textBaseline = 'alphabetic';
+  }
+  ctx.restore();
+
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.strokeStyle = ringColor;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+};
+
 const drawRoundedRect = (ctx, x, y, width, height, radius, fillStyle, strokeStyle, strokeWidth = 1) => {
   ctx.beginPath();
   ctx.moveTo(x + radius, y);
@@ -419,11 +473,17 @@ const drawGlowBlob = (ctx, x, y, r, color) => {
   ctx.fill();
 };
 
-const exportImage = () => {
+const exportImage = async () => {
   const ranking = store.ranking || [];
   const first = ranking[0];
   const second = ranking[1];
   const third = ranking[2];
+
+  const avatarImages = new Map();
+  await Promise.all(ranking.map(async (player) => {
+    const image = await loadAvatarImage(player.avatar_seed);
+    if (image) avatarImages.set(player.id, image);
+  }));
 
   const remainingPlayersCount = Math.max(0, ranking.length - 3);
   const panelHeight = Math.max(220, 85 + remainingPlayersCount * 40);
@@ -489,44 +549,61 @@ const exportImage = () => {
     drawRoundedRect(ctx, x, y, w, h, radius, 'rgba(255, 248, 237, 0.94)', border, 1.5);
     ctx.restore();
 
+    const avatarX = x + w / 2;
+    const avatarY = y + 44;
+    drawAvatar(
+      ctx,
+      avatarImages.get(player.id),
+      avatarX,
+      avatarY,
+      26,
+      initials(player.name),
+      'rgba(255, 248, 237, 0.95)'
+    );
+
+    const badgeX = avatarX + 21;
+    const badgeY = avatarY + 21;
     ctx.beginPath();
-    ctx.arc(x + w / 2, y + 26, 17, 0, Math.PI * 2);
+    ctx.arc(badgeX, badgeY, 11, 0, Math.PI * 2);
     ctx.fillStyle = accent;
     ctx.fill();
+    ctx.strokeStyle = 'rgba(255, 248, 237, 0.95)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
     ctx.fillStyle = '#fff';
-    ctx.font = '700 14px Archivo, system-ui, sans-serif';
+    ctx.font = '700 11px Archivo, system-ui, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(String(rank), x + w / 2, y + 26);
+    ctx.fillText(String(rank), badgeX, badgeY);
     ctx.textBaseline = 'alphabetic';
 
     if (rank === 1) {
       ctx.fillStyle = '#6f5b7a';
       ctx.font = '600 9px Archivo, sans-serif';
-      ctx.fillText('VAINQUEUR', x + w / 2, y + 60);
+      ctx.fillText('VAINQUEUR', avatarX, y + 86);
     }
 
     ctx.fillStyle = '#2e1b3f';
     ctx.font = '700 15px Archivo, system-ui, sans-serif';
-    ctx.fillText(truncateText(player.name, player.is_bot ? 14 : 16), x + w / 2, y + h - 92);
+    ctx.fillText(truncateText(player.name, player.is_bot ? 14 : 16), avatarX, y + h - 72);
 
     const scoreText = String(player.score ?? 0);
     ctx.fillStyle = accent;
     ctx.font = '700 26px ui-monospace, monospace';
-    ctx.fillText(scoreText, x + w / 2 - 12, y + h - 58);
+    ctx.fillText(scoreText, avatarX - 12, y + h - 42);
     ctx.fillStyle = '#644f72';
     ctx.font = '500 11px Archivo, sans-serif';
-    ctx.fillText('pts', x + w / 2 + (scoreText.length * 8), y + h - 58);
+    ctx.fillText('pts', avatarX + (scoreText.length * 8), y + h - 42);
 
     ctx.fillStyle = '#6f5b7a';
     ctx.font = '500 10px Archivo, sans-serif';
-    ctx.fillText(podiumStats(player), x + w / 2, y + h - 32);
+    ctx.fillText(podiumStats(player), avatarX, y + h - 16);
   };
 
   ctx.textAlign = 'center';
-  drawPodiumCard(110, 240, 180, 180, 18, second, 2, '#2b8ed6', 'rgba(43, 142, 214, 0.28)');
-  drawPodiumCard(310, 200, 180, 220, 20, first, 1, '#6b3ce0', 'rgba(107, 60, 224, 0.40)');
-  drawPodiumCard(510, 270, 180, 150, 16, third, 3, '#b8315f', 'rgba(228, 86, 159, 0.25)');
+  drawPodiumCard(110, 235, 180, 185, 18, second, 2, '#2b8ed6', 'rgba(43, 142, 214, 0.28)');
+  drawPodiumCard(310, 195, 180, 225, 20, first, 1, '#6b3ce0', 'rgba(107, 60, 224, 0.40)');
+  drawPodiumCard(510, 250, 180, 170, 16, third, 3, '#b8315f', 'rgba(228, 86, 159, 0.25)');
   ctx.textAlign = 'left';
 
   drawRoundedRect(ctx, 50, 450, 700, panelHeight, 16, 'rgba(255, 248, 237, 0.9)', 'rgba(46, 27, 63, 0.12)', 1);
@@ -551,19 +628,15 @@ const exportImage = () => {
       ctx.textAlign = 'center';
       ctx.fillText(`#${i + 1}`, 86, yOffset - 1);
 
-      ctx.beginPath();
-      ctx.arc(122, yOffset - 5, 12, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(46, 27, 63, 0.06)';
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(46, 27, 63, 0.12)';
-      ctx.stroke();
-
-      ctx.fillStyle = '#644f72';
-      ctx.font = '700 9px Archivo, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(p.name.substring(0, 2).toUpperCase(), 122, yOffset - 5);
-      ctx.textBaseline = 'alphabetic';
+      drawAvatar(
+        ctx,
+        avatarImages.get(p.id),
+        122,
+        yOffset - 5,
+        12,
+        initials(p.name),
+        'rgba(46, 27, 63, 0.12)'
+      );
 
       ctx.fillStyle = '#2e1b3f';
       ctx.font = '600 13px Archivo, system-ui, sans-serif';
