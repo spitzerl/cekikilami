@@ -6,8 +6,9 @@ Jeu musical multijoueur (Vue 3 + Node.js + Socket.IO + PostgreSQL + Redis).
 
 - `frontend` : client Vue 3 + Vite + Pinia + Socket.IO client
 - `backend` : API Express + Socket.IO + PostgreSQL + Redis
-- `compose.yaml` : stack complète (frontend, backend, postgres, redis)
-- `deploy/postgres/init-app-role.sh` : création du rôle PostgreSQL applicatif moins privilégié
+- `compose.yaml` : stack complète (gateway, frontend, backend, postgres, redis)
+- `deploy/postgres/init-app-role.sh` : création automatique du rôle PostgreSQL applicatif moins privilégié
+- `scripts/deploy.sh` : génération des secrets, création du réseau proxy et démarrage
 
 ## Développement local
 
@@ -48,39 +49,30 @@ Application disponible sur `http://localhost:3000`.
 
 ## Production Docker
 
-Créer le `.env` racine avec des secrets forts (URL-safe, ou encoder les caractères spéciaux dans les URLs), puis :
+Le déploiement initial est automatique :
 
 ```bash
-docker compose up --build -d
+./scripts/deploy.sh
 ```
 
-- Le frontend écoute désormais sur le port **8080** dans le conteneur (image Nginx non-root). Le reverse proxy externe doit cibler `cekikilami-frontend:8080`.
-- L'API est disponible derrière `/api` et Socket.IO derrière `/socket.io` via `nginx.conf`.
-- Les uploads sont persistés dans le volume `uploads_data`.
-- TLS doit être terminé par le proxy externe. Les en-têtes HSTS/CSP/Referrer-Policy sont posés par Nginx ; le proxy doit transmettre `X-Forwarded-Proto`.
-- Le backend fait confiance à un seul niveau de proxy (`TRUST_PROXY=1`) pour les rate limits.
+Le script :
 
-### Migration d'un volume PostgreSQL existant
+- génère un `.env` avec des secrets aléatoires s'il n'existe pas (et complète les clés manquantes) ;
+- crée le réseau Docker `proxy` s'il n'existe pas ;
+- construit et démarre PostgreSQL, Redis, le backend, le frontend et la passerelle Nginx ;
+- attend que `/health` réponde.
 
-Le script `docker-entrypoint-initdb.d` ne s'exécute que sur une base **neuve**. Pour un volume existant, exécuter une fois en tant que superutilisateur PostgreSQL :
+Aucune migration n'est nécessaire : sur un volume neuf, PostgreSQL crée le rôle applicatif `cekikilami` (non-superuser) et le backend initialise son schéma au démarrage. Pour repartir de zéro, utiliser `docker compose down -v` **avant** de relancer le script (destructif : supprime la base et les uploads).
 
-```sql
-CREATE ROLE cekikilami LOGIN PASSWORD 'mot-de-passe-fort' NOSUPERUSER NOCREATEDB NOCREATEROLE;
-ALTER DATABASE music_game OWNER TO cekikilami;
-ALTER SCHEMA public OWNER TO cekikilami;
-ALTER TABLE sessions OWNER TO cekikilami;
-ALTER TABLE players OWNER TO cekikilami;
-ALTER TABLE musics OWNER TO cekikilami;
-ALTER TABLE votes OWNER TO cekikilami;
-ALTER TABLE blind_test_answers OWNER TO cekikilami;
-ALTER SEQUENCE sessions_id_seq OWNER TO cekikilami;
-ALTER SEQUENCE players_id_seq OWNER TO cekikilami;
-ALTER SEQUENCE musics_id_seq OWNER TO cekikilami;
-ALTER SEQUENCE votes_id_seq OWNER TO cekikilami;
-ALTER SEQUENCE blind_test_answers_id_seq OWNER TO cekikilami;
-```
+### Accès et TLS
 
-Puis mettre à jour `APP_DB_PASSWORD` dans le `.env` et redémarrer la stack.
+- Par défaut, la passerelle est accessible sur `http://localhost:8080` (publiée sur `127.0.0.1`).
+- Pour une exposition directe en HTTP : `GATEWAY_BIND=0.0.0.0 GATEWAY_PORT=80 APP_URL=http://votre-domaine ./scripts/deploy.sh`.
+- Pour HTTPS, utiliser un reverse proxy TLS devant la stack :
+  - soit sur le réseau Docker `proxy`, en ciblant `cekikilami-gateway:8080` ;
+  - soit sur le port publié `127.0.0.1:8080`.
+  - relancer avec `APP_URL=https://votre-domaine ./scripts/deploy.sh` pour que CORS corresponde à l'origine publique.
+- La passerelle applique les en-têtes CSP/HSTS/Referrer-Policy, les limites de taille et le rate limiting Nginx. Le proxy TLS doit transmettre `X-Forwarded-Proto` et `X-Forwarded-For`.
 
 ### Redis
 
@@ -91,12 +83,16 @@ Redis est authentifié par `REDIS_PASSWORD` et reste **optionnel** : si Redis es
 ### Racine (`/.env`, utilisé par Compose)
 
 - `POSTGRES_ADMIN_USER` (défaut `postgres`)
-- `POSTGRES_PASSWORD` (obligatoire)
+- `POSTGRES_PASSWORD` (généré automatiquement)
 - `POSTGRES_DB` (défaut `music_game`)
 - `APP_DB_USER` (défaut `cekikilami`)
-- `APP_DB_PASSWORD` (obligatoire)
-- `REDIS_PASSWORD` (obligatoire)
-- `CORS_ORIGIN`
+- `APP_DB_PASSWORD` (généré automatiquement)
+- `REDIS_PASSWORD` (généré automatiquement)
+- `APP_URL` (origine publique, défaut `http://localhost:8080`)
+- `CORS_ORIGIN` (défaut : `APP_URL`)
+- `GATEWAY_BIND` (défaut `127.0.0.1`)
+- `GATEWAY_PORT` (défaut `8080`)
+- `TRUST_PROXY` (défaut `1`, la passerelle transmet un seul X-Forwarded-For résolu)
 - `VITE_API_URL` (défaut `/api`)
 - `VITE_SOCKET_URL` (vide = même origine)
 - `MAX_SESSIONS`

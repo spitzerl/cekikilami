@@ -223,11 +223,13 @@ Le critic de couverture a identifié six unités supplémentaires, enregistrées
 
 ### Actions de production restantes
 
-1. **Volume PostgreSQL existant** : exécuter la migration de rôle documentée dans `README.md` (le script `docker-entrypoint-initdb.d` ne s'exécute que sur une base neuve).
-2. **Reverse proxy** : cibler `cekikilami-frontend:8080` (au lieu de `:80`), terminer TLS et transmettre `X-Forwarded-Proto`.
-3. **Secrets** : créer le `.env` racine avec `POSTGRES_PASSWORD`, `APP_DB_PASSWORD` et `REDIS_PASSWORD` ; ne pas réutiliser les placeholders.
-4. **Sessions existantes** : les joueurs sans jeton devront rejoindre à nouveau ; les identités `localStorage` antérieures sont invalidées par design.
-5. **Rate limiting multi-instance** : les compteurs sont en mémoire. En cas de scale horizontal, utiliser un store partagé (Redis) pour `express-rate-limit` et les limites Socket.IO.
+Le déploiement initial est entièrement automatisé par `scripts/deploy.sh` : génération du `.env` et des secrets, création du réseau `proxy`, initialisation du rôle PostgreSQL et du schéma. **Aucune migration de volume n'est nécessaire pour l'instant.**
+
+1. **TLS / domaine** : la passerelle intégrée écoute sur `127.0.0.1:8080`. Pour HTTPS, placer un reverse proxy TLS devant elle (réseau `proxy`, cible `cekikilami-gateway:8080`) et relancer avec `APP_URL=https://votre-domaine`. Pour une exposition HTTP directe : `GATEWAY_BIND=0.0.0.0 GATEWAY_PORT=80`.
+2. **Secrets** : le script génère `POSTGRES_PASSWORD`, `APP_DB_PASSWORD` et `REDIS_PASSWORD`. Sauvegarder le `.env` (600) ; le perdre oblige à recréer les volumes ou à réinitialiser les mots de passe.
+3. **Sessions existantes** : les joueurs sans jeton devront rejoindre à nouveau ; les identités `localStorage` antérieures sont invalidées par design.
+4. **Rate limiting multi-instance** : les compteurs sont en mémoire. En cas de scale horizontal, utiliser un store partagé (Redis) pour `express-rate-limit` et les limites Socket.IO.
+5. **Réinitialisation** : `docker compose down -v` supprime la base et les uploads ; à utiliser uniquement pour repartir de zéro.
 
 ### Risques résiduels acceptés
 
