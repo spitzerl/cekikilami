@@ -3,6 +3,12 @@
 Toutes les évolutions notables de Cékikilami sont documentées ici.
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le versioning sémantique.
 
+## [1.0.0-beta.3] — 2026-11-24
+
+### Corrigé
+
+- Le réglage du volume s’applique désormais à tous les extraits musicaux de l’application, y compris ceux de la sélection et de la démo d’accueil.
+
 ## [1.0.0-beta.2] — 2026-11-24
 
 ### Modifié
