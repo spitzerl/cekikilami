@@ -168,7 +168,10 @@ export default class GameService {
     }
   }
 
-  scheduleHostDisconnect(code, delayMs = HOST_DISCONNECT_GRACE_MS) {
+  scheduleHostDisconnect(code, {
+    delayMs = HOST_DISCONNECT_GRACE_MS,
+    keepEmptyWaitingRoom = false,
+  } = {}) {
     this.cancelHostDisconnect(code);
     const timeoutId = setTimeout(async () => {
       try {
@@ -182,7 +185,9 @@ export default class GameService {
         const successor = pickNextHost(players, host.id);
         if (!successor) {
           // A waiting room without another player has no one to hand over to.
-          if (session.phase === 'waiting') {
+          // Keep it alive after an unexpected disconnect so the host can
+          // resume; an explicit leave still cleans the empty room up.
+          if (session.phase === 'waiting' && !keepEmptyWaitingRoom) {
             this.log(code, 'Host remained disconnected, deleting empty waiting room');
             await this.deleteSession(code, { reason: 'host-disconnect' });
           }
@@ -1398,7 +1403,9 @@ export default class GameService {
         "SELECT code FROM sessions WHERE phase = 'waiting' AND expires_at > NOW()"
       ).then((result) => result.rows);
       for (const session of waitingSessions) {
-        this.scheduleHostDisconnect(session.code);
+        // A restart disconnects every player: give them a chance to reconnect
+        // instead of deleting their waiting room during startup.
+        this.scheduleHostDisconnect(session.code, { keepEmptyWaitingRoom: true });
       }
     } catch (error) {
       console.error('Error recovering active sessions:', error);

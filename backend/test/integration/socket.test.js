@@ -81,6 +81,25 @@ test('a waiting host that disconnects alone schedules room deletion', async () =
   assert.equal(result.rows[0].count, 0);
 });
 
+test('a waiting host that loses the connection keeps the room for a resume', async () => {
+  const created = await createSession(context.request, 'ReconnectingHost');
+  const socket = connectSocket(context.baseUrl, created.token);
+  await waitForEvent(socket, 'connect');
+  const statePromise = waitForEvent(socket, 'state:update');
+  socket.emit('join', { code: created.session.code });
+  await statePromise;
+
+  // Closing the transport mimics a closed tab or a network loss, which does
+  // not send an explicit disconnect packet.
+  socket.io.engine.close();
+
+  await new Promise((resolve) => setTimeout(resolve, 400));
+  const result = await pool.query('SELECT COUNT(*)::INTEGER AS count FROM sessions WHERE code = $1', [
+    created.session.code,
+  ]);
+  assert.equal(result.rows[0].count, 1);
+});
+
 test('a waiting host that disconnects transfers the lead to another player', async () => {
   const created = await createSession(context.request, 'LeavingHost');
   const guest = await joinSession(context.request, created.session.code, 'NextHost');

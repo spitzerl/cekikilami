@@ -123,12 +123,17 @@ export default function registerGameSocket(ioNamespace, gameService) {
       }
     });
 
-    socket.on('disconnect', async () => {
+    socket.on('disconnect', async (reason) => {
       const code = socket.code;
       const playerId = socket.playerId;
       const sessionId = socket.sessionId;
 
       if (!code || !playerId) return;
+
+      // A client that explicitly leaves (or joins another room) sends a
+      // disconnect packet. A closed tab or a network loss only closes the
+      // transport, so the room must survive long enough to be resumed.
+      const explicitLeave = reason === 'client namespace disconnect';
 
       try {
         const sockets = await ioNamespace.in(code).fetchSockets();
@@ -151,7 +156,9 @@ export default function registerGameSocket(ioNamespace, gameService) {
           const session = await Session.findByCode(code);
           if (session && player && session.host_player_id === player.id) {
             gameService.log(code, 'Host disconnected, starting host transfer grace period');
-            gameService.scheduleHostDisconnect(code);
+            gameService.scheduleHostDisconnect(code, {
+              keepEmptyWaitingRoom: !explicitLeave,
+            });
           }
 
           await gameService.broadcastState(code);
