@@ -15,7 +15,17 @@
             <AppIcon name="clock" :size="14" />
             {{ formatTime(remainingTime) }}
           </div>
-          <span :class="['header-readiness', allPlayersReady ? 'is-ready' : '']">
+          <span
+            class="header-readiness"
+            :aria-label="`${submittedTracks} morceaux envoyés sur ${expectedTracks} attendus`"
+          >
+            <AppIcon name="music" :size="13" />
+            {{ submittedTracks }}/{{ expectedTracks }} morceaux
+          </span>
+          <span
+            :class="['header-readiness', allPlayersReady ? 'is-ready' : '']"
+            :aria-label="`${readyCount} joueurs prêts sur ${activeCount} connectés`"
+          >
             <span :class="['status-dot', allPlayersReady ? 'is-online' : '']" aria-hidden="true"></span>
             {{ readyCount }}/{{ activeCount }} prêts
           </span>
@@ -300,6 +310,19 @@ const selectionSubtitle = computed(
 const activePlayers = computed(() =>
   (store.players || []).filter((p) => p.is_connected && !p.is_observer)
 );
+
+const participantPlayers = computed(() =>
+  (store.players || []).filter((p) => !p.is_observer)
+);
+
+const submittedTracks = computed(() =>
+  participantPlayers.value.reduce(
+    (total, player) => total + (store.musicCounts?.[player.id] || 0),
+    0
+  )
+);
+
+const expectedTracks = computed(() => participantPlayers.value.length * maxMusics.value);
 
 const readyCount = computed(() =>
   activePlayers.value.filter((p) => (store.musicCounts?.[p.id] || 0) >= maxMusics.value).length
