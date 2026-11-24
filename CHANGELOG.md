@@ -3,6 +3,12 @@
 Toutes les évolutions notables de Cékikilami sont documentées ici.
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le versioning sémantique.
 
+## [1.0.0-beta.7] — 2026-11-24
+
+### Modifié
+
+- Le logo Cékikilami demande désormais aussi confirmation avant de quitter l’écran des résultats, avec une option pour rester sur les scores.
+
 ## [1.0.0-beta.6] — 2026-11-24
 
 ### Modifié
