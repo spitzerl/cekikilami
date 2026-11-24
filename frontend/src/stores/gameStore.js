@@ -137,6 +137,26 @@ export const useGameStore = defineStore('game', {
         throw error;
       }
     },
+    async restoreSession() {
+      const token = this.token;
+      if (!token) return null;
+
+      try {
+        const { data } = await apiService.getCurrentSession();
+        // The player may have joined another game while this request was in flight.
+        if (this.token !== token) return null;
+        this.applyState(data);
+        return data;
+      } catch (error) {
+        if (this.token !== token) return null;
+        const status = error.response?.status;
+        if (status === 401 || status === 403 || status === 404) {
+          this.disconnectSocket();
+          this.clearIdentity();
+        }
+        return null;
+      }
+    },
     async updateConfig(config) {
       if (!this.session) return;
       const { data } = await apiService.updateConfig(this.session.code, config);

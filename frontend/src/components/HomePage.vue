@@ -38,6 +38,32 @@
         </div>
 
         <div class="console reveal-late" role="region" aria-label="Créer ou rejoindre un salon">
+          <div v-if="resumable" class="console-resume">
+            <div class="console-resume-head">
+              <span class="status-dot is-online" aria-hidden="true"></span>
+              <div class="console-resume-copy">
+                <p class="lobby-kicker">{{ resumableStatus }}</p>
+                <p class="console-resume-title">
+                  Salon <span class="mono">{{ resumable.session.code }}</span>
+                </p>
+                <p class="console-resume-sub">
+                  Vous jouez en tant que <strong>{{ resumable.player.name }}</strong>.
+                </p>
+              </div>
+            </div>
+            <button type="button" class="btn btn-primary btn-block" @click="resumeGame">
+              <AppIcon name="play" :size="16" />
+              {{ resumeLabel }}
+            </button>
+            <button type="button" class="console-resume-leave" @click="forgetGame">
+              Quitter cette partie
+            </button>
+          </div>
+
+          <div v-if="resumable" class="console-sep" aria-hidden="true">
+            <span>ou</span>
+          </div>
+
           <Transition name="console-step" mode="out-in" @after-enter="focusStep">
             <form
               v-if="step === 'identity'"
@@ -244,7 +270,7 @@
 </template>
 
 <script setup>
-import { ref, nextTick, onMounted, onUnmounted, watch } from 'vue';
+import { computed, ref, nextTick, onMounted, onUnmounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useGameStore } from '../stores/gameStore';
 import AppIcon from './AppIcon.vue';
@@ -261,6 +287,50 @@ const pseudoInput = ref(null);
 const codeInput = ref(null);
 const error = ref(null);
 const showHelp = ref(false);
+const resumable = ref(null);
+
+const phasePaths = {
+  waiting: '',
+  selection: '/selection',
+  voting: '/voting',
+  results: '/results',
+};
+
+const phaseLabels = {
+  waiting: 'Salon en attente',
+  selection: 'Sélection en cours',
+  voting: 'Partie en cours',
+  results: 'Résultats disponibles',
+};
+
+const resumableStatus = computed(
+  () => phaseLabels[resumable.value?.session?.phase] || 'Partie en cours'
+);
+
+const resumeLabel = computed(
+  () => (resumable.value?.session?.phase === 'results' ? 'Revoir les résultats' : 'Reprendre la partie')
+);
+
+const restoreStoredGame = async () => {
+  const data = await store.restoreSession();
+  if (!data?.session || !data?.player) {
+    resumable.value = null;
+    return;
+  }
+  resumable.value = { session: data.session, player: data.player };
+};
+
+const resumeGame = () => {
+  if (!resumable.value) return;
+  const { code, phase } = resumable.value.session;
+  store.connectSocket(code);
+  router.push(`/game/${code}${phasePaths[phase] || ''}`);
+};
+
+const forgetGame = () => {
+  store.leaveSession();
+  resumable.value = null;
+};
 
 const clearError = () => {
   error.value = null;
@@ -390,6 +460,7 @@ watch(() => store.volume, (newVolume) => {
 onMounted(() => {
   window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
   window.addEventListener('appinstalled', handleAppInstalled);
+  void restoreStoredGame();
 });
 
 onUnmounted(() => {
@@ -411,7 +482,10 @@ const onCreate = async () => {
     return;
   }
   try {
-    if (store.session) store.leaveSession();
+    if (store.session) {
+      store.leaveSession();
+      resumable.value = null;
+    }
     const { session } = await store.createSession(name);
     store.connectSocket(session.code);
     router.push(`/game/${session.code}`);
@@ -429,7 +503,10 @@ const onJoin = async () => {
     return;
   }
   try {
-    if (store.session && store.session.code !== code) store.leaveSession();
+    if (store.session && store.session.code !== code) {
+      store.leaveSession();
+      resumable.value = null;
+    }
     await store.joinSession(code, pseudo.value.trim());
     store.connectSocket(code);
     router.push(`/game/${code}`);
