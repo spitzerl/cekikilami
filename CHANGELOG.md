@@ -3,6 +3,12 @@
 Toutes les évolutions notables de Cékikilami sont documentées ici.
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le versioning sémantique.
 
+## [1.0.0-beta.4] — 2026-11-24
+
+### Modifié
+
+- Les notifications de connexion sont réduites à l’essentiel : les connexions et déconnexions des autres joueurs ne sont plus annoncées, et une perte de connexion n’est signalée qu’après quelques secondes, sans message lors de la reconnexion.
+
 ## [1.0.0-beta.3] — 2026-11-24
 
 ### Corrigé
