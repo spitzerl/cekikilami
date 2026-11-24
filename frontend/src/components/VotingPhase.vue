@@ -253,10 +253,6 @@
                   <h2 class="panel-title">Blind test</h2>
                   <p class="panel-sub">Devinez le titre pendant l’écoute.</p>
                 </div>
-                <div class="timer" role="timer" :aria-label="`Temps restant pour le blind test : ${remainingTime} secondes`">
-                  <AppIcon name="clock" :size="14" />
-                  {{ remainingTime }} s
-                </div>
               </div>
 
               <div v-if="isProposer" class="callout callout-accent" style="margin-bottom: 16px">
