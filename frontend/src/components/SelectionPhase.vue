@@ -6,28 +6,36 @@
       :step="2"
     >
       <template #actions>
-        <div class="header-status">
-          <div
-            :class="['timer', remainingTime < 20 ? 'is-urgent' : '']"
+        <div class="selection-status" role="group" aria-label="État de la sélection">
+          <span
+            :class="['status-chip', 'is-timer', remainingTime < 20 ? 'is-urgent' : '']"
             role="timer"
             :aria-label="`Temps restant : ${formatTime(remainingTime)}`"
           >
             <AppIcon name="clock" :size="14" />
-            {{ formatTime(remainingTime) }}
-          </div>
-          <span
-            class="header-readiness"
-            :aria-label="`${submittedTracks} morceaux envoyés sur ${expectedTracks} attendus`"
-          >
-            <AppIcon name="music" :size="13" />
-            {{ submittedTracks }}/{{ expectedTracks }} morceaux
+            <span class="status-chip-value">{{ formatTime(remainingTime) }}</span>
           </span>
           <span
-            :class="['header-readiness', allPlayersReady ? 'is-ready' : '']"
+            class="status-chip"
+            :title="`${submittedTracks} morceaux envoyés sur ${expectedTracks} attendus`"
+            :aria-label="`${submittedTracks} morceaux envoyés sur ${expectedTracks} attendus`"
+          >
+            <AppIcon name="music" :size="14" />
+            <span>
+              <span class="status-chip-value">{{ submittedTracks }}/{{ expectedTracks }}</span>
+              morceaux
+            </span>
+          </span>
+          <span
+            :class="['status-chip', allPlayersReady ? 'is-ready' : '']"
+            :title="`${readyCount} joueurs prêts sur ${activeCount} connectés`"
             :aria-label="`${readyCount} joueurs prêts sur ${activeCount} connectés`"
           >
             <span :class="['status-dot', allPlayersReady ? 'is-online' : '']" aria-hidden="true"></span>
-            {{ readyCount }}/{{ activeCount }} prêts
+            <span>
+              <span class="status-chip-value">{{ readyCount }}/{{ activeCount }}</span>
+              prêts
+            </span>
           </span>
         </div>
         <button
