@@ -157,11 +157,12 @@
             <div v-for="music in store.musics" :key="music.id" class="row">
               <div class="media-row">
                 <img
-                  v-if="music.cover_url"
-                  :src="music.cover_url"
+                  v-if="music.cover_url && !isCoverFailed(music.id)"
+                  :src="formatCoverUrl(music.cover_url)"
                   class="media-cover"
                   :alt="`Pochette de ${music.title}`"
                   loading="lazy"
+                  @error="markCoverFailed(music.id)"
                 />
                 <span v-else class="media-cover media-cover-fallback">
                   <AppIcon name="music" :size="18" />
@@ -229,6 +230,11 @@ const router = useRouter();
 const store = useGameStore();
 
 const isHost = computed(() => store.isHost);
+
+const failedCovers = ref(new Set());
+const formatCoverUrl = (url) => (url ? url.replace(/^http:\/\//i, 'https://') : '');
+const isCoverFailed = (id) => failedCovers.value.has(id);
+const markCoverFailed = (id) => failedCovers.value.add(id);
 
 const podium = computed(() => store.ranking.slice(0, 3));
 

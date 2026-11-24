@@ -8,6 +8,7 @@ import {
 } from '../../src/security/tokens.js';
 import {
   isAllowedLocalUploadPath,
+  normalizeCoverUrl,
   requireAudioUrl,
   requireCoverUrl,
 } from '../../src/security/media.js';
@@ -72,6 +73,19 @@ test('media allowlist accepts Deezer CDN URLs only', () => {
   assert.throws(() => requireAudioUrl('https://cdns-preview-e.dzcdn.net:8443/a.mp3'), /port/);
   assert.throws(() => requireAudioUrl('https://user:pass@cdns-preview-e.dzcdn.net/a.mp3'), /identifiants/);
   assert.throws(() => requireCoverUrl('https://cdns-preview-e.dzcdn.net/a.mp3'), /pochette Deezer/);
+});
+
+test('stored covers are upgraded to HTTPS or rejected', () => {
+  assert.equal(
+    normalizeCoverUrl('http://e-cdns-images.dzcdn.net/images/cover/abc/250x250.jpg'),
+    'https://e-cdns-images.dzcdn.net/images/cover/abc/250x250.jpg'
+  );
+  assert.equal(
+    normalizeCoverUrl('https://cdn-images.dzcdn.net/images/cover/abc/250x250.jpg'),
+    'https://cdn-images.dzcdn.net/images/cover/abc/250x250.jpg'
+  );
+  assert.equal(normalizeCoverUrl('https://example.com/cover.jpg'), null);
+  assert.equal(normalizeCoverUrl(null), null);
 });
 
 test('local upload paths are tightly constrained', () => {

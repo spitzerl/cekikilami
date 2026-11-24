@@ -16,7 +16,11 @@ import {
   requireNonEmptyString,
   requirePlayerName,
 } from '../security/validation.js';
-import { requireCoverUrl, requireMusicSource } from '../security/media.js';
+import {
+  normalizeCoverUrl,
+  requireCoverUrl,
+  requireMusicSource,
+} from '../security/media.js';
 import {
   CONFIG_BOUNDS,
   DEEZER,
@@ -59,7 +63,7 @@ function sanitizeOwnMusic(music) {
     title: music.title,
     artist: music.artist,
     file_path: music.file_path,
-    cover_url: music.cover_url,
+    cover_url: normalizeCoverUrl(music.cover_url),
     created_at: music.created_at,
   };
 }
@@ -417,7 +421,7 @@ export default class GameService {
         } else if (revealTrackInfo) {
           currentMusic.title = currentTrack.title;
           currentMusic.artist = currentTrack.artist;
-          currentMusic.cover_url = currentTrack.cover_url;
+          currentMusic.cover_url = normalizeCoverUrl(currentTrack.cover_url);
         }
 
         if (status === 'revelation' && isReveal) {
@@ -476,7 +480,10 @@ export default class GameService {
       return {
         ...base,
         players: ranking,
-        musics,
+        musics: musics.map((music) => ({
+          ...music,
+          cover_url: normalizeCoverUrl(music.cover_url),
+        })),
         votes,
         ranking,
         player: selfRanked,

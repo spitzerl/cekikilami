@@ -108,9 +108,10 @@
             <template v-if="hasTrackInfo">
               <div class="artwork artwork-compact">
                 <img
-                  v-if="store.currentMusic?.cover_url"
-                  :src="store.currentMusic.cover_url"
+                  v-if="store.currentMusic?.cover_url && !coverFailed"
+                  :src="formatCoverUrl(store.currentMusic.cover_url)"
                   :alt="`Pochette de ${store.currentMusic?.title}`"
+                  @error="coverFailed = true"
                 />
                 <span v-else class="artwork-fallback">
                   <AppIcon name="music" :size="34" :stroke-width="1.25" />
@@ -150,7 +151,12 @@
             </span>
             <template v-if="hasTrackInfo">
               <div class="artwork">
-                <img v-if="store.currentMusic?.cover_url" :src="store.currentMusic.cover_url" :alt="`Pochette de ${store.currentMusic?.title}`" />
+                <img
+                  v-if="store.currentMusic?.cover_url && !coverFailed"
+                  :src="formatCoverUrl(store.currentMusic.cover_url)"
+                  :alt="`Pochette de ${store.currentMusic?.title}`"
+                  @error="coverFailed = true"
+                />
                 <span v-else class="artwork-fallback"><AppIcon name="music" :size="40" :stroke-width="1.25" /></span>
               </div>
               <h2 class="stage-title">{{ store.currentMusic.title }}</h2>
@@ -344,6 +350,9 @@ let timerInterval = null;
 const selectedVoteId = ref(null);
 const audioError = ref(false);
 const isAudioPlaying = ref(false);
+const coverFailed = ref(false);
+
+const formatCoverUrl = (url) => (url ? url.replace(/^http:\/\//i, 'https://') : '');
 
 const blindTestSelectedAnswer = ref(null);
 const blindTestSubmitting = ref(false);
@@ -748,6 +757,7 @@ onUnmounted(() => {
 watch(() => store.currentMusic?.id, () => {
   selectedVoteId.value = null;
   blindTestSelectedAnswer.value = null;
+  coverFailed.value = false;
 });
 
 watch([status, () => store.currentMusic?.id], ([newStatus]) => {
