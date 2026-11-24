@@ -359,7 +359,7 @@ const initSimulator = async () => {
   };
   mockAudio.value = new Audio(mockTrack.value.preview);
   mockAudio.value.loop = true;
-  mockAudio.value.volume = 0.4;
+  mockAudio.value.volume = store.volume;
   if (showHelp.value) {
     mockPlaying.value = true;
     mockAudio.value.play().catch(() => { mockPlaying.value = false; });
@@ -381,6 +381,10 @@ watch(showHelp, async (val) => {
 watch(mockPlaying, (playing) => {
   if (!mockAudio.value) return;
   playing ? mockAudio.value.play().catch(() => { mockPlaying.value = false; }) : mockAudio.value.pause();
+});
+
+watch(() => store.volume, (newVolume) => {
+  if (mockAudio.value) mockAudio.value.volume = newVolume;
 });
 
 onMounted(() => {
