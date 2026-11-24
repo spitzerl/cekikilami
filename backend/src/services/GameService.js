@@ -405,6 +405,7 @@ export default class GameService {
         : trackInfoMode === 'after' && status === 'revelation';
       let currentMusic = null;
       let votesForCurrentMusic = null;
+      let voteProgress = null;
 
       if (currentTrack && status !== 'idle') {
         currentMusic = {
@@ -446,6 +447,10 @@ export default class GameService {
         }
 
         const currentVotes = votes.filter((vote) => vote.music_id === currentTrack.id);
+        voteProgress = {
+          cast: new Set(currentVotes.map((vote) => vote.voter_id)).size,
+          total: players.filter((player) => !player.is_observer && player.is_connected).length,
+        };
         if (status === 'voting' && session.show_vote_count) {
           const voteCounts = {};
           for (const player of players) voteCounts[player.id] = 0;
@@ -470,6 +475,7 @@ export default class GameService {
         players: votingPlayers,
         currentMusic,
         votes: votesForCurrentMusic,
+        voteProgress,
         player: selfId ? (votingPlayers.find((player) => player.id === selfId) || null) : null,
       };
     }

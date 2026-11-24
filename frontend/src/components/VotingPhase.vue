@@ -473,12 +473,18 @@ const advanceSubphase = async () => {
 };
 
 const totalVotesCast = computed(() => {
+  if (store.voteProgress && Number.isFinite(store.voteProgress.cast)) {
+    return store.voteProgress.cast;
+  }
   if (!store.votes) return 0;
   if (Array.isArray(store.votes)) return store.votes.length;
   return Object.values(store.votes).reduce((sum, count) => sum + count, 0);
 });
 
 const totalEligibleVoters = computed(() => {
+  if (store.voteProgress && Number.isFinite(store.voteProgress.total)) {
+    return store.voteProgress.total;
+  }
   if (!store.players) return 0;
   return store.players.filter(p => !p.is_observer && p.is_connected).length;
 });
