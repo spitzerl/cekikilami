@@ -1,34 +1,43 @@
 <template>
   <div :class="['room-code', `room-code-${size}`, { 'is-revealed': revealed }]">
-    <span class="room-code-text">{{ code }}</span>
+    <button
+      type="button"
+      class="room-code-text"
+      :aria-label="revealed ? `Masquer le code ${code}` : `Afficher le code ${code}`"
+      :title="revealed ? 'Masquer le code' : 'Afficher le code'"
+      :aria-pressed="revealed"
+      @click="revealed = !revealed"
+    >
+      {{ code }}
+    </button>
     <span class="room-code-actions">
       <button
         type="button"
         class="room-code-btn"
-        :aria-label="revealed ? 'Masquer le code' : 'Afficher le code'"
-        :title="revealed ? 'Masquer le code' : 'Afficher le code'"
-        :aria-pressed="revealed"
-        @click="revealed = !revealed"
+        :class="{ 'is-done': copiedAction === 'code' }"
+        :aria-label="copiedAction === 'code' ? 'Code copié' : 'Copier le code du salon'"
+        :title="copiedAction === 'code' ? 'Code copié' : 'Copier le code du salon'"
+        @click="copyCode"
       >
-        <AppIcon :name="revealed ? 'eye-off' : 'eye'" :size="size === 'sm' ? 14 : 17" />
+        <AppIcon :name="copiedAction === 'code' ? 'check' : 'copy'" :size="size === 'sm' ? 13 : 16" />
       </button>
       <button
         type="button"
         class="room-code-btn"
-        :class="{ 'is-done': copied }"
-        :aria-label="copied ? 'Lien copié' : 'Copier le lien d’invitation'"
-        :title="copied ? 'Lien copié' : 'Copier le lien d’invitation'"
-        @click="copy"
+        :class="{ 'is-done': copiedAction === 'link' }"
+        :aria-label="copiedAction === 'link' ? 'Lien copié' : 'Copier le lien d’invitation'"
+        :title="copiedAction === 'link' ? 'Lien copié' : 'Copier le lien d’invitation'"
+        @click="copyLink"
       >
-        <AppIcon :name="copied ? 'check' : 'copy'" :size="size === 'sm' ? 13 : 16" />
+        <AppIcon :name="copiedAction === 'link' ? 'check' : 'link'" :size="size === 'sm' ? 13 : 16" />
       </button>
     </span>
-    <span class="sr-only" role="status">{{ copied ? 'Lien d’invitation copié.' : '' }}</span>
+    <span class="sr-only" role="status">{{ copiedMessage }}</span>
   </div>
 </template>
 
 <script setup>
-import { ref, watch } from 'vue';
+import { computed, onUnmounted, ref, watch } from 'vue';
 import AppIcon from './AppIcon.vue';
 
 const props = defineProps({
@@ -37,21 +46,41 @@ const props = defineProps({
 });
 
 const revealed = ref(false);
-const copied = ref(false);
+const copiedAction = ref(null);
+let copiedTimer = null;
+
+const copiedMessage = computed(() => {
+  if (copiedAction.value === 'code') return 'Code du salon copié.';
+  if (copiedAction.value === 'link') return 'Lien d’invitation copié.';
+  return '';
+});
+
+const clearCopiedTimer = () => {
+  if (copiedTimer) {
+    window.clearTimeout(copiedTimer);
+    copiedTimer = null;
+  }
+};
 
 watch(() => props.code, () => {
   revealed.value = false;
-  copied.value = false;
+  copiedAction.value = null;
+  clearCopiedTimer();
 });
 
-const copy = async () => {
-  revealed.value = true;
+const copyValue = async (value, action) => {
   try {
-    await navigator.clipboard.writeText(`${window.location.origin}/game/${props.code}`);
-    copied.value = true;
-    window.setTimeout(() => { copied.value = false; }, 2000);
+    await navigator.clipboard.writeText(value);
+    copiedAction.value = action;
+    clearCopiedTimer();
+    copiedTimer = window.setTimeout(() => { copiedAction.value = null; }, 2000);
   } catch {
     /* clipboard unavailable */
   }
 };
+
+const copyCode = () => copyValue(props.code, 'code');
+const copyLink = () => copyValue(`${window.location.origin}/game/${props.code}`, 'link');
+
+onUnmounted(clearCopiedTimer);
 </script>
