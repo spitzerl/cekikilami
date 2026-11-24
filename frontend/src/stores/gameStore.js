@@ -277,6 +277,7 @@ export const useGameStore = defineStore('game', {
       socketService.off('sound:play');
       socketService.off('player:kicked');
       socketService.off('session:deleted');
+      socketService.off('game:error');
       socketService.off('connect');
       socketService.off('disconnect');
       socketService.off('connect_error');
@@ -307,7 +308,24 @@ export const useGameStore = defineStore('game', {
       });
 
       socketService.on('connect_error', (error) => {
-        this.addNotification(error?.message || 'Connexion refusée par le serveur', 'error');
+        const message = error?.message || 'Connexion refusée par le serveur';
+        this.addNotification(message, 'error');
+
+        // The player row no longer exists (kicked, session reaped, database
+        // reset). Retrying forever would leave the page stuck on stale data.
+        if (/Jeton joueur invalide|Authentification requise/.test(message)) {
+          this.leaveSession();
+          if (window.location.pathname !== '/') window.location.href = '/';
+        }
+      });
+
+      socketService.on('game:error', ({ message } = {}) => {
+        if (!message) return;
+        this.addNotification(message, 'error');
+        if (message === 'Session introuvable') {
+          this.leaveSession();
+          if (window.location.pathname !== '/') window.location.href = '/';
+        }
       });
 
       socketService.on('player:kicked', () => {
