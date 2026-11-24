@@ -1003,7 +1003,11 @@ export default class GameService {
       // Bots vote as soon as the ballot opens so the host never waits for
       // them before skipping the round. The single broadcast below carries
       // the updated vote progress to every client.
-      await this.placeBotVotes(code, musicIndex, { broadcast: false });
+      try {
+        await this.placeBotVotes(code, musicIndex, { broadcast: false });
+      } catch (error) {
+        this.log(code, `Bot vote placement failed: ${error.message}`);
+      }
     }
 
     await this.broadcastState(code);
@@ -1395,7 +1399,11 @@ export default class GameService {
           });
 
           if (status === 'voting') {
-            await this.placeBotVotes(code, index);
+            try {
+              await this.placeBotVotes(code, index);
+            } catch (error) {
+              this.log(code, `Recovered bot vote placement failed: ${error.message}`);
+            }
           }
         }
       }
