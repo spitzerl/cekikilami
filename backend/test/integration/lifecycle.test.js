@@ -8,6 +8,7 @@ import {
   joinSession,
   resetDatabase,
   testAudioBuffer,
+  testTinyAudioBuffer,
 } from '../helpers/app.js';
 import pool from '../../src/config/database.js';
 import { APP_VERSION } from '../../src/config/version.js';
@@ -249,7 +250,7 @@ test('bots vote as soon as the ballot opens', async () => {
         }],
       }), { status: 200, headers: { 'content-type': 'application/json' } });
     }
-    return new Response(testAudioBuffer(), {
+    return new Response(testTinyAudioBuffer(), {
       status: 200,
       headers: { 'content-type': 'audio/mpeg' },
     });
