@@ -3,6 +3,12 @@
 Toutes les évolutions notables de Cékikilami sont documentées ici.
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le versioning sémantique.
 
+## [1.0.0-beta.11] — 2026-11-25
+
+### Modifié
+
+- La barre d’état de la sélection aligne le chrono, les morceaux envoyés et les joueurs prêts dans des pastilles de même forme : compteurs mis en avant, état « prêts » en vert et bouton « Passer au vote » désactivé plus discret.
+
 ## [1.0.0-beta.10] — 2026-11-24
 
 ### Ajouté
