@@ -10,10 +10,10 @@
   <!-- Arriving via an invite link without a player identity yet -->
   <div v-else-if="!store.player || store.player.session_id !== store.session?.id" class="home">
     <header class="home-top shell">
-      <span class="brand">
+      <RouterLink to="/" class="brand brand-link" aria-label="Cékikilami, accueil">
         <span class="brand-mark" aria-hidden="true"></span>
         Cékikilami
-      </span>
+      </RouterLink>
       <span class="spacer"></span>
       <ThemeToggle />
       <RouterLink to="/" class="text-link">Accueil</RouterLink>

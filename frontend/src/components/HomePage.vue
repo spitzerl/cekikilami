@@ -1,13 +1,13 @@
 <template>
   <div class="home">
     <header class="home-top shell">
-      <span class="brand">
+      <RouterLink to="/" class="brand brand-link" aria-label="Cékikilami, accueil">
         <span class="brand-mark" aria-hidden="true"></span>
         Cékikilami
         <span class="version-badge" :title="`Version ${APP_VERSION}`">
           {{ APP_CHANNEL === 'beta' ? APP_CHANNEL_LABEL : `v${APP_VERSION}` }}
         </span>
-      </span>
+      </RouterLink>
       <span class="spacer"></span>
       <ThemeToggle />
       <button
