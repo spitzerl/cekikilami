@@ -23,6 +23,9 @@ export default {
   getSessionSummary(code) {
     return api.get(`/sessions/${code}/summary`);
   },
+  getCurrentSession() {
+    return api.get('/sessions/current');
+  },
   getSession(code) {
     return api.get(`/sessions/${code}`);
   },

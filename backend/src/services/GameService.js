@@ -487,6 +487,20 @@ export default class GameService {
     return this.buildStateForPlayer(data, playerId);
   }
 
+  async getCurrentSession(playerId) {
+    const player = await Player.findById(playerId);
+    if (!player) throw httpError(404, 'Joueur introuvable');
+
+    const session = await Session.findById(player.session_id);
+    if (!session) throw httpError(404, 'Session introuvable');
+
+    return {
+      session: publicSession(session),
+      player: sanitizePlayer(player),
+      serverTime: new Date().toISOString(),
+    };
+  }
+
   async getSessionSummary(code) {
     const normalizedCode = normalizeSessionCode(code);
     const session = await Session.findByCode(normalizedCode);

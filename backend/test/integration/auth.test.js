@@ -73,6 +73,32 @@ test('join issues per-player tokens and only the matching token can reconnect', 
   assert.match(takeover.body.error, /déjà utilisé/);
 });
 
+test('the current session endpoint lets a player resume an ongoing game', async () => {
+  const created = await createSession(context.request, 'Host');
+  const guest = await joinSession(context.request, created.session.code, 'Guest');
+
+  await context.request.get('/api/sessions/current').expect(401);
+
+  const current = await context.request
+    .get('/api/sessions/current')
+    .set(auth(guest.token))
+    .expect(200);
+  assert.equal(current.body.session.code, created.session.code);
+  assert.equal(current.body.player.id, guest.player.id);
+  assert.equal(current.body.player.name, 'Guest');
+
+  await context.request
+    .post(`/api/sessions/${created.session.code}/start-selection`)
+    .set(auth(created.token))
+    .expect(200);
+
+  const running = await context.request
+    .get('/api/sessions/current')
+    .set(auth(guest.token))
+    .expect(200);
+  assert.equal(running.body.session.phase, 'selection');
+});
+
 test('guest calls to host-only lifecycle routes are rejected', async () => {
   const created = await createSession(context.request, 'Host');
   const guest = await joinSession(context.request, created.session.code, 'Guest');
