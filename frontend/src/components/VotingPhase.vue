@@ -108,9 +108,10 @@
             <template v-if="hasTrackInfo">
               <div class="artwork artwork-compact">
                 <img
-                  v-if="store.currentMusic?.cover_url"
-                  :src="store.currentMusic.cover_url"
+                  v-if="store.currentMusic?.cover_url && !coverFailed"
+                  :src="formatCoverUrl(store.currentMusic.cover_url)"
                   :alt="`Pochette de ${store.currentMusic?.title}`"
+                  @error="coverFailed = true"
                 />
                 <span v-else class="artwork-fallback">
                   <AppIcon name="music" :size="34" :stroke-width="1.25" />
@@ -150,7 +151,12 @@
             </span>
             <template v-if="hasTrackInfo">
               <div class="artwork">
-                <img v-if="store.currentMusic?.cover_url" :src="store.currentMusic.cover_url" :alt="`Pochette de ${store.currentMusic?.title}`" />
+                <img
+                  v-if="store.currentMusic?.cover_url && !coverFailed"
+                  :src="formatCoverUrl(store.currentMusic.cover_url)"
+                  :alt="`Pochette de ${store.currentMusic?.title}`"
+                  @error="coverFailed = true"
+                />
                 <span v-else class="artwork-fallback"><AppIcon name="music" :size="40" :stroke-width="1.25" /></span>
               </div>
               <h2 class="stage-title">{{ store.currentMusic.title }}</h2>
@@ -253,10 +259,6 @@
                   <h2 class="panel-title">Blind test</h2>
                   <p class="panel-sub">Devinez le titre pendant l’écoute.</p>
                 </div>
-                <div class="timer" role="timer" :aria-label="`Temps restant pour le blind test : ${remainingTime} secondes`">
-                  <AppIcon name="clock" :size="14" />
-                  {{ remainingTime }} s
-                </div>
               </div>
 
               <div v-if="isProposer" class="callout callout-accent" style="margin-bottom: 16px">
@@ -348,6 +350,9 @@ let timerInterval = null;
 const selectedVoteId = ref(null);
 const audioError = ref(false);
 const isAudioPlaying = ref(false);
+const coverFailed = ref(false);
+
+const formatCoverUrl = (url) => (url ? url.replace(/^http:\/\//i, 'https://') : '');
 
 const blindTestSelectedAnswer = ref(null);
 const blindTestSubmitting = ref(false);
@@ -468,12 +473,18 @@ const advanceSubphase = async () => {
 };
 
 const totalVotesCast = computed(() => {
+  if (store.voteProgress && Number.isFinite(store.voteProgress.cast)) {
+    return store.voteProgress.cast;
+  }
   if (!store.votes) return 0;
   if (Array.isArray(store.votes)) return store.votes.length;
   return Object.values(store.votes).reduce((sum, count) => sum + count, 0);
 });
 
 const totalEligibleVoters = computed(() => {
+  if (store.voteProgress && Number.isFinite(store.voteProgress.total)) {
+    return store.voteProgress.total;
+  }
   if (!store.players) return 0;
   return store.players.filter(p => !p.is_observer && p.is_connected).length;
 });
@@ -752,6 +763,7 @@ onUnmounted(() => {
 watch(() => store.currentMusic?.id, () => {
   selectedVoteId.value = null;
   blindTestSelectedAnswer.value = null;
+  coverFailed.value = false;
 });
 
 watch([status, () => store.currentMusic?.id], ([newStatus]) => {

@@ -26,6 +26,7 @@ export const useGameStore = defineStore('game', {
     musics: [],
     currentMusic: null,
     votes: null,
+    voteProgress: null,
     musicCounts: null,
     ranking: [],
     error: null,
@@ -72,6 +73,7 @@ export const useGameStore = defineStore('game', {
       if (data.musics !== undefined) this.musics = data.musics || [];
       if (data.currentMusic !== undefined) this.currentMusic = data.currentMusic || null;
       if (data.votes !== undefined) this.votes = data.votes || null;
+      if (data.voteProgress !== undefined) this.voteProgress = data.voteProgress || null;
       if (data.musicCounts !== undefined) this.musicCounts = data.musicCounts || null;
       if (data.ranking !== undefined) this.ranking = data.ranking || [];
       if (data.player) {
@@ -112,6 +114,7 @@ export const useGameStore = defineStore('game', {
         this.musics = [];
         this.currentMusic = null;
         this.votes = null;
+        this.voteProgress = null;
         this.musicCounts = null;
         return data;
       }
@@ -131,6 +134,7 @@ export const useGameStore = defineStore('game', {
           this.musics = [];
           this.currentMusic = null;
           this.votes = null;
+          this.voteProgress = null;
           this.musicCounts = null;
           return data;
         }
@@ -225,6 +229,7 @@ export const useGameStore = defineStore('game', {
       this.musics = [];
       this.currentMusic = null;
       this.votes = null;
+      this.voteProgress = null;
       this.musicCounts = null;
       this.ranking = [];
       return data;
@@ -293,6 +298,7 @@ export const useGameStore = defineStore('game', {
         this.musics = state.musics || [];
         this.currentMusic = state.currentMusic || null;
         this.votes = state.votes || null;
+        this.voteProgress = state.voteProgress || null;
         this.musicCounts = state.musicCounts || null;
         if (state.ranking) this.ranking = state.ranking;
         if (state.player) {
@@ -381,6 +387,7 @@ export const useGameStore = defineStore('game', {
       this.musics = [];
       this.currentMusic = null;
       this.votes = null;
+      this.voteProgress = null;
       this.musicCounts = null;
       this.ranking = [];
     },

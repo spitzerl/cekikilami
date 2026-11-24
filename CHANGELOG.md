@@ -3,6 +3,25 @@
 Toutes les évolutions notables de Cékikilami sont documentées ici.
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le versioning sémantique.
 
+## [1.0.0-beta.10] — 2026-11-24
+
+### Ajouté
+
+- L’export des résultats propose désormais une variante claire et une variante sombre, avec un aperçu et un nom de fichier distincts.
+- L’affichage du code du salon permet de copier séparément le code ou le lien d’invitation, et le menu pause réutilise le même composant.
+- La sélection affiche en permanence le nombre de morceaux envoyés et le nombre de joueurs prêts.
+
+### Corrigé
+
+- Le timer n’est plus affiché deux fois pendant la phase d’écoute et de vote.
+- Les pochettes des morceaux sont normalisées en HTTPS et les anciennes URLs non valides sont remplacées par l’icône de secours, y compris sur une page servie en HTTPS.
+- Le bouton de révélation conserve le total des votes même lorsque l’affichage des votes en direct est désactivé.
+- Les bots votent dès l’ouverture du scrutin, ce qui permet à l’hôte de passer la manche sans attendre leur délai aléatoire.
+
+### Modifié
+
+- Le service worker n’intercepte plus les images et ressources servies par un autre domaine.
+
 ## [1.0.0-beta.9] — 2026-11-24
 
 ### Corrigé

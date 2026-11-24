@@ -8,6 +8,7 @@ import {
   joinSession,
   resetDatabase,
   testAudioBuffer,
+  testTinyAudioBuffer,
 } from '../helpers/app.js';
 import pool from '../../src/config/database.js';
 import { APP_VERSION } from '../../src/config/version.js';
@@ -219,6 +220,87 @@ test('bot generation is bounded and uses the cached Deezer helper', async () => 
 
   const result = await pool.query('SELECT COUNT(*)::INTEGER AS count FROM musics WHERE player_id = $1', [bot.id]);
   assert.equal(result.rows[0].count, 1);
+});
+
+test('bots vote as soon as the ballot opens', async () => {
+  const created = await createSession(context.request, 'Host');
+  const botState = await context.request
+    .post(`/api/sessions/${created.session.code}/bots`)
+    .set(auth(created.token))
+    .expect(200);
+  const bot = botState.body.players.find((player) => player.is_bot);
+  assert.ok(bot);
+
+  await context.request
+    .post(`/api/sessions/${created.session.code}/config`)
+    .set(auth(created.token))
+    .send({ maxMusicsPerPlayer: 1 })
+    .expect(200);
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url) => {
+    if (String(url).startsWith('https://api.deezer.com/')) {
+      return new Response(JSON.stringify({
+        data: [{
+          id: 123,
+          title: 'Bot Track',
+          artist: { name: 'Bot Artist' },
+          preview: 'https://cdns-preview-e.dzcdn.net/stream/bot.mp3',
+          album: { cover_medium: 'https://e-cdns-images.dzcdn.net/images/cover/bot.jpg' },
+        }],
+      }), { status: 200, headers: { 'content-type': 'application/json' } });
+    }
+    return new Response(testTinyAudioBuffer(), {
+      status: 200,
+      headers: { 'content-type': 'audio/mpeg' },
+    });
+  };
+
+  try {
+    clearDeezerCache();
+    await context.request
+      .post(`/api/sessions/${created.session.code}/start-selection`)
+      .set(auth(created.token))
+      .expect(200);
+
+    await context.request
+      .post(`/api/sessions/${created.session.code}/musics`)
+      .set(auth(created.token))
+      .send({
+        title: 'Host Track',
+        artist: 'Host Artist',
+        deezerPreviewUrl: 'https://cdns-preview-e.dzcdn.net/stream/host.mp3',
+      })
+      .expect(201);
+
+    await context.request
+      .post(`/api/sessions/${created.session.code}/start-voting`)
+      .set(auth(created.token))
+      .expect(200);
+    await context.request
+      .post(`/api/sessions/${created.session.code}/start-round`)
+      .set(auth(created.token))
+      .expect(200);
+
+    const voting = await context.request
+      .post(`/api/sessions/${created.session.code}/advance-round`)
+      .set(auth(created.token))
+      .expect(200);
+
+    assert.equal(voting.body.session.voting_status, 'voting');
+    assert.equal(voting.body.voteProgress.cast, 1);
+
+    const votes = await pool.query(
+      `SELECT voter_id FROM votes
+       WHERE session_id = (SELECT id FROM sessions WHERE code = $1)
+         AND music_id = $2`,
+      [created.session.code, voting.body.currentMusic.id]
+    );
+    assert.ok(votes.rows.some((row) => row.voter_id === bot.id));
+  } finally {
+    globalThis.fetch = originalFetch;
+    clearDeezerCache();
+  }
 });
 
 test('the reaper removes expired sessions', async () => {

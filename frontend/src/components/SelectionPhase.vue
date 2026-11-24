@@ -15,7 +15,17 @@
             <AppIcon name="clock" :size="14" />
             {{ formatTime(remainingTime) }}
           </div>
-          <span :class="['header-readiness', allPlayersReady ? 'is-ready' : '']">
+          <span
+            class="header-readiness"
+            :aria-label="`${submittedTracks} morceaux envoyés sur ${expectedTracks} attendus`"
+          >
+            <AppIcon name="music" :size="13" />
+            {{ submittedTracks }}/{{ expectedTracks }} morceaux
+          </span>
+          <span
+            :class="['header-readiness', allPlayersReady ? 'is-ready' : '']"
+            :aria-label="`${readyCount} joueurs prêts sur ${activeCount} connectés`"
+          >
             <span :class="['status-dot', allPlayersReady ? 'is-online' : '']" aria-hidden="true"></span>
             {{ readyCount }}/{{ activeCount }} prêts
           </span>
@@ -117,11 +127,12 @@
               <div v-for="track in tracks" :key="track.id" class="track-row">
                 <div class="media-row">
                   <img
-                    v-if="track.cover"
-                    :src="track.cover"
+                    v-if="track.cover && !isCoverFailed(track.cover)"
+                    :src="formatCoverUrl(track.cover)"
                     class="media-cover"
                     :alt="`Pochette de ${track.title}`"
                     loading="lazy"
+                    @error="markCoverFailed(track.cover)"
                   />
                   <span v-else class="media-cover media-cover-fallback">
                     <AppIcon name="music" :size="18" />
@@ -187,11 +198,12 @@
             <div v-for="music in store.musics" :key="music.id" class="row row-static">
               <div class="media-row">
                 <img
-                  v-if="music.cover_url"
-                  :src="music.cover_url"
+                  v-if="music.cover_url && !isCoverFailed(music.cover_url)"
+                  :src="formatCoverUrl(music.cover_url)"
                   class="media-cover"
                   :alt="`Pochette de ${music.title}`"
                   loading="lazy"
+                  @error="markCoverFailed(music.cover_url)"
                 />
                 <span v-else class="media-cover media-cover-fallback">
                   <AppIcon name="music" :size="18" />
@@ -253,7 +265,12 @@ let timerInterval = null;
 
 const previewUrl = ref(null);
 const isPlaying = ref(false);
+const failedCovers = ref(new Set());
 let audioObject = null;
+
+const formatCoverUrl = (url) => (url ? url.replace(/^http:\/\//i, 'https://') : '');
+const isCoverFailed = (url) => failedCovers.value.has(url);
+const markCoverFailed = (url) => failedCovers.value.add(url);
 
 const formatTime = (secs) => {
   const m = Math.floor(secs / 60), s = secs % 60;
@@ -293,6 +310,19 @@ const selectionSubtitle = computed(
 const activePlayers = computed(() =>
   (store.players || []).filter((p) => p.is_connected && !p.is_observer)
 );
+
+const participantPlayers = computed(() =>
+  (store.players || []).filter((p) => !p.is_observer)
+);
+
+const submittedTracks = computed(() =>
+  participantPlayers.value.reduce(
+    (total, player) => total + (store.musicCounts?.[player.id] || 0),
+    0
+  )
+);
+
+const expectedTracks = computed(() => participantPlayers.value.length * maxMusics.value);
 
 const readyCount = computed(() =>
   activePlayers.value.filter((p) => (store.musicCounts?.[p.id] || 0) >= maxMusics.value).length

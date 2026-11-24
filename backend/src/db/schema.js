@@ -123,6 +123,22 @@ export async function initSchema(pool) {
     ADD COLUMN IF NOT EXISTS file_size BIGINT DEFAULT 0
   `);
 
+  // Older rows may hold plain-HTTP or non-allowlisted cover URLs. Upgrade the
+  // safe Deezer links and drop the rest so the UI shows its fallback icon
+  // instead of a broken image blocked by the HTTPS page's CSP.
+  await pool.query(`
+    UPDATE musics
+    SET cover_url = regexp_replace(cover_url, '^http://', 'https://')
+    WHERE cover_url LIKE 'http://%'
+  `);
+
+  await pool.query(`
+    UPDATE musics
+    SET cover_url = NULL
+    WHERE cover_url IS NOT NULL
+      AND cover_url !~* '^https://(e-cdns-images|cdns-images|cdn-images)\\.dzcdn\\.net/'
+  `);
+
   await pool.query(`
     UPDATE sessions
     SET expires_at = COALESCE(expires_at, updated_at + INTERVAL '24 hours')
