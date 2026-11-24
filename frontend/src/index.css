@@ -728,6 +728,12 @@ img { display: block; }
   letter-spacing: -0.03em;
   text-decoration: none;
 }
+.brand-link {
+  color: var(--ink);
+  border-radius: var(--r-sm);
+  transition: opacity 0.15s ease;
+}
+.brand-link:hover { opacity: 0.78; }
 .brand-mark {
   position: relative;
   width: 14px;
@@ -1448,6 +1454,13 @@ img { display: block; }
 .dialog-footer { padding-top: 18px; }
 .dialog-footer .hint { margin-top: 8px; text-align: center; }
 .dialog-actions:last-child { border-bottom: 0; padding-bottom: 0; }
+.home-confirm-text {
+  padding: 18px 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--ink-2);
+}
+.home-confirm-hint { margin-top: 10px; text-align: center; }
 .settings-dialog { max-width: 520px; }
 .settings-dialog .settings-body { padding-top: 8px; }
 

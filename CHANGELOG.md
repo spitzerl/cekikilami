@@ -3,6 +3,24 @@
 Toutes les évolutions notables de Cékikilami sont documentées ici.
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le versioning sémantique.
 
+## [1.0.0-beta.7] — 2026-11-24
+
+### Modifié
+
+- Le logo Cékikilami demande désormais aussi confirmation avant de quitter l’écran des résultats, avec une option pour rester sur les scores.
+
+## [1.0.0-beta.6] — 2026-11-24
+
+### Modifié
+
+- Si l’hôte quitte le salon ou se déconnecte, le rôle d’hôte est désormais transféré automatiquement à un autre joueur, connecté en priorité, après un court délai. Le salon d’attente n’est supprimé que si aucun autre joueur ne peut reprendre la main.
+
+## [1.0.0-beta.5] — 2026-11-24
+
+### Ajouté
+
+- Le logo Cékikilami ouvre désormais la page d’accueil depuis toutes les pages de l’application. Pendant une partie ou dans le salon d’attente, une confirmation propose de rester sur place ou de retourner à l’accueil.
+
 ## [1.0.0-beta.4] — 2026-11-24
 
 ### Modifié

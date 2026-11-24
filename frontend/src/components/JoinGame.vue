@@ -1,10 +1,10 @@
 <template>
   <div class="home">
     <header class="home-top shell">
-      <span class="brand">
+      <RouterLink to="/" class="brand brand-link" aria-label="Cékikilami, accueil">
         <span class="brand-mark" aria-hidden="true"></span>
         Cékikilami
-      </span>
+      </RouterLink>
       <span class="spacer"></span>
       <RouterLink to="/" class="text-link">Accueil</RouterLink>
     </header>
