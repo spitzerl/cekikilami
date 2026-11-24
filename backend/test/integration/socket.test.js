@@ -7,6 +7,7 @@ import {
   createSession,
   createTestServer,
   joinSession,
+  mockDeezerAudioFetch,
   resetDatabase,
   waitForEvent,
 } from '../helpers/app.js';
@@ -108,6 +109,96 @@ test('a waiting host that disconnects transfers the lead to another player', asy
   assert.equal(result.rows[0].host_player_id, guest.player.id);
   assert.equal(result.rows[0].host_name, 'NextHost');
   guestSocket.close();
+});
+
+test('a disconnected player with submitted tracks can reconnect and vote', async () => {
+  const restoreFetch = mockDeezerAudioFetch();
+  try {
+    const created = await createSession(context.request, 'Host');
+    const guest = await joinSession(context.request, created.session.code, 'Guest');
+    const code = created.session.code;
+
+    const hostSocket = connectSocket(context.baseUrl, created.token);
+    await waitForEvent(hostSocket, 'connect');
+    const hostState = waitForEvent(hostSocket, 'state:update');
+    hostSocket.emit('join', { code });
+    await hostState;
+
+    const guestSocket = connectSocket(context.baseUrl, guest.token);
+    await waitForEvent(guestSocket, 'connect');
+    const guestState = waitForEvent(guestSocket, 'state:update');
+    guestSocket.emit('join', { code });
+    await guestState;
+
+    await context.request
+      .post(`/api/sessions/${code}/config`)
+      .set(auth(created.token))
+      .send({ maxMusicsPerPlayer: 1, autoAdvance: false })
+      .expect(200);
+    await context.request
+      .post(`/api/sessions/${code}/start-selection`)
+      .set(auth(created.token))
+      .expect(200);
+
+    for (const [token, title] of [[created.token, 'Host Track'], [guest.token, 'Guest Track']]) {
+      await context.request
+        .post(`/api/sessions/${code}/musics`)
+        .set(auth(token))
+        .send({
+          title,
+          artist: 'Artist',
+          deezerPreviewUrl: 'https://cdns-preview-e.dzcdn.net/stream/c-e12ac87d5b1b748f06f7ad86903f262b-6.mp3',
+        })
+        .expect(201);
+    }
+
+    guestSocket.close();
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    const disconnected = await pool.query(
+      'SELECT is_connected FROM players WHERE id = $1',
+      [guest.player.id]
+    );
+    assert.equal(disconnected.rows[0].is_connected, false);
+
+    await context.request
+      .post(`/api/sessions/${code}/start-voting`)
+      .set(auth(created.token))
+      .expect(200);
+
+    const afterVotingStart = await pool.query(
+      'SELECT is_observer FROM players WHERE id = $1',
+      [guest.player.id]
+    );
+    assert.equal(afterVotingStart.rows[0].is_observer, false);
+
+    const reconnected = connectSocket(context.baseUrl, guest.token);
+    await waitForEvent(reconnected, 'connect');
+    const reconnectedState = waitForEvent(reconnected, 'state:update');
+    reconnected.emit('join', { code });
+    const state = await reconnectedState;
+    assert.equal(state.player.is_observer, false);
+
+    await context.request
+      .post(`/api/sessions/${code}/start-round`)
+      .set(auth(created.token))
+      .expect(200);
+    const voting = await context.request
+      .post(`/api/sessions/${code}/advance-round`)
+      .set(auth(created.token))
+      .expect(200);
+
+    await context.request
+      .post(`/api/sessions/${code}/votes`)
+      .set(auth(guest.token))
+      .send({ musicId: voting.body.currentMusic.id, guessedPlayerId: created.host.id })
+      .expect(200);
+
+    reconnected.close();
+    hostSocket.close();
+  } finally {
+    restoreFetch();
+  }
 });
 
 test('a host that disconnects during the game transfers the lead', async () => {
