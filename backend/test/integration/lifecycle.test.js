@@ -11,6 +11,7 @@ import {
 } from '../helpers/app.js';
 import pool from '../../src/config/database.js';
 import { APP_VERSION } from '../../src/config/version.js';
+import Player from '../../src/models/Player.js';
 import { clearDeezerCache } from '../../src/services/deezerService.js';
 
 let context;
@@ -143,6 +144,29 @@ test('joining is refused once a game has started', async () => {
     .post(`/api/sessions/${created.session.code}/join`)
     .send({ playerName: 'LateGuest' })
     .expect(409);
+});
+
+test('bots stay online when connection statuses are reset at boot', async () => {
+  const created = await createSession(context.request, 'Host');
+  await context.request
+    .post(`/api/sessions/${created.session.code}/bots`)
+    .set(auth(created.token))
+    .expect(200);
+
+  await Player.resetConnectionStatuses();
+
+  const result = await pool.query(
+    `SELECT p.is_bot, p.is_connected
+     FROM players p
+     JOIN sessions s ON s.id = p.session_id
+     WHERE s.code = $1
+     ORDER BY p.id`,
+    [created.session.code]
+  );
+  const host = result.rows.find((row) => !row.is_bot);
+  const bot = result.rows.find((row) => row.is_bot);
+  assert.equal(host.is_connected, false);
+  assert.equal(bot.is_connected, true);
 });
 
 test('bot generation is bounded and uses the cached Deezer helper', async () => {

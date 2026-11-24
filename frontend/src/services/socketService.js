@@ -1,7 +1,10 @@
 import { io } from 'socket.io-client';
 
+const HEARTBEAT_INTERVAL_MS = 120_000;
+
 let socket;
 let currentCode = null;
+let heartbeatInterval = null;
 
 const socketUrl = import.meta.env.VITE_SOCKET_URL || window.location.origin;
 
@@ -9,7 +12,22 @@ function tokenFromStorage() {
   return localStorage.getItem('music_game_token');
 }
 
+function startHeartbeat() {
+  stopHeartbeat();
+  heartbeatInterval = setInterval(() => {
+    if (socket?.connected) socket.emit('session:touch');
+  }, HEARTBEAT_INTERVAL_MS);
+}
+
+function stopHeartbeat() {
+  if (heartbeatInterval) {
+    clearInterval(heartbeatInterval);
+    heartbeatInterval = null;
+  }
+}
+
 function onConnect() {
+  startHeartbeat();
   if (socket && currentCode) {
     socket.emit('join', { code: currentCode });
   }
@@ -21,6 +39,8 @@ function connect() {
       transports: ['websocket', 'polling'],
       auth: (callback) => callback({ token: tokenFromStorage() }),
     });
+    socket.on('connect', startHeartbeat);
+    socket.on('disconnect', stopHeartbeat);
   }
   return socket;
 }
@@ -33,7 +53,10 @@ export default {
     const nextToken = token || tokenFromStorage();
 
     if (socket && socket.auth?.token !== nextToken) {
+      stopHeartbeat();
       socket.off('connect', onConnect);
+      socket.off('connect', startHeartbeat);
+      socket.off('disconnect', stopHeartbeat);
       socket.disconnect();
       socket = null;
     }
@@ -45,6 +68,8 @@ export default {
     activeSocket.auth = { token: nextToken };
     activeSocket.off('connect', onConnect);
     activeSocket.on('connect', onConnect);
+    activeSocket.off('disconnect', stopHeartbeat);
+    activeSocket.on('disconnect', stopHeartbeat);
     if (activeSocket.connected) onConnect();
   },
   on(event, callback) {
@@ -56,8 +81,11 @@ export default {
   },
   disconnect() {
     currentCode = null;
+    stopHeartbeat();
     if (!socket) return;
     socket.off('connect', onConnect);
+    socket.off('connect', startHeartbeat);
+    socket.off('disconnect', stopHeartbeat);
     socket.disconnect();
     socket = null;
   },

@@ -1,9 +1,10 @@
 import { hashToken } from '../security/tokens.js';
-import { RATE_LIMITS, TRUST_PROXY } from '../config/game.js';
+import { RATE_LIMITS, SESSION_TTLS, TRUST_PROXY } from '../config/game.js';
 import Player from '../models/Player.js';
 import Session from '../models/Session.js';
 
 const connectionAttempts = new Map();
+const authenticationFailures = new Map();
 
 function socketIp(socket) {
   if (TRUST_PROXY) {
@@ -35,6 +36,23 @@ function allowAttempt(map, key, limit, windowMs) {
   return true;
 }
 
+async function hasOtherPlayerSocket(ioNamespace, code, playerId, socketId) {
+  const sockets = await ioNamespace.in(code).fetchSockets();
+  return sockets.some((entry) => entry.playerId === playerId && entry.id !== socketId);
+}
+
+function sessionTtl(session) {
+  return SESSION_TTLS[session.phase] || SESSION_TTLS.waiting;
+}
+
+function rejectAuthentication(next, ip, message) {
+  if (!allowAttempt(authenticationFailures, ip, RATE_LIMITS.socketAuthFailuresPerMinute, 60_000)) {
+    next(new Error('Trop de tentatives d’authentification. Réessayez dans une minute.'));
+    return;
+  }
+  next(new Error(message));
+}
+
 export default function registerGameSocket(ioNamespace, gameService) {
   ioNamespace.use(async (socket, next) => {
     try {
@@ -46,13 +64,13 @@ export default function registerGameSocket(ioNamespace, gameService) {
 
       const token = socket.handshake.auth?.token;
       if (typeof token !== 'string' || !token || token.length > 200) {
-        next(new Error('Authentification requise'));
+        rejectAuthentication(next, ip, 'Authentification requise');
         return;
       }
 
       const player = await Player.findByTokenHash(hashToken(token));
       if (!player) {
-        next(new Error('Jeton joueur invalide'));
+        rejectAuthentication(next, ip, 'Jeton joueur invalide');
         return;
       }
 
@@ -67,6 +85,24 @@ export default function registerGameSocket(ioNamespace, gameService) {
 
   ioNamespace.on('connection', (socket) => {
     socket.joinAttempts = [];
+    socket.lastTouchAt = 0;
+
+    // An open game tab keeps its session alive even when no gameplay action is
+    // happening (for example while players chat on the results screen).
+    socket.on('session:touch', async () => {
+      const now = Date.now();
+      if (!socket.code || now - socket.lastTouchAt < 30_000) return;
+      socket.lastTouchAt = now;
+
+      try {
+        const session = await Session.findByCode(socket.code);
+        if (session && session.id === socket.sessionId) {
+          await Session.extendExpiry(socket.code, sessionTtl(session));
+        }
+      } catch (error) {
+        console.error('Session touch failed:', error);
+      }
+    });
 
     socket.on('join', async (payload) => {
       try {
@@ -94,6 +130,16 @@ export default function registerGameSocket(ioNamespace, gameService) {
         socket.join(sessionCode);
         socket.code = sessionCode;
 
+        // An active player proves the room is still in use. This also prevents
+        // the reaper from deleting a session while its players reconnect.
+        await Session.extendExpiry(sessionCode, sessionTtl(session));
+
+        // Cancel a scheduled host transfer as soon as the host is back, before
+        // the disconnect handler can race with this join.
+        if (session.host_player_id === socket.playerId) {
+          gameService.cancelHostDisconnect(sessionCode);
+        }
+
         const sockets = await ioNamespace.in(sessionCode).fetchSockets();
         const anotherSocketExists = sockets.some(
           (entry) => entry.playerId === socket.playerId && entry.id !== socket.id
@@ -109,9 +155,6 @@ export default function registerGameSocket(ioNamespace, gameService) {
               isConnected: true,
             });
           }
-          if (session.host_player_id === player.id) {
-            gameService.cancelHostDisconnect(sessionCode);
-          }
         }
 
         const state = await gameService.getState(sessionCode, socket.playerId);
@@ -123,39 +166,59 @@ export default function registerGameSocket(ioNamespace, gameService) {
       }
     });
 
-    socket.on('disconnect', async () => {
+    socket.on('disconnect', async (reason) => {
       const code = socket.code;
       const playerId = socket.playerId;
       const sessionId = socket.sessionId;
 
       if (!code || !playerId) return;
 
+      // A client that explicitly leaves (or joins another room) sends a
+      // disconnect packet. A closed tab or a network loss only closes the
+      // transport, so the room must survive long enough to be resumed.
+      const explicitLeave = reason === 'client namespace disconnect';
+
       try {
-        const sockets = await ioNamespace.in(code).fetchSockets();
-        const anotherSocketExists = sockets.some(
-          (entry) => entry.playerId === playerId && entry.id !== socket.id
+        const anotherSocketExists = await hasOtherPlayerSocket(
+          ioNamespace,
+          code,
+          playerId,
+          socket.id
         );
+        if (anotherSocketExists) return;
 
-        if (!anotherSocketExists) {
-          const player = await Player.updateConnectionStatus(playerId, false, sessionId);
-          gameService.log(code, `Player ${playerId} marked as disconnected`);
+        const player = await Player.updateConnectionStatus(playerId, false, sessionId);
 
-          if (player) {
-            ioNamespace.to(code).emit('player:status', {
-              playerId,
-              playerName: player.name,
-              isConnected: false,
-            });
-          }
-
-          const session = await Session.findByCode(code);
-          if (session && player && session.host_player_id === player.id) {
-            gameService.log(code, 'Host disconnected, starting host transfer grace period');
-            gameService.scheduleHostDisconnect(code);
-          }
-
-          await gameService.broadcastState(code);
+        // A reconnect can join the room while the previous update is in flight.
+        // Re-check before emitting the offline status or starting a host
+        // transfer, otherwise a short network blip can leave a connected
+        // player marked as offline and trigger the host grace period.
+        if (await hasOtherPlayerSocket(ioNamespace, code, playerId, socket.id)) {
+          await Player.updateConnectionStatus(playerId, true, sessionId);
+          gameService.cancelHostDisconnect(code);
+          gameService.log(code, `Player ${playerId} reconnected during disconnect handling`);
+          return;
         }
+
+        gameService.log(code, `Player ${playerId} marked as disconnected`);
+
+        if (player) {
+          ioNamespace.to(code).emit('player:status', {
+            playerId,
+            playerName: player.name,
+            isConnected: false,
+          });
+        }
+
+        const session = await Session.findByCode(code);
+        if (session && player && session.host_player_id === player.id) {
+          gameService.log(code, 'Host disconnected, starting host transfer grace period');
+          gameService.scheduleHostDisconnect(code, {
+            keepEmptyWaitingRoom: !explicitLeave,
+          });
+        }
+
+        await gameService.broadcastState(code);
       } catch (error) {
         console.error('Error handling disconnect:', error);
       }

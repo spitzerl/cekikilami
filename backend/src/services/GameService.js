@@ -168,7 +168,10 @@ export default class GameService {
     }
   }
 
-  scheduleHostDisconnect(code, delayMs = HOST_DISCONNECT_GRACE_MS) {
+  scheduleHostDisconnect(code, {
+    delayMs = HOST_DISCONNECT_GRACE_MS,
+    keepEmptyWaitingRoom = false,
+  } = {}) {
     this.cancelHostDisconnect(code);
     const timeoutId = setTimeout(async () => {
       try {
@@ -182,7 +185,9 @@ export default class GameService {
         const successor = pickNextHost(players, host.id);
         if (!successor) {
           // A waiting room without another player has no one to hand over to.
-          if (session.phase === 'waiting') {
+          // Keep it alive after an unexpected disconnect so the host can
+          // resume; an explicit leave still cleans the empty room up.
+          if (session.phase === 'waiting' && !keepEmptyWaitingRoom) {
             this.log(code, 'Host remained disconnected, deleting empty waiting room');
             await this.deleteSession(code, { reason: 'host-disconnect' });
           }
@@ -485,6 +490,20 @@ export default class GameService {
     const normalizedCode = normalizeSessionCode(code);
     const data = await this.loadSessionState(normalizedCode);
     return this.buildStateForPlayer(data, playerId);
+  }
+
+  async getCurrentSession(playerId) {
+    const player = await Player.findById(playerId);
+    if (!player) throw httpError(404, 'Joueur introuvable');
+
+    const session = await Session.findById(player.session_id);
+    if (!session) throw httpError(404, 'Session introuvable');
+
+    return {
+      session: publicSession(session),
+      player: sanitizePlayer(player),
+      serverTime: new Date().toISOString(),
+    };
   }
 
   async getSessionSummary(code) {
@@ -901,9 +920,12 @@ export default class GameService {
     for (const player of players) {
       const playerMusics = musics.filter((music) => music.player_id === player.id);
       const hasEnough = playerMusics.length >= session.max_musics_per_player;
-      if (!player.is_connected || !hasEnough) {
+      // A player who closed the tab can still come back during the game. Keep
+      // them active as long as they submitted enough tracks: being offline at
+      // the exact moment the vote starts must not lock them out for good.
+      if (!hasEnough) {
         await Player.setObserver(player.id, true, session.id);
-        this.log(code, `Player ${player.name} marked as observer (enough: ${hasEnough}, connected: ${player.is_connected})`);
+        this.log(code, `Player ${player.name} marked as observer (enough: ${hasEnough})`);
       } else {
         await Player.setObserver(player.id, false, session.id);
         activeMusics.push(...playerMusics);
@@ -1381,7 +1403,9 @@ export default class GameService {
         "SELECT code FROM sessions WHERE phase = 'waiting' AND expires_at > NOW()"
       ).then((result) => result.rows);
       for (const session of waitingSessions) {
-        this.scheduleHostDisconnect(session.code);
+        // A restart disconnects every player: give them a chance to reconnect
+        // instead of deleting their waiting room during startup.
+        this.scheduleHostDisconnect(session.code, { keepEmptyWaitingRoom: true });
       }
     } catch (error) {
       console.error('Error recovering active sessions:', error);
