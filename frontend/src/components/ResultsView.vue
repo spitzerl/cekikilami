@@ -194,6 +194,20 @@
           </div>
 
           <div style="padding: 18px 0">
+            <div class="seg" role="group" aria-label="Thème de l’image d’export" style="max-width: 260px; margin: 0 auto 14px">
+              <button
+                type="button"
+                :class="['seg-btn', exportVariant === 'dark' ? 'is-active' : '']"
+                :aria-pressed="exportVariant === 'dark'"
+                @click="exportVariant = 'dark'"
+              >Sombre</button>
+              <button
+                type="button"
+                :class="['seg-btn', exportVariant === 'light' ? 'is-active' : '']"
+                :aria-pressed="exportVariant === 'light'"
+                @click="exportVariant = 'light'"
+              >Clair</button>
+            </div>
             <div class="export-preview">
               <img :src="exportImageUrl" alt="Résumé des scores de la partie" />
             </div>
@@ -221,6 +235,7 @@
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useGameStore } from '../stores/gameStore';
+import { theme } from '../services/themeService';
 import { avatarUrl } from '../utils/avatar';
 import GameHeader from './GameHeader.vue';
 import AppIcon from './AppIcon.vue';
@@ -228,6 +243,71 @@ import AppIcon from './AppIcon.vue';
 const route = useRoute();
 const router = useRouter();
 const store = useGameStore();
+
+const EXPORT_PALETTES = {
+  light: {
+    backgroundStops: ['#fff8ed', '#f6ead9', '#eadfe9'],
+    glowPrimary: 'rgba(107, 60, 224, 0.16)',
+    glowSecondary: 'rgba(228, 86, 159, 0.10)',
+    ink: '#2e1b3f',
+    ink2: '#644f72',
+    ink3: '#6f5b7a',
+    divider: 'rgba(46, 27, 63, 0.16)',
+    panelFill: 'rgba(255, 248, 237, 0.9)',
+    panelBorder: 'rgba(46, 27, 63, 0.12)',
+    cardFill: 'rgba(255, 248, 237, 0.94)',
+    cardShadow: 'rgba(46, 27, 63, 0.12)',
+    badgeRing: 'rgba(255, 248, 237, 0.95)',
+    rankPillFill: 'rgba(46, 27, 63, 0.04)',
+    rankPillBorder: 'rgba(46, 27, 63, 0.1)',
+    rowDivider: 'rgba(46, 27, 63, 0.07)',
+    scoreAccent: '#5227c4',
+    avatarFallbackFill: 'rgba(46, 27, 63, 0.08)',
+    avatarFallbackInk: '#644f72',
+    avatarRing: 'rgba(255, 248, 237, 0.95)',
+    statsMusic: '#644f72',
+    statsDetective: '#2c7a6e',
+    statsSuspect: '#5227c4',
+    statsEmpty: '#6f5b7a',
+    footer: '#6f5b7a',
+    podiums: [
+      { accent: '#2b8ed6', border: 'rgba(43, 142, 214, 0.28)' },
+      { accent: '#6b3ce0', border: 'rgba(107, 60, 224, 0.40)' },
+      { accent: '#b8315f', border: 'rgba(228, 86, 159, 0.25)' },
+    ],
+  },
+  dark: {
+    backgroundStops: ['#1b1230', '#150f24', '#241a38'],
+    glowPrimary: 'rgba(155, 108, 255, 0.22)',
+    glowSecondary: 'rgba(255, 122, 194, 0.14)',
+    ink: '#f3eaff',
+    ink2: '#bdaed2',
+    ink3: '#9382a8',
+    divider: 'rgba(243, 234, 255, 0.16)',
+    panelFill: 'rgba(38, 26, 58, 0.82)',
+    panelBorder: 'rgba(243, 234, 255, 0.14)',
+    cardFill: 'rgba(42, 29, 66, 0.92)',
+    cardShadow: 'rgba(0, 0, 0, 0.35)',
+    badgeRing: 'rgba(21, 15, 36, 0.95)',
+    rankPillFill: 'rgba(243, 234, 255, 0.06)',
+    rankPillBorder: 'rgba(243, 234, 255, 0.16)',
+    rowDivider: 'rgba(243, 234, 255, 0.08)',
+    scoreAccent: '#c9adff',
+    avatarFallbackFill: 'rgba(243, 234, 255, 0.10)',
+    avatarFallbackInk: '#bdaed2',
+    avatarRing: 'rgba(21, 15, 36, 0.95)',
+    statsMusic: '#bdaed2',
+    statsDetective: '#57d6b3',
+    statsSuspect: '#c9adff',
+    statsEmpty: '#9382a8',
+    footer: '#9382a8',
+    podiums: [
+      { accent: '#5ec8ff', border: 'rgba(94, 200, 255, 0.32)' },
+      { accent: '#9b6cff', border: 'rgba(155, 108, 255, 0.45)' },
+      { accent: '#ff7ac2', border: 'rgba(255, 122, 194, 0.32)' },
+    ],
+  },
+};
 
 const isHost = computed(() => store.isHost);
 
@@ -372,7 +452,9 @@ const replay = async () => {
 
 const showExportModal = ref(false);
 const exportClose = ref(null);
-const exportImageUrl = ref('');
+const exportVariant = ref('dark');
+const exportImages = ref({ light: '', dark: '' });
+const exportImageUrl = computed(() => exportImages.value[exportVariant.value]);
 
 watch(showExportModal, async (open) => {
   document.body.style.overflow = open ? 'hidden' : '';
@@ -384,7 +466,7 @@ watch(showExportModal, async (open) => {
 
 const exportImageFilename = computed(() => {
   const code = store.session?.code || 'game';
-  return `cekikilami_scores_${code}.png`;
+  return `cekikilami_scores_${code}_${exportVariant.value}.png`;
 });
 
 const truncateText = (text, maxLength) => {
@@ -415,7 +497,7 @@ const loadAvatarImage = (seed) => {
   return promise;
 };
 
-const drawAvatar = (ctx, image, cx, cy, radius, fallback, ringColor = 'rgba(255, 248, 237, 0.95)') => {
+const drawAvatar = (ctx, image, cx, cy, radius, fallback, palette) => {
   ctx.save();
   ctx.beginPath();
   ctx.arc(cx, cy, radius, 0, Math.PI * 2);
@@ -428,9 +510,9 @@ const drawAvatar = (ctx, image, cx, cy, radius, fallback, ringColor = 'rgba(255,
     const height = image.height * scale;
     ctx.drawImage(image, cx - width / 2, cy - height / 2, width, height);
   } else {
-    ctx.fillStyle = 'rgba(46, 27, 63, 0.08)';
+    ctx.fillStyle = palette.avatarFallbackFill;
     ctx.fill();
-    ctx.fillStyle = '#644f72';
+    ctx.fillStyle = palette.avatarFallbackInk;
     ctx.font = `700 ${Math.max(9, Math.round(radius * 0.55))}px Archivo, system-ui, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -441,7 +523,7 @@ const drawAvatar = (ctx, image, cx, cy, radius, fallback, ringColor = 'rgba(255,
 
   ctx.beginPath();
   ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-  ctx.strokeStyle = ringColor;
+  ctx.strokeStyle = palette.avatarRing;
   ctx.lineWidth = 2;
   ctx.stroke();
 };
@@ -479,17 +561,11 @@ const drawGlowBlob = (ctx, x, y, r, color) => {
   ctx.fill();
 };
 
-const exportImage = async () => {
-  const ranking = store.ranking || [];
+const renderExportImage = (ranking, avatarImages, variant) => {
+  const palette = EXPORT_PALETTES[variant];
   const first = ranking[0];
   const second = ranking[1];
   const third = ranking[2];
-
-  const avatarImages = new Map();
-  await Promise.all(ranking.map(async (player) => {
-    const image = await loadAvatarImage(player.avatar_seed);
-    if (image) avatarImages.set(player.id, image);
-  }));
 
   const remainingPlayersCount = Math.max(0, ranking.length - 3);
   const panelHeight = Math.max(220, 85 + remainingPlayersCount * 40);
@@ -500,28 +576,27 @@ const exportImage = async () => {
   canvas.height = canvasHeight;
   const ctx = canvas.getContext('2d');
 
-  // Paper background
   const bgGrad = ctx.createRadialGradient(400, canvasHeight / 2, 50, 400, canvasHeight / 2, Math.max(600, canvasHeight));
-  bgGrad.addColorStop(0, '#fff8ed');
-  bgGrad.addColorStop(0.7, '#f6ead9');
-  bgGrad.addColorStop(1, '#eadfe9');
+  bgGrad.addColorStop(0, palette.backgroundStops[0]);
+  bgGrad.addColorStop(0.7, palette.backgroundStops[1]);
+  bgGrad.addColorStop(1, palette.backgroundStops[2]);
   ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, 800, canvasHeight);
 
-  drawGlowBlob(ctx, 130, 140, 300, 'rgba(107, 60, 224, 0.16)');
-  drawGlowBlob(ctx, 670, canvasHeight - 140, 300, 'rgba(228, 86, 159, 0.10)');
+  drawGlowBlob(ctx, 130, 140, 300, palette.glowPrimary);
+  drawGlowBlob(ctx, 670, canvasHeight - 140, 300, palette.glowSecondary);
 
   // Header
-  ctx.fillStyle = '#2e1b3f';
+  ctx.fillStyle = palette.ink;
   ctx.font = '800 38px Archivo, system-ui, -apple-system, sans-serif';
   ctx.fillText('CÉKIKILAMI', 50, 75);
 
-  ctx.fillStyle = '#644f72';
+  ctx.fillStyle = palette.ink2;
   ctx.font = '600 14px Archivo, system-ui, sans-serif';
   ctx.fillText(`Classement final — salon ${store.session?.code || ''}`, 50, 108);
 
   const dateStr = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  ctx.fillStyle = '#6f5b7a';
+  ctx.fillStyle = palette.ink3;
   ctx.font = '500 13px ui-monospace, monospace';
   ctx.textAlign = 'right';
   ctx.fillText(dateStr, 750, 108);
@@ -530,7 +605,7 @@ const exportImage = async () => {
   ctx.beginPath();
   ctx.moveTo(50, 132);
   ctx.lineTo(750, 132);
-  ctx.strokeStyle = 'rgba(46, 27, 63, 0.16)';
+  ctx.strokeStyle = palette.divider;
   ctx.lineWidth = 1;
   ctx.stroke();
 
@@ -549,10 +624,10 @@ const exportImage = async () => {
     if (!player) return;
 
     ctx.save();
-    ctx.shadowColor = 'rgba(46, 27, 63, 0.12)';
+    ctx.shadowColor = palette.cardShadow;
     ctx.shadowBlur = 26;
     ctx.shadowOffsetY = 12;
-    drawRoundedRect(ctx, x, y, w, h, radius, 'rgba(255, 248, 237, 0.94)', border, 1.5);
+    drawRoundedRect(ctx, x, y, w, h, radius, palette.cardFill, border, 1.5);
     ctx.restore();
 
     const avatarX = x + w / 2;
@@ -564,7 +639,7 @@ const exportImage = async () => {
       avatarY,
       26,
       initials(player.name),
-      'rgba(255, 248, 237, 0.95)'
+      palette
     );
 
     const badgeX = avatarX + 21;
@@ -573,7 +648,7 @@ const exportImage = async () => {
     ctx.arc(badgeX, badgeY, 11, 0, Math.PI * 2);
     ctx.fillStyle = accent;
     ctx.fill();
-    ctx.strokeStyle = 'rgba(255, 248, 237, 0.95)';
+    ctx.strokeStyle = palette.badgeRing;
     ctx.lineWidth = 2;
     ctx.stroke();
     ctx.fillStyle = '#fff';
@@ -584,12 +659,12 @@ const exportImage = async () => {
     ctx.textBaseline = 'alphabetic';
 
     if (rank === 1) {
-      ctx.fillStyle = '#6f5b7a';
+      ctx.fillStyle = palette.ink3;
       ctx.font = '600 9px Archivo, sans-serif';
       ctx.fillText('VAINQUEUR', avatarX, y + 86);
     }
 
-    ctx.fillStyle = '#2e1b3f';
+    ctx.fillStyle = palette.ink;
     ctx.font = '700 15px Archivo, system-ui, sans-serif';
     ctx.fillText(truncateText(player.name, player.is_bot ? 14 : 16), avatarX, y + h - 72);
 
@@ -597,39 +672,40 @@ const exportImage = async () => {
     ctx.fillStyle = accent;
     ctx.font = '700 26px ui-monospace, monospace';
     ctx.fillText(scoreText, avatarX - 12, y + h - 42);
-    ctx.fillStyle = '#644f72';
+    ctx.fillStyle = palette.ink2;
     ctx.font = '500 11px Archivo, sans-serif';
     ctx.fillText('pts', avatarX + (scoreText.length * 8), y + h - 42);
 
-    ctx.fillStyle = '#6f5b7a';
+    ctx.fillStyle = palette.ink3;
     ctx.font = '500 10px Archivo, sans-serif';
     ctx.fillText(podiumStats(player), avatarX, y + h - 16);
   };
 
+  const [secondStyle, firstStyle, thirdStyle] = palette.podiums;
   ctx.textAlign = 'center';
-  drawPodiumCard(110, 235, 180, 185, 18, second, 2, '#2b8ed6', 'rgba(43, 142, 214, 0.28)');
-  drawPodiumCard(310, 195, 180, 225, 20, first, 1, '#6b3ce0', 'rgba(107, 60, 224, 0.40)');
-  drawPodiumCard(510, 250, 180, 170, 16, third, 3, '#b8315f', 'rgba(228, 86, 159, 0.25)');
+  drawPodiumCard(110, 235, 180, 185, 18, second, 2, secondStyle.accent, secondStyle.border);
+  drawPodiumCard(310, 195, 180, 225, 20, first, 1, firstStyle.accent, firstStyle.border);
+  drawPodiumCard(510, 250, 180, 170, 16, third, 3, thirdStyle.accent, thirdStyle.border);
   ctx.textAlign = 'left';
 
-  drawRoundedRect(ctx, 50, 450, 700, panelHeight, 16, 'rgba(255, 248, 237, 0.9)', 'rgba(46, 27, 63, 0.12)', 1);
+  drawRoundedRect(ctx, 50, 450, 700, panelHeight, 16, palette.panelFill, palette.panelBorder, 1);
 
-  ctx.fillStyle = '#6f5b7a';
+  ctx.fillStyle = palette.ink3;
   ctx.font = '600 11px ui-monospace, monospace';
   ctx.fillText('Suite du classement', 70, 485);
 
   let yOffset = 515;
   if (ranking.length <= 3) {
-    ctx.fillStyle = '#6f5b7a';
+    ctx.fillStyle = palette.ink3;
     ctx.font = 'italic 13px Archivo, sans-serif';
     ctx.fillText('Aucun autre joueur', 70, 515);
   } else {
     for (let i = 3; i < ranking.length; i++) {
       const p = ranking[i];
 
-      drawRoundedRect(ctx, 70, yOffset - 16, 32, 22, 6, 'rgba(46, 27, 63, 0.04)', 'rgba(46, 27, 63, 0.1)', 1);
+      drawRoundedRect(ctx, 70, yOffset - 16, 32, 22, 6, palette.rankPillFill, palette.rankPillBorder, 1);
 
-      ctx.fillStyle = '#644f72';
+      ctx.fillStyle = palette.ink2;
       ctx.font = '600 11px ui-monospace, monospace';
       ctx.textAlign = 'center';
       ctx.fillText(`#${i + 1}`, 86, yOffset - 1);
@@ -641,17 +717,17 @@ const exportImage = async () => {
         yOffset - 5,
         12,
         initials(p.name),
-        'rgba(46, 27, 63, 0.12)'
+        palette
       );
 
-      ctx.fillStyle = '#2e1b3f';
+      ctx.fillStyle = palette.ink;
       ctx.font = '600 13px Archivo, system-ui, sans-serif';
       ctx.textAlign = 'left';
       let displayName = p.name;
       if (p.is_bot) displayName += ' (Bot)';
       ctx.fillText(truncateText(displayName, 14), 146, yOffset);
 
-      ctx.fillStyle = '#5227c4';
+      ctx.fillStyle = palette.scoreAccent;
       ctx.font = '600 13px ui-monospace, monospace';
       ctx.textAlign = 'right';
       ctx.fillText(`${p.score} pts`, 370, yOffset);
@@ -660,7 +736,7 @@ const exportImage = async () => {
       ctx.beginPath();
       ctx.moveTo(70, yOffset + 12);
       ctx.lineTo(370, yOffset + 12);
-      ctx.strokeStyle = 'rgba(46, 27, 63, 0.07)';
+      ctx.strokeStyle = palette.rowDivider;
       ctx.stroke();
 
       yOffset += 40;
@@ -670,11 +746,11 @@ const exportImage = async () => {
   ctx.beginPath();
   ctx.moveTo(400, 470);
   ctx.lineTo(400, 450 + panelHeight - 25);
-  ctx.strokeStyle = 'rgba(46, 27, 63, 0.12)';
+  ctx.strokeStyle = palette.panelBorder;
   ctx.lineWidth = 1;
   ctx.stroke();
 
-  ctx.fillStyle = '#6f5b7a';
+  ctx.fillStyle = palette.ink3;
   ctx.font = '600 11px ui-monospace, monospace';
   ctx.fillText('Statistiques', 430, 485);
 
@@ -705,45 +781,60 @@ const exportImage = async () => {
     ctx.font = '22px system-ui';
     ctx.fillText(icon, 430, statsY - 2);
 
-    ctx.fillStyle = '#6f5b7a';
+    ctx.fillStyle = palette.ink3;
     ctx.font = '600 11px Archivo, sans-serif';
     ctx.fillText(title, 468, statsY - 10);
 
-    ctx.fillStyle = valColor || '#2e1b3f';
+    ctx.fillStyle = valColor || palette.ink;
     ctx.font = '700 14px Archivo, system-ui, sans-serif';
     ctx.fillText(value, 468, statsY + 8);
 
     statsY += 52;
   };
 
-  drawStatItem('🎵', 'Morceaux joués', `${totalTracks} titres proposés`, '#644f72');
+  drawStatItem('🎵', 'Morceaux joués', `${totalTracks} titres proposés`, palette.statsMusic);
 
   if (bestDetective) {
-    drawStatItem('🎯', 'Meilleur détective', `${bestDetective} (${maxCorrect} accusation${maxCorrect > 1 ? 's' : ''})`, '#2c7a6e');
+    drawStatItem('🎯', 'Meilleur détective', `${bestDetective} (${maxCorrect} accusation${maxCorrect > 1 ? 's' : ''})`, palette.statsDetective);
   } else {
-    drawStatItem('🎯', 'Meilleur détective', 'Aucune accusation réussie', '#6f5b7a');
+    drawStatItem('🎯', 'Meilleur détective', 'Aucune accusation réussie', palette.statsEmpty);
   }
 
   if (mostSuspected) {
-    drawStatItem('💜', 'Le plus suspecté', `${mostSuspected} (${maxVotes} vote${maxVotes > 1 ? 's' : ''} reçu${maxVotes > 1 ? 's' : ''})`, '#5227c4');
+    drawStatItem('💜', 'Le plus suspecté', `${mostSuspected} (${maxVotes} vote${maxVotes > 1 ? 's' : ''} reçu${maxVotes > 1 ? 's' : ''})`, palette.statsSuspect);
   } else {
-    drawStatItem('💜', 'Le plus suspecté', 'Aucun vote reçu', '#6f5b7a');
+    drawStatItem('💜', 'Le plus suspecté', 'Aucun vote reçu', palette.statsEmpty);
   }
 
   ctx.beginPath();
   ctx.moveTo(50, 450 + panelHeight + 25);
   ctx.lineTo(750, 450 + panelHeight + 25);
-  ctx.strokeStyle = 'rgba(46, 27, 63, 0.12)';
+  ctx.strokeStyle = palette.panelBorder;
   ctx.lineWidth = 1;
   ctx.stroke();
 
   ctx.textAlign = 'center';
-  ctx.fillStyle = '#6f5b7a';
+  ctx.fillStyle = palette.footer;
   ctx.font = '500 13px Archivo, system-ui, sans-serif';
   ctx.fillText('Cékikilami · jeu de musique entre amis', 400, 450 + panelHeight + 65);
   ctx.textAlign = 'left';
 
-  exportImageUrl.value = canvas.toDataURL('image/png');
+  return canvas.toDataURL('image/png');
+};
+
+const exportImage = async () => {
+  const ranking = store.ranking || [];
+  const avatarImages = new Map();
+  await Promise.all(ranking.map(async (player) => {
+    const image = await loadAvatarImage(player.avatar_seed);
+    if (image) avatarImages.set(player.id, image);
+  }));
+
+  exportImages.value = {
+    light: renderExportImage(ranking, avatarImages, 'light'),
+    dark: renderExportImage(ranking, avatarImages, 'dark'),
+  };
+  exportVariant.value = theme.value === 'light' ? 'light' : 'dark';
   showExportModal.value = true;
 };
 </script>
