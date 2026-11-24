@@ -3,6 +3,16 @@
 Toutes les évolutions notables de Cékikilami sont documentées ici.
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le versioning sémantique.
 
+## [1.0.0-beta.8] — 2026-11-24
+
+### Ajouté
+
+- Un joueur qui ferme l’onglet ou recharge la page peut désormais reprendre sa partie depuis l’accueil : sa session active est retrouvée à partir de son jeton, avec un accès direct à la phase en cours (salon, sélection, vote ou résultats).
+
+### Corrigé
+
+- Un joueur déconnecté au moment du lancement du vote n’est plus définitivement rétrogradé en observateur s’il avait proposé ses morceaux : il peut revenir et voter comme les autres.
+
 ## [1.0.0-beta.7] — 2026-11-24
 
 ### Modifié
