@@ -3,6 +3,26 @@
 Toutes les évolutions notables de Cékikilami sont documentées ici.
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le versioning sémantique.
 
+## [1.0.0-beta.3] — 2026-11-24
+
+### Corrigé
+
+- Le réglage du volume s’applique désormais à tous les extraits musicaux de l’application, y compris ceux de la sélection et de la démo d’accueil.
+
+## [1.0.0-beta.2] — 2026-11-24
+
+### Modifié
+
+- Menu pause réorganisé pour être plus rapide à utiliser : accès direct aux joueurs, réglages groupés, actions d’hôte clairement séparées et bouton « Reprendre la partie » toujours accessible.
+- Sur mobile, le menu s’ouvre désormais comme une feuille en bas de l’écran, avec un défilement interne et une zone d’action fixe.
+- Le menu affiche le temps restant et le sous-état de la manche (écoute, vote ou révélation).
+- Navigation clavier renforcée : focus conservé dans le menu, retour au menu avec Échap depuis la liste des joueurs et focus restauré à la fermeture.
+
+### Corrigé
+
+- Le menu pause passe au-dessus des notifications et son en-tête n’est plus masqué.
+- La copie du code du salon affiche un retour visuel sans décaler les éléments du menu.
+
 ## [1.0.0-beta.1] — 2026-11-23
 
 Première bêta publique, proche de la release `1.0.0`.
