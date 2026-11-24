@@ -2,6 +2,13 @@ import { defineStore } from 'pinia';
 import apiService from '../services/apiService';
 import socketService from '../services/socketService';
 
+// Only warn once a disconnection lasts long enough to be meaningful, so short
+// network blips (mobile switching networks, laptop sleeping) stay silent.
+const CONNECTION_LOST_NOTICE_DELAY = 4000;
+
+let connectionLostNoticeTimer = null;
+let connectionLostNoticeId = null;
+
 function readStoredPlayer() {
   try {
     return JSON.parse(localStorage.getItem('music_game_player')) || null;
@@ -227,14 +234,20 @@ export const useGameStore = defineStore('game', {
       return data;
     },
     addNotification(message, type = 'info') {
+      // Avoid stacking identical toasts when an event is emitted repeatedly.
+      if (this.notifications.some(n => n.message === message && n.type === type)) return null;
       const id = Date.now() + Math.random().toString(36).substring(2, 9);
       if (this.notifications.length >= 3) {
         this.notifications.shift();
       }
       this.notifications.push({ id, message, type });
       setTimeout(() => {
-        this.notifications = this.notifications.filter(n => n.id !== id);
+        this.removeNotification(id);
       }, 5000);
+      return id;
+    },
+    removeNotification(id) {
+      this.notifications = this.notifications.filter(n => n.id !== id);
     },
     connectSocket(code) {
       if (!this.token) return;
@@ -244,7 +257,6 @@ export const useGameStore = defineStore('game', {
       socketService.off('sound:play');
       socketService.off('player:kicked');
       socketService.off('session:deleted');
-      socketService.off('player:status');
       socketService.off('connect');
       socketService.off('disconnect');
       socketService.off('connect_error');
@@ -290,25 +302,37 @@ export const useGameStore = defineStore('game', {
         window.location.href = '/';
       });
 
-      socketService.on('player:status', ({ playerId: pId, playerName, isConnected }) => {
-        if (pId !== this.player?.id) {
-          const statusText = isConnected ? 'reconnecté' : 'déconnecté';
-          const type = isConnected ? 'success' : 'warning';
-          this.addNotification(`${playerName} s'est ${statusText}`, type);
-        }
-      });
-
       socketService.on('connect', () => {
-        this.addNotification("Vous êtes connecté au serveur de jeu", "success");
+        // A successful initial or automatic reconnection is expected: the UI
+        // already reflects it, so no toast is needed.
+        if (connectionLostNoticeTimer) {
+          clearTimeout(connectionLostNoticeTimer);
+          connectionLostNoticeTimer = null;
+        }
+        if (connectionLostNoticeId) {
+          this.removeNotification(connectionLostNoticeId);
+          connectionLostNoticeId = null;
+        }
       });
 
       socketService.on('disconnect', (reason) => {
-        if (reason === 'io server disconnect' || reason === 'transport close' || reason === 'ping timeout') {
-          this.addNotification("Connexion perdue. Tentative de reconnexion...", "error");
-        }
+        // The socket was closed on purpose (leaving the session).
+        if (reason === 'io client disconnect' || connectionLostNoticeTimer) return;
+        connectionLostNoticeTimer = setTimeout(() => {
+          connectionLostNoticeTimer = null;
+          connectionLostNoticeId = this.addNotification(
+            'Connexion perdue. Tentative de reconnexion...',
+            'warning'
+          );
+        }, CONNECTION_LOST_NOTICE_DELAY);
       });
     },
     disconnectSocket() {
+      if (connectionLostNoticeTimer) {
+        clearTimeout(connectionLostNoticeTimer);
+        connectionLostNoticeTimer = null;
+      }
+      connectionLostNoticeId = null;
       socketService.disconnect();
     },
     leaveSession() {
