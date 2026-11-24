@@ -3,6 +3,12 @@
 Toutes les évolutions notables de Cékikilami sont documentées ici.
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le versioning sémantique.
 
+## [1.0.0-beta.6] — 2026-11-24
+
+### Modifié
+
+- Si l’hôte quitte le salon ou se déconnecte, le rôle d’hôte est désormais transféré automatiquement à un autre joueur, connecté en priorité, après un court délai. Le salon d’attente n’est supprimé que si aucun autre joueur ne peut reprendre la main.
+
 ## [1.0.0-beta.5] — 2026-11-24
 
 ### Ajouté
