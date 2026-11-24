@@ -28,7 +28,7 @@ async function bootstrap() {
   try {
     await initSchema(pool);
     await ensureUploadDir();
-    await Player.markAllDisconnected();
+    await Player.resetConnectionStatuses();
 
     // The cache is optional: never block HTTP startup on Redis.
     void connectRedis();
