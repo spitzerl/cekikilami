@@ -95,7 +95,20 @@ Golden rule: **consistency > personal preference**. If an existing file already 
 - Write comments in English, explaining the intent, not restating the code.
 - Keep `CHANGELOG.md` (Keep a Changelog format) up to date for any notable user-facing change.
 
-## 4. Checks before finishing
+## 4. Versioning
+
+The project follows **Semantic Versioning** (SemVer). The current version lives in the root `package.json` and must stay aligned with `backend/package.json` and `frontend/package.json` (checked by `npm run version:check`).
+
+- **Every user-facing modification must update the version number** in all three `package.json` files, plus the matching `CHANGELOG.md` entry.
+- **The bump must match what was actually done**, never an arbitrary increment:
+  - **patch** (`1.0.0` → `1.0.1`): bug fixes, small internal changes with no user-facing feature;
+  - **minor** (`1.0.0` → `1.1.0`): new backward-compatible features;
+  - **major** (`1.0.0` → `2.0.0`): breaking changes or a release that is not backward compatible.
+- While the project is in beta (`1.0.0-beta.N`), keep the base version and increment the pre-release suffix (`-beta.N+1`) for notable changes. Do not switch to a stable version on your own.
+- **Ask the user before deciding on a large bump or a large release**: if the change is significant, ambiguous, or could justify a major/minor release, or if the user may want to ship a bigger release than the raw change implies, ask them whether they want a major bump, a bigger release, or a version adjusted to the change. Do not make that decision alone.
+- Never tag or publish a release without explicit user confirmation.
+
+## 5. Checks before finishing
 
 - Run backend tests: `cd backend && npm test` (requires PostgreSQL / `TEST_DATABASE_URL`).
 - Verify the frontend build: `cd frontend && npm run build`.
