@@ -1,14 +1,16 @@
 <template>
   <header class="topbar">
     <div class="shell topbar-inner">
-      <RouterLink
-        to="/"
-        class="brand brand-link"
-        aria-label="Retour à l’accueil"
-        @click="handleBrandClick"
-      >
-        <span class="brand-mark" aria-hidden="true"></span>
-        Cékikilami
+      <RouterLink v-slot="{ href, navigate }" custom to="/">
+        <a
+          :href="href"
+          class="brand brand-link"
+          aria-label="Retour à l’accueil"
+          @click="handleBrandClick($event, navigate)"
+        >
+          <span class="brand-mark" aria-hidden="true"></span>
+          Cékikilami
+        </a>
       </RouterLink>
       <span class="spacer"></span>
 
@@ -152,8 +154,18 @@ const goHome = () => {
   router.push('/');
 };
 
-const handleBrandClick = (event) => {
-  if (!store.session) return;
+const handleBrandClick = (event, navigate) => {
+  const isPlainClick = event.button === 0
+    && !event.metaKey
+    && !event.ctrlKey
+    && !event.shiftKey
+    && !event.altKey;
+
+  // Modified clicks keep the browser's default behaviour (new tab, and so on).
+  if (!store.session || !isPlainClick) {
+    navigate(event);
+    return;
+  }
 
   event.preventDefault();
 

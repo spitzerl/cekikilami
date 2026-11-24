@@ -7,7 +7,7 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le ve
 
 ### Ajouté
 
-- Le logo Cékikilami ouvre désormais la page d’accueil depuis toutes les pages de l’application. Pendant une partie, une confirmation propose de rester dans le salon ou de retourner à l’accueil.
+- Le logo Cékikilami ouvre désormais la page d’accueil depuis toutes les pages de l’application. Pendant une partie ou dans le salon d’attente, une confirmation propose de rester sur place ou de retourner à l’accueil.
 
 ## [1.0.0-beta.4] — 2026-11-24
 
