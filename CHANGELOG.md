@@ -3,6 +3,17 @@
 Toutes les évolutions notables de Cékikilami sont documentées ici.
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le versioning sémantique.
 
+## [1.0.0-beta.9] — 2026-11-24
+
+### Corrigé
+
+- Les bots restent considérés en ligne après un redémarrage du serveur et continuent de voter normalement.
+- Une reconnexion rapide ne peut plus laisser un joueur marqué hors ligne ni transférer le rôle d’hôte à tort.
+- Les reconnexions légitimes ne sont plus bloquées par la limite de connexions Socket.IO : seuls les échecs d’authentification sont limités strictement.
+- Une session avec au moins un joueur connecté reste active, y compris sur l’écran des résultats, grâce à un battement de cœur périodique.
+- Le délai avant transfert du rôle d’hôte passe à 30 s pour absorber les micro-coupures réseau et les verrouillages d’écran.
+- Si la session ou le jeton n’existe plus, le joueur est renvoyé proprement à l’accueil au lieu de rester bloqué sur une page figée.
+
 ## [1.0.0-beta.8] — 2026-11-24
 
 ### Ajouté
