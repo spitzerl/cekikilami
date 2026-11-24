@@ -1,50 +1,50 @@
 # AGENTS.md
 
-Guide pour tout agent (humain ou IA) qui travaille sur **Cékikilami**.
-Ces règles sont obligatoires et priment sur les habitudes personnelles.
+Guidelines for anyone (human or AI) working on **Cékikilami**.
+These rules are mandatory and take precedence over personal habits.
 
-## 1. Git : toujours, sans exception
+## 1. Git: always, no exceptions
 
-- **Toujours utiliser Git.** Aucune modification de code ne doit rester hors du versionnement.
-- **Ne jamais travailler directement sur `main` ou `develop`.** Toute tâche démarre sur une branche dédiée.
-- Avant de commencer : `git status` et `git pull` sur la branche de base (`develop` par défaut) pour partir d'un état propre et à jour.
-- **Commits réguliers et bien structurés** : découper le travail en unités logiques (une fonctionnalité, un correctif, un refactor, une doc), pas un unique commit fourre-tout en fin de tâche.
-- Ne jamais commiter de secrets (`.env`, tokens, mots de passe), de fichiers générés (`dist`, `node_modules`, `uploads`) ou de artefacts de build.
-- Ne pas réécrire l'historique d'une branche partagée (`main`, `develop`) ; pas de `push --force` dessus.
-- Avant de considérer une tâche terminée : vérifier `git status` (arbre propre) et que la branche est poussée si un remote est configuré.
+- **Always use Git.** No code change may stay outside version control.
+- **Never work directly on `main` or `develop`.** Every task starts on a dedicated branch.
+- Before starting: `git status` and `git pull` on the base branch (`develop` by default) to start from a clean, up-to-date state.
+- **Commit regularly and keep commits well structured**: split work into logical units (one feature, one fix, one refactor, one doc change), never a single catch-all commit at the end.
+- Never commit secrets (`.env`, tokens, passwords), generated files (`dist`, `node_modules`, `uploads`) or build artefacts.
+- Do not rewrite the history of a shared branch (`main`, `develop`); no `push --force` on them.
+- Before considering a task done: check `git status` (clean tree) and make sure the branch is pushed when a remote is configured.
 
 ### Conventional Commits
 
-Le format est **obligatoire** :
+The format is **mandatory**:
 
 ```
-<type>(<scope>): <description courte à l'impératif>
+<type>(<scope>): <short imperative description>
 ```
 
-Types autorisés :
+Allowed types:
 
-| Type       | Usage                                             |
+| Type       | Use                                               |
 | ---------- | ------------------------------------------------- |
-| `feat`     | nouvelle fonctionnalité                           |
-| `fix`      | correction de bug                                 |
-| `refactor` | réécriture sans changement de comportement        |
-| `perf`     | amélioration de performance                       |
-| `test`     | ajout ou correction de tests                      |
+| `feat`     | new feature                                       |
+| `fix`      | bug fix                                           |
+| `refactor` | rewrite without behaviour change                  |
+| `perf`     | performance improvement                           |
+| `test`     | adding or fixing tests                            |
 | `docs`     | documentation                                     |
-| `style`    | formatage, sans impact logique                    |
-| `build`    | outillage de build, dépendances                   |
-| `ci`       | configuration d'intégration continue              |
-| `chore`    | tâches annexes (config, scripts)                  |
-| `revert`   | annulation d'un commit                            |
+| `style`    | formatting, no logic impact                       |
+| `build`    | build tooling, dependencies                       |
+| `ci`       | continuous integration configuration              |
+| `chore`    | maintenance tasks (config, scripts)               |
+| `revert`   | reverting a commit                                |
 
-Règles :
+Rules:
 
-- `scope` en minuscules, optionnel mais recommandé : `backend`, `frontend`, `ui`, `game`, `socket`, `deploy`, `security`, `docs`, `deps`…
-- description courte, en minuscules, à l'impératif, sans point final (ex. `feat(game): add blind-test timing`).
-- un commit = un changement cohérent ; préférer plusieurs petits commits à un gros.
-- rupture de compatibilité : ajouter `!` après le scope/type et une section `BREAKING CHANGE:` dans le corps (ex. `feat(api)!: ...`).
+- `scope` in lowercase, optional but recommended: `backend`, `frontend`, `ui`, `game`, `socket`, `deploy`, `security`, `docs`, `deps`…
+- short description, lowercase, imperative mood, no trailing period (e.g. `feat(game): add blind-test timing`).
+- one commit = one coherent change; prefer several small commits over one large one.
+- breaking change: add `!` after the type/scope and a `BREAKING CHANGE:` section in the body (e.g. `feat(api)!: ...`).
 
-Exemples valides :
+Valid examples:
 
 ```
 feat(ui): add player avatars to exported score image
@@ -55,48 +55,49 @@ test(security): add regression suite
 
 ### Conventional Branching
 
-Les branches suivent le même vocabulaire :
+Branches follow the same vocabulary:
 
 ```
-<type>/<sujet-court-en-kebab-case>
+<type>/<short-kebab-case-topic>
 ```
 
-Exemples : `feat/blind-test-timer`, `fix/deezer-preview-cache`, `refactor/game-service`, `docs/agents-guide`, `chore/deps-update`.
+Examples: `feat/blind-test-timer`, `fix/deezer-preview-cache`, `refactor/game-service`, `docs/agents-guide`, `chore/deps-update`.
 
-- sujet en kebab-case, court et descriptif.
-- une branche = un sujet ; ne pas mélanger plusieurs fonctionnalités.
-- supprimer la branche une fois fusionnée.
+- topic in kebab-case, short and descriptive.
+- one branch = one topic; do not mix several features.
+- delete the branch once merged.
 
-## 2. Conventions de nommage du code
+## 2. Code naming conventions
 
-**Choisir un style et le garder constant sur tout le projet.** Pas de mélange entre camelCase et snake_case pour un même type d'identifiant.
+**Pick one style and keep it consistent across the whole project.** Do not mix camelCase and snake_case for the same kind of identifier.
 
-Convention retenue sur ce dépôt :
+Convention for this repository:
 
-- **camelCase** pour tout le code applicatif JavaScript / Vue :
-  variables, fonctions, méthodes, propriétés d'objets, clés de stores Pinia, paramètres.
-  Ex. `currentMusicIndex`, `isConnected`, `generatePlayerToken`, `votingStatus`.
-- **PascalCase** pour les classes, modèles et composants Vue.
-  Ex. `GameService`, `Player`, `Session`, `WaitingRoom.vue`.
-- **snake_case** uniquement là où le format est imposé par l'écosystème :
-  colonnes SQL / PostgreSQL (`host_player_id`, `created_at`), variables d'environnement (`POSTGRES_PASSWORD`, `REDIS_PASSWORD`, `APP_DB_PASSWORD`) et champs de payload issus de la base.
-- fichiers JS hors composants en camelCase (`gameSocket.js`, `uploadService.js`) ; composants Vue en PascalCase (`GameHeader.vue`).
-- constantes globales en `SCREAMING_SNAKE_CASE` (`MAX_SESSIONS`, `SESSION_TTLS`, `CONFIG_BOUNDS`).
-- noms en anglais dans le code et les identifiants ; les textes affichés à l'utilisateur, la documentation et les messages produit restent en français.
+- **camelCase** for all JavaScript / Vue application code:
+  variables, functions, methods, object properties, Pinia store keys, parameters.
+  E.g. `currentMusicIndex`, `isConnected`, `generatePlayerToken`, `votingStatus`.
+- **PascalCase** for classes, models and Vue components.
+  E.g. `GameService`, `Player`, `Session`, `WaitingRoom.vue`.
+- **snake_case** only where the ecosystem imposes it:
+  SQL / PostgreSQL columns (`host_player_id`, `created_at`), environment variables (`POSTGRES_PASSWORD`, `REDIS_PASSWORD`, `APP_DB_PASSWORD`) and payload fields coming from the database.
+- non-component JS files in camelCase (`gameSocket.js`, `uploadService.js`); Vue components in PascalCase (`GameHeader.vue`).
+- global constants in `SCREAMING_SNAKE_CASE` (`MAX_SESSIONS`, `SESSION_TTLS`, `CONFIG_BOUNDS`).
+- English for all code identifiers, comments, commit messages and documentation, as the project is meant to be open source and readable by contributors. User-facing product copy stays in French.
 
-Règle d'or : **cohérence > préférence personnelle**. Si un fichier existant respecte une convention, s'y conformer.
+Golden rule: **consistency > personal preference**. If an existing file already follows a convention, match it.
 
-## 3. Style et qualité
+## 3. Style and quality
 
-- Respecter le style, l'architecture et les motifs du code environnant (`backend/src`, `frontend/src`).
-- Ne pas reformater ou refactoriser du code non concerné par la tâche : les diffs restent ciblés.
-- Traiter les fichiers et modifications existants comme du travail utilisateur : ne rien supprimer ou écraser sans raison.
-- Pas de `console.log` de debug laissé dans le code de production.
-- Mettre à jour `CHANGELOG.md` (format Keep a Changelog) pour tout changement notable destiné aux utilisateurs.
+- Follow the style, architecture and patterns of the surrounding code (`backend/src`, `frontend/src`).
+- Do not reformat or refactor code unrelated to the task: keep diffs focused.
+- Treat existing files and changes as the user's work: never delete or overwrite them without a reason.
+- No leftover debug `console.log` in production code.
+- Write comments in English, explaining the intent, not restating the code.
+- Keep `CHANGELOG.md` (Keep a Changelog format) up to date for any notable user-facing change.
 
-## 4. Vérifications avant de terminer
+## 4. Checks before finishing
 
-- Lancer les tests backend : `cd backend && npm test` (nécessite PostgreSQL / `TEST_DATABASE_URL`).
-- Vérifier le build frontend : `cd frontend && npm run build`.
-- Vérifier l'alignement des versions : `npm run version:check`.
-- Relire `git diff` et `git status` : aucun fichier indésirable, diff limité au périmètre de la tâche, historique de commits propre et lisible.
+- Run backend tests: `cd backend && npm test` (requires PostgreSQL / `TEST_DATABASE_URL`).
+- Verify the frontend build: `cd frontend && npm run build`.
+- Check version alignment: `npm run version:check`.
+- Review `git diff` and `git status`: no unwanted files, diff limited to the task scope, clean and readable commit history.
