@@ -15,7 +15,9 @@ export const SESSION_TTLS = {
 };
 
 export const MAX_SESSIONS = integerEnv('MAX_SESSIONS', 500);
-export const HOST_DISCONNECT_GRACE_MS = integerEnv('HOST_DISCONNECT_GRACE_MS', 15_000);
+// Long enough to absorb a phone locking or switching networks without handing
+// the host role to someone else while the host is coming back.
+export const HOST_DISCONNECT_GRACE_MS = integerEnv('HOST_DISCONNECT_GRACE_MS', 30_000);
 export const MAINTENANCE_INTERVAL_MS = integerEnv('MAINTENANCE_INTERVAL_MS', 5 * 60 * 1000);
 
 export const RATE_LIMITS = {
@@ -27,7 +29,10 @@ export const RATE_LIMITS = {
   uploadPerHour: integerEnv('RATE_LIMIT_UPLOAD_PER_HOUR', 20),
   deezerPerMinute: integerEnv('RATE_LIMIT_DEEZER_PER_MINUTE', 60),
   avatarPerMinute: integerEnv('RATE_LIMIT_AVATAR_PER_MINUTE', 300),
-  socketConnectionsPerMinute: integerEnv('RATE_LIMIT_SOCKET_CONNECTIONS_PER_MINUTE', 30),
+  // A whole household can share one public IP: keep this high enough for
+  // normal reconnects and reserve the strict limit for failed authentications.
+  socketConnectionsPerMinute: integerEnv('RATE_LIMIT_SOCKET_CONNECTIONS_PER_MINUTE', 120),
+  socketAuthFailuresPerMinute: integerEnv('RATE_LIMIT_SOCKET_AUTH_FAILURES_PER_MINUTE', 20),
   socketJoinsPerMinute: integerEnv('RATE_LIMIT_SOCKET_JOINS_PER_MINUTE', 10),
 };
 

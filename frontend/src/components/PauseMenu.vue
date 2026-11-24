@@ -27,17 +27,11 @@
                     <AppIcon name="clock" :size="12" />
                     {{ timerLabel }}
                   </span>
-                  <button
-                    type="button"
-                    :class="['pause-code', copied ? 'is-copied' : '']"
-                    :title="copied ? 'Lien d’invitation copié' : 'Copier le lien d’invitation'"
-                    :aria-label="copied ? 'Lien d’invitation copié' : `Copier le lien d’invitation du salon ${store.session?.code}`"
-                    @click="copyLink"
-                  >
-                    <span class="mono">{{ store.session?.code }}</span>
-                    <AppIcon :name="copied ? 'check' : 'copy'" :size="13" />
-                  </button>
-                  <span class="sr-only" aria-live="polite">{{ copied ? 'Lien d’invitation copié' : '' }}</span>
+                  <RoomCode
+                    v-if="store.session?.code"
+                    :code="store.session.code"
+                    size="sm"
+                  />
                 </div>
               </div>
               <button
@@ -243,6 +237,7 @@ import { useGameStore } from '../stores/gameStore';
 import { theme, setTheme } from '../services/themeService';
 import { avatarUrl } from '../utils/avatar';
 import AppIcon from './AppIcon.vue';
+import RoomCode from './RoomCode.vue';
 import { APP_CHANNEL_LABEL, APP_VERSION } from '../version';
 
 const route = useRoute();
@@ -251,7 +246,6 @@ const store = useGameStore();
 
 const isOpen = ref(false);
 const currentTab = ref('main');
-const copied = ref(false);
 const dialog = ref(null);
 const closeButton = ref(null);
 const playersBackButton = ref(null);
@@ -465,17 +459,6 @@ onUnmounted(() => {
   stopTimer();
   document.body.style.overflow = '';
 });
-
-const copyLink = async () => {
-  try {
-    const inviteLink = `${window.location.origin}/game/${store.session?.code}`;
-    await navigator.clipboard.writeText(inviteLink);
-    copied.value = true;
-    setTimeout(() => { copied.value = false; }, 2000);
-  } catch (err) {
-    console.error('Failed to copy link:', err);
-  }
-};
 
 const confirmReset = async () => {
   try {

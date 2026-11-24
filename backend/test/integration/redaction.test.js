@@ -109,6 +109,34 @@ test('listening state hides the answer, scores and live vote counts', async () =
     .expect(403);
 });
 
+test('vote progress stays visible without exposing per-player counts', async () => {
+  const game = await createBlindGame({ showVoteCount: false });
+  const voting = await context.request
+    .post(`/api/sessions/${game.code}/advance-round`)
+    .set(auth(game.host.token))
+    .expect(200);
+
+  assert.equal(voting.body.session.voting_status, 'voting');
+  assert.equal(voting.body.votes, null);
+  assert.deepEqual(voting.body.voteProgress, { cast: 0, total: 2 });
+
+  await context.request
+    .post(`/api/sessions/${game.code}/votes`)
+    .set(auth(game.host.token))
+    .send({
+      musicId: voting.body.currentMusic.id,
+      guessedPlayerId: game.guest.player.id,
+    })
+    .expect(200);
+
+  const afterVote = await context.request
+    .get(`/api/sessions/${game.code}`)
+    .set(auth(game.host.token))
+    .expect(200);
+  assert.equal(afterVote.body.votes, null);
+  assert.deepEqual(afterVote.body.voteProgress, { cast: 1, total: 2 });
+});
+
 test('blind answers hide correctness until the revelation', async () => {
   const game = await createBlindGame();
   const listening = game.listening.body;

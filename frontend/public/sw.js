@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cekikilami-v5';
+const CACHE_NAME = 'cekikilami-v6';
 const ASSETS = [
   '/',
   '/index.html',
@@ -39,6 +39,10 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
+
+  // Cross-origin images and assets must keep their native loading behaviour:
+  // proxying them through the worker can hide CORS/CSP failures.
+  if (url.origin !== self.location.origin) return;
 
   // Skip non-GET requests, API requests, and WebSockets
   if (

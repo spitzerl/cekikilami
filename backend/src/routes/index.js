@@ -103,6 +103,15 @@ export default function buildRoutes(gameService, ioNamespace) {
     }
   });
 
+  router.get('/sessions/current', requireAuth, limits.state, async (req, res, next) => {
+    try {
+      res.setHeader('Cache-Control', 'no-store');
+      res.json(await gameService.getCurrentSession(req.player.id));
+    } catch (error) {
+      next(error);
+    }
+  });
+
   router.post('/sessions/:code/join', limits.join, async (req, res, next) => {
     try {
       const code = normalizeSessionCode(req.params.code);

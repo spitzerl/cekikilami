@@ -48,6 +48,18 @@ export function requireCoverUrl(value, fieldName = 'coverUrl') {
   return parsed.toString();
 }
 
+// Covers saved by older versions may still use plain HTTP. Normalize them at
+// read time so a production HTTPS page never receives an insecure image URL.
+export function normalizeCoverUrl(value) {
+  if (typeof value !== 'string' || !value.trim()) return null;
+  const upgraded = value.trim().replace(/^http:\/\//i, 'https://');
+  try {
+    return requireCoverUrl(upgraded, 'coverUrl');
+  } catch {
+    return null;
+  }
+}
+
 export function isAllowedLocalUploadPath(value) {
   return typeof value === 'string' && LOCAL_UPLOAD_PATH.test(value);
 }

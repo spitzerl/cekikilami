@@ -121,8 +121,10 @@ export default class Player {
     return result.rows[0] || null;
   }
 
-  static async markAllDisconnected() {
-    await query('UPDATE players SET is_connected = FALSE WHERE is_connected = TRUE');
+  static async resetConnectionStatuses() {
+    // Bots are virtual players: they never open a socket, so a restart must not
+    // leave them offline. Humans reconnect on their own after the boot.
+    await query('UPDATE players SET is_connected = is_bot');
   }
 
   static async countBySession(sessionId) {
