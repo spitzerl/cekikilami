@@ -105,7 +105,6 @@ export default class GameService {
     this.ioNamespace = null;
     this.activeTimers = new Map();
     this.hostDisconnectTimeouts = new Map();
-    this.botVoteTimers = new Map();
     this.maintenanceInterval = null;
     this.isReaping = false;
   }
@@ -141,28 +140,6 @@ export default class GameService {
       clearTimeout(this.activeTimers.get(code).timeoutId);
       this.activeTimers.delete(code);
     }
-  }
-
-  scheduleBotVote(code, delayMs, callback) {
-    const timeoutId = setTimeout(async () => {
-      const timers = this.botVoteTimers.get(code);
-      if (timers) timers.delete(timeoutId);
-      try {
-        await callback();
-      } catch {
-        // A bot vote can legitimately lose the race with a phase change.
-      }
-    }, Math.max(0, delayMs));
-
-    if (!this.botVoteTimers.has(code)) this.botVoteTimers.set(code, new Set());
-    this.botVoteTimers.get(code).add(timeoutId);
-  }
-
-  clearBotVoteTimers(code) {
-    const timers = this.botVoteTimers.get(code);
-    if (!timers) return;
-    for (const timeoutId of timers) clearTimeout(timeoutId);
-    this.botVoteTimers.delete(code);
   }
 
   cancelHostDisconnect(code) {
@@ -924,7 +901,6 @@ export default class GameService {
     }
 
     this.clearTimer(code);
-    this.clearBotVoteTimers(code);
 
     const players = await Player.findBySession(session.id);
     const musics = await Music.findBySession(session.id);
@@ -988,7 +964,6 @@ export default class GameService {
     }
 
     this.clearTimer(code);
-    this.clearBotVoteTimers(code);
 
     let endsAt = null;
     if (duration > 0) {
@@ -1023,13 +998,19 @@ export default class GameService {
       timerEndsAt: endsAt,
     });
     await Session.extendExpiry(code, SESSION_TTLS.voting);
+
+    if (status === 'voting') {
+      // Bots vote as soon as the ballot opens so the host never waits for
+      // them before skipping the round. The single broadcast below carries
+      // the updated vote progress to every client.
+      await this.placeBotVotes(code, musicIndex, { broadcast: false });
+    }
+
     await this.broadcastState(code);
 
     if (this.ioNamespace) {
       if (status === 'listening') {
         this.ioNamespace.to(code).emit('sound:play', { type: 'phase_change' });
-      } else if (status === 'voting') {
-        this.triggerBotVotes(code, musicIndex);
       } else if (status === 'revelation') {
         this.ioNamespace.to(code).emit('sound:play', { type: 'vote_closed' });
       }
@@ -1078,7 +1059,6 @@ export default class GameService {
     }
 
     this.clearTimer(code);
-    this.clearBotVoteTimers(code);
 
     if (status === 'listening') {
       await this.enterVotingSubphase(code, musicIndex, 'voting');
@@ -1094,39 +1074,50 @@ export default class GameService {
     return this.getState(code, actorId);
   }
 
-  triggerBotVotes(code, musicIndex) {
-    const run = async () => {
-      const session = await Session.findByCode(code);
-      if (!session) return;
+  async placeBotVotes(code, musicIndex, { broadcast = true } = {}) {
+    const normalizedCode = normalizeSessionCode(code);
+    const session = await Session.findByCode(normalizedCode);
+    if (!session
+      || session.phase !== 'voting'
+      || session.voting_status !== 'voting'
+      || session.current_music_index !== musicIndex) return;
 
-      const players = await Player.findBySession(session.id);
-      const musics = await Music.findBySession(session.id);
-      const currentMusic = musics.find((music) => music.play_order === musicIndex);
-      if (!currentMusic) return;
+    const [players, musics] = await Promise.all([
+      Player.findBySession(session.id),
+      Music.findBySession(session.id),
+    ]);
+    const currentMusic = musics.find((music) => music.play_order === musicIndex);
+    if (!currentMusic) return;
 
-      const bots = players.filter((player) => player.is_bot && !player.is_observer && player.is_connected);
-      const eligibleTargets = players.filter((player) => !player.is_observer);
+    const existingVotes = await query(
+      'SELECT voter_id FROM votes WHERE session_id = $1 AND music_id = $2',
+      [session.id, currentMusic.id]
+    );
 
-      this.clearBotVoteTimers(code);
-      for (const bot of bots) {
-        const targets = eligibleTargets.filter((target) => target.id !== bot.id);
-        if (targets.length === 0) continue;
+    const bots = players.filter((player) => player.is_bot && !player.is_observer && player.is_connected);
+    const eligibleTargets = players.filter((player) => !player.is_observer);
+    const alreadyVoted = new Set(existingVotes.rows.map((row) => row.voter_id));
+    let inserted = 0;
 
-        const chosenTarget = targets[Math.floor(Math.random() * targets.length)];
-        const randomDelay = Math.random() * session.voting_duration * 1000 * 0.8;
+    for (const bot of bots) {
+      if (alreadyVoted.has(bot.id)) continue;
+      const targets = eligibleTargets.filter((target) => target.id !== bot.id);
+      if (targets.length === 0) continue;
 
-        this.scheduleBotVote(code, randomDelay, async () => {
-          const freshSession = await Session.findByCode(code);
-          if (freshSession.phase === 'voting'
-            && freshSession.voting_status === 'voting'
-            && freshSession.current_music_index === musicIndex) {
-            await this.submitVote(code, bot.id, currentMusic.id, chosenTarget.id);
-          }
-        });
-      }
-    };
+      const chosenTarget = targets[Math.floor(Math.random() * targets.length)];
+      const result = await query(
+        `INSERT INTO votes (session_id, voter_id, music_id, guessed_player_id)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (session_id, voter_id, music_id) DO NOTHING`,
+        [session.id, bot.id, currentMusic.id, chosenTarget.id]
+      );
+      inserted += result.rowCount || 0;
+    }
 
-    run().catch((error) => this.log(code, `Bot vote scheduling failed: ${error.message}`));
+    if (inserted === 0) return;
+    await Session.extendExpiry(normalizedCode, SESSION_TTLS.voting);
+    this.log(normalizedCode, `Bot votes placed immediately for music index ${musicIndex} (${inserted})`);
+    if (broadcast) await this.broadcastState(normalizedCode);
   }
 
   async submitVote(code, voterId, musicId, guessedPlayerId) {
@@ -1219,7 +1210,6 @@ export default class GameService {
     }
 
     this.clearTimer(code);
-    this.clearBotVoteTimers(code);
     await Session.updatePhase(code, 'results', SESSION_TTLS.results);
     await Session.updateVotingState(code, {
       currentMusicIndex: -1,
@@ -1244,7 +1234,6 @@ export default class GameService {
     code = normalizeSessionCode(code);
     const session = await this.assertHost(code, actorId);
     this.clearTimer(code);
-    this.clearBotVoteTimers(code);
     this.cancelHostDisconnect(code);
 
     const deletedMusics = await Music.deleteAllBySession(session.id);
@@ -1345,7 +1334,6 @@ export default class GameService {
     if (!session) return false;
 
     this.clearTimer(normalizedCode);
-    this.clearBotVoteTimers(normalizedCode);
     this.cancelHostDisconnect(normalizedCode);
 
     const musics = await Music.findBySession(session.id);
@@ -1407,7 +1395,7 @@ export default class GameService {
           });
 
           if (status === 'voting') {
-            this.triggerBotVotes(code, index);
+            await this.placeBotVotes(code, index);
           }
         }
       }
@@ -1472,7 +1460,6 @@ export default class GameService {
   shutdown() {
     this.stopMaintenance();
     for (const code of [...this.activeTimers.keys()]) this.clearTimer(code);
-    for (const code of [...this.botVoteTimers.keys()]) this.clearBotVoteTimers(code);
     for (const code of [...this.hostDisconnectTimeouts.keys()]) this.cancelHostDisconnect(code);
   }
 }
