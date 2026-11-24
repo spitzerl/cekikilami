@@ -70,12 +70,12 @@
         <div class="dialog-head">
           <div>
             <p class="dialog-kicker">Retour à l’accueil</p>
-            <h2 id="home-confirm-title" class="dialog-title">{{ isWaitingRoom ? 'Quitter le salon ?' : 'Quitter la partie ?' }}</h2>
+            <h2 id="home-confirm-title" class="dialog-title">{{ confirmTitle }}</h2>
           </div>
           <button
             type="button"
             class="btn btn-ghost btn-icon btn-sm"
-            :aria-label="isWaitingRoom ? 'Rester dans le salon' : 'Rester dans la partie'"
+            :aria-label="stayLabel"
             @click="closeHomeConfirm"
           >
             <AppIcon name="x" :size="16" />
@@ -86,8 +86,8 @@
 
         <div class="dialog-actions">
           <button ref="stayButton" type="button" class="btn btn-primary btn-block" @click="closeHomeConfirm">
-            <AppIcon :name="isWaitingRoom ? 'x' : 'play'" :size="15" />
-            {{ isWaitingRoom ? 'Rester dans le salon' : 'Rester dans la partie' }}
+            <AppIcon :name="stayIcon" :size="15" />
+            {{ stayLabel }}
           </button>
           <button type="button" class="btn btn-warning btn-block" @click="goHome">
             <AppIcon name="log-out" :size="15" />
@@ -133,11 +133,33 @@ const stayButton = ref(null);
 let previousFocus = null;
 let bodyOverflow = '';
 
-const homeConfirmMessage = computed(() => (
-  isWaitingRoom.value
-    ? 'Vous êtes dans le salon d’attente. En revenant à l’accueil, vous quitterez ce salon.'
-    : 'Une partie est en cours. En revenant à l’accueil, vous quitterez cette partie.'
-));
+const confirmTitle = computed(() => {
+  if (isWaitingRoom.value) return 'Quitter le salon ?';
+  if (isFinished.value) return 'Quitter les résultats ?';
+  return 'Quitter la partie ?';
+});
+
+const stayLabel = computed(() => {
+  if (isWaitingRoom.value) return 'Rester dans le salon';
+  if (isFinished.value) return 'Rester sur les résultats';
+  return 'Rester dans la partie';
+});
+
+const stayIcon = computed(() => {
+  if (isWaitingRoom.value) return 'x';
+  if (isFinished.value) return 'bar-chart';
+  return 'play';
+});
+
+const homeConfirmMessage = computed(() => {
+  if (isWaitingRoom.value) {
+    return 'Vous êtes dans le salon d’attente. En revenant à l’accueil, vous quitterez ce salon.';
+  }
+  if (isFinished.value) {
+    return 'La partie est terminée. En revenant à l’accueil, vous quitterez le salon.';
+  }
+  return 'Une partie est en cours. En revenant à l’accueil, vous quitterez cette partie.';
+});
 
 const openHomeConfirm = () => {
   previousFocus = document.activeElement;
@@ -168,13 +190,6 @@ const handleBrandClick = (event, navigate) => {
   }
 
   event.preventDefault();
-
-  // Results are final: no need to confirm before returning home.
-  if (isFinished.value) {
-    goHome();
-    return;
-  }
-
   openHomeConfirm();
 };
 
