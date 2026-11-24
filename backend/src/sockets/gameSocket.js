@@ -149,8 +149,8 @@ export default function registerGameSocket(ioNamespace, gameService) {
           }
 
           const session = await Session.findByCode(code);
-          if (session?.phase === 'waiting' && player && session.host_player_id === player.id) {
-            gameService.log(code, 'Host disconnected, starting deletion grace period');
+          if (session && player && session.host_player_id === player.id) {
+            gameService.log(code, 'Host disconnected, starting host transfer grace period');
             gameService.scheduleHostDisconnect(code);
           }
 

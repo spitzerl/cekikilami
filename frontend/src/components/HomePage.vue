@@ -1,13 +1,13 @@
 <template>
   <div class="home">
     <header class="home-top shell">
-      <span class="brand">
+      <RouterLink to="/" class="brand brand-link" aria-label="Cékikilami, accueil">
         <span class="brand-mark" aria-hidden="true"></span>
         Cékikilami
         <span class="version-badge" :title="`Version ${APP_VERSION}`">
           {{ APP_CHANNEL === 'beta' ? APP_CHANNEL_LABEL : `v${APP_VERSION}` }}
         </span>
-      </span>
+      </RouterLink>
       <span class="spacer"></span>
       <ThemeToggle />
       <button
@@ -359,7 +359,7 @@ const initSimulator = async () => {
   };
   mockAudio.value = new Audio(mockTrack.value.preview);
   mockAudio.value.loop = true;
-  mockAudio.value.volume = 0.4;
+  mockAudio.value.volume = store.volume;
   if (showHelp.value) {
     mockPlaying.value = true;
     mockAudio.value.play().catch(() => { mockPlaying.value = false; });
@@ -381,6 +381,10 @@ watch(showHelp, async (val) => {
 watch(mockPlaying, (playing) => {
   if (!mockAudio.value) return;
   playing ? mockAudio.value.play().catch(() => { mockPlaying.value = false; }) : mockAudio.value.pause();
+});
+
+watch(() => store.volume, (newVolume) => {
+  if (mockAudio.value) mockAudio.value.volume = newVolume;
 });
 
 onMounted(() => {

@@ -44,7 +44,7 @@ import AppIcon from './components/AppIcon.vue';
 const store = useGameStore();
 
 const removeNotif = (id) => {
-  store.notifications = store.notifications.filter(n => n.id !== id);
+  store.removeNotification(id);
 };
 
 const getNotifIcon = (type) => {

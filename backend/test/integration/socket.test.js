@@ -6,6 +6,7 @@ import {
   connectSocket,
   createSession,
   createTestServer,
+  joinSession,
   resetDatabase,
   waitForEvent,
 } from '../helpers/app.js';
@@ -62,7 +63,7 @@ test('malformed and mismatched joins are rejected without killing the process', 
   await new Promise((resolve) => setTimeout(resolve, 100));
 });
 
-test('a waiting host that disconnects schedules room deletion', async () => {
+test('a waiting host that disconnects alone schedules room deletion', async () => {
   const created = await createSession(context.request, 'LeavingHost');
   const socket = connectSocket(context.baseUrl, created.token);
   await waitForEvent(socket, 'connect');
@@ -77,4 +78,67 @@ test('a waiting host that disconnects schedules room deletion', async () => {
     created.session.code,
   ]);
   assert.equal(result.rows[0].count, 0);
+});
+
+test('a waiting host that disconnects transfers the lead to another player', async () => {
+  const created = await createSession(context.request, 'LeavingHost');
+  const guest = await joinSession(context.request, created.session.code, 'NextHost');
+  const code = created.session.code;
+
+  const hostSocket = connectSocket(context.baseUrl, created.token);
+  await waitForEvent(hostSocket, 'connect');
+  const hostState = waitForEvent(hostSocket, 'state:update');
+  hostSocket.emit('join', { code });
+  await hostState;
+
+  const guestSocket = connectSocket(context.baseUrl, guest.token);
+  await waitForEvent(guestSocket, 'connect');
+  const guestState = waitForEvent(guestSocket, 'state:update');
+  guestSocket.emit('join', { code });
+  await guestState;
+
+  hostSocket.close();
+
+  await new Promise((resolve) => setTimeout(resolve, 400));
+  const result = await pool.query(
+    'SELECT host_player_id, host_name FROM sessions WHERE code = $1',
+    [code]
+  );
+  assert.equal(result.rows.length, 1);
+  assert.equal(result.rows[0].host_player_id, guest.player.id);
+  assert.equal(result.rows[0].host_name, 'NextHost');
+  guestSocket.close();
+});
+
+test('a host that disconnects during the game transfers the lead', async () => {
+  const created = await createSession(context.request, 'LeavingHost');
+  const guest = await joinSession(context.request, created.session.code, 'NextHost');
+  const code = created.session.code;
+
+  const hostSocket = connectSocket(context.baseUrl, created.token);
+  await waitForEvent(hostSocket, 'connect');
+  const hostState = waitForEvent(hostSocket, 'state:update');
+  hostSocket.emit('join', { code });
+  await hostState;
+
+  const guestSocket = connectSocket(context.baseUrl, guest.token);
+  await waitForEvent(guestSocket, 'connect');
+  const guestState = waitForEvent(guestSocket, 'state:update');
+  guestSocket.emit('join', { code });
+  await guestState;
+
+  await context.request
+    .post(`/api/sessions/${code}/start-selection`)
+    .set(auth(created.token))
+    .expect(200);
+
+  hostSocket.close();
+
+  await new Promise((resolve) => setTimeout(resolve, 400));
+  const result = await pool.query(
+    'SELECT host_player_id FROM sessions WHERE code = $1',
+    [code]
+  );
+  assert.equal(result.rows[0].host_player_id, guest.player.id);
+  guestSocket.close();
 });

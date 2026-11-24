@@ -362,12 +362,16 @@ const togglePreview = (track) => {
     if (audioObject) audioObject.pause();
     previewUrl.value = track.preview;
     audioObject = new Audio(track.preview);
-    audioObject.volume = 0.5;
+    audioObject.volume = store.volume;
     audioObject.play();
     isPlaying.value = true;
     audioObject.addEventListener('ended', () => { isPlaying.value = false; previewUrl.value = null; });
   }
 };
+
+watch(() => store.volume, (newVolume) => {
+  if (audioObject) audioObject.volume = newVolume;
+});
 
 const chooseTrack = async (track) => {
   if (!store.player?.id) return;

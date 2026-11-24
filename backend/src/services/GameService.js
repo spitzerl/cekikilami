@@ -68,6 +68,16 @@ function sessionLogTag(code) {
   return crypto.createHash('sha256').update(String(code)).digest('hex').slice(0, 8);
 }
 
+function pickNextHost(players, currentHostId) {
+  return players
+    .filter((player) => player.id !== currentHostId && !player.is_bot)
+    .sort((first, second) => {
+      if (first.is_connected !== second.is_connected) return first.is_connected ? -1 : 1;
+      if (first.is_observer !== second.is_observer) return first.is_observer ? 1 : -1;
+      return new Date(first.created_at) - new Date(second.created_at);
+    })[0] || null;
+}
+
 function comparePlayersByScore(first, second) {
   if (second.score !== first.score) return second.score - first.score;
   if (second.correctAccusations !== first.correctAccusations) {
@@ -163,13 +173,25 @@ export default class GameService {
     const timeoutId = setTimeout(async () => {
       try {
         const session = await Session.findByCode(code);
-        if (!session || session.phase !== 'waiting') return;
+        if (!session) return;
+
         const players = await Player.findBySession(session.id);
         const host = players.find((player) => player.id === session.host_player_id);
-        if (host && !host.is_connected) {
-          this.log(code, 'Host remained disconnected, deleting waiting room');
-          await this.deleteSession(code, { reason: 'host-disconnect' });
+        if (!host || host.is_connected) return;
+
+        const successor = pickNextHost(players, host.id);
+        if (!successor) {
+          // A waiting room without another player has no one to hand over to.
+          if (session.phase === 'waiting') {
+            this.log(code, 'Host remained disconnected, deleting empty waiting room');
+            await this.deleteSession(code, { reason: 'host-disconnect' });
+          }
+          return;
         }
+
+        await Session.setHost(code, successor.id, successor.name);
+        this.log(code, `Host remained disconnected, transferred lead to ${successor.name}`);
+        await this.broadcastState(code);
       } catch (error) {
         console.error(`Error in host disconnect timeout for session ${sessionLogTag(code)}:`, error);
       } finally {
