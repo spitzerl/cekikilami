@@ -100,6 +100,97 @@ test('a waiting host that loses the connection keeps the room for a resume', asy
   assert.equal(result.rows[0].count, 1);
 });
 
+test('a host that reconnects keeps the lead and the online status', async () => {
+  const created = await createSession(context.request, 'ReconnectingHost');
+  const guest = await joinSession(context.request, created.session.code, 'Guest');
+  const code = created.session.code;
+
+  const hostSocket = connectSocket(context.baseUrl, created.token);
+  await waitForEvent(hostSocket, 'connect');
+  const hostState = waitForEvent(hostSocket, 'state:update');
+  hostSocket.emit('join', { code });
+  await hostState;
+
+  const guestSocket = connectSocket(context.baseUrl, guest.token);
+  await waitForEvent(guestSocket, 'connect');
+  const guestState = waitForEvent(guestSocket, 'state:update');
+  guestSocket.emit('join', { code });
+  await guestState;
+
+  hostSocket.close();
+
+  // Let the disconnect handler start before the same host reconnects. Without
+  // the reconnect re-check, the late disconnect update would mark the host
+  // offline and hand the lead over to the guest.
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  const reconnected = connectSocket(context.baseUrl, created.token);
+  await waitForEvent(reconnected, 'connect');
+  const reconnectedState = waitForEvent(reconnected, 'state:update');
+  reconnected.emit('join', { code });
+  await reconnectedState;
+
+  await new Promise((resolve) => setTimeout(resolve, 300));
+  const result = await pool.query(
+    `SELECT s.host_player_id, p.is_connected
+     FROM sessions s
+     JOIN players p ON p.id = $2
+     WHERE s.code = $1`,
+    [code, created.host.id]
+  );
+  assert.equal(result.rows[0].host_player_id, created.host.id);
+  assert.equal(result.rows[0].is_connected, true);
+
+  reconnected.close();
+  guestSocket.close();
+});
+
+test('a socket join extends the session expiry', async () => {
+  const created = await createSession(context.request, 'ShortLivedHost');
+  await pool.query(
+    "UPDATE sessions SET expires_at = NOW() + INTERVAL '5 seconds' WHERE code = $1",
+    [created.session.code]
+  );
+
+  const socket = connectSocket(context.baseUrl, created.token);
+  await waitForEvent(socket, 'connect');
+  const statePromise = waitForEvent(socket, 'state:update');
+  socket.emit('join', { code: created.session.code });
+  await statePromise;
+
+  const result = await pool.query(
+    "SELECT expires_at > NOW() + INTERVAL '1 hour' AS extended FROM sessions WHERE code = $1",
+    [created.session.code]
+  );
+  assert.equal(result.rows[0].extended, true);
+
+  socket.close();
+});
+
+test('a connected socket keeps its session alive', async () => {
+  const created = await createSession(context.request, 'HeartbeatHost');
+  const socket = connectSocket(context.baseUrl, created.token);
+  await waitForEvent(socket, 'connect');
+  const statePromise = waitForEvent(socket, 'state:update');
+  socket.emit('join', { code: created.session.code });
+  await statePromise;
+
+  await pool.query(
+    "UPDATE sessions SET expires_at = NOW() + INTERVAL '5 seconds' WHERE code = $1",
+    [created.session.code]
+  );
+
+  socket.emit('session:touch');
+  await new Promise((resolve) => setTimeout(resolve, 100));
+
+  const result = await pool.query(
+    "SELECT expires_at > NOW() + INTERVAL '1 hour' AS extended FROM sessions WHERE code = $1",
+    [created.session.code]
+  );
+  assert.equal(result.rows[0].extended, true);
+
+  socket.close();
+});
+
 test('a waiting host that disconnects transfers the lead to another player', async () => {
   const created = await createSession(context.request, 'LeavingHost');
   const guest = await joinSession(context.request, created.session.code, 'NextHost');

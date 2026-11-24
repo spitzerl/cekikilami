@@ -39,6 +39,10 @@ async function bootstrap() {
         credentials: false,
       },
       maxHttpBufferSize: 1_000_000,
+      // Mobile networks and suspended tabs can miss a heartbeat without being
+      // gone; keep the default interval and allow a longer reply window so a
+      // short stall does not drop the socket.
+      pingTimeout: 30_000,
     });
 
     const gameNamespace = io.of('/game');
