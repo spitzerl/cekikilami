@@ -3,6 +3,12 @@
 Toutes les évolutions notables de Cékikilami sont documentées ici.
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le versioning sémantique.
 
+## [1.0.0-beta.17] — 2026-11-25
+
+### Ajouté
+
+- Une sonnerie douce à deux notes retentit quand le chrono de vote atteint les 10 dernières secondes. Elle respecte le volume réglé (ou le mode muet) et ne joue jamais pendant l’écoute des extraits.
+
 ## [1.0.0-beta.16] — 2026-11-25
 
 ### Corrigé
