@@ -167,27 +167,29 @@
             <div v-else class="mystery-record" aria-hidden="true"></div>
             <p v-if="!hasTrackInfo" class="hint">Titre, artiste et pochette restent masqués jusqu’aux résultats.</p>
 
-            <div v-if="proposerPlayer" class="reveal-proposer">
-              <img
-                v-if="proposerPlayer.avatar_seed"
-                :src="avatarUrl(proposerPlayer.avatar_seed)"
-                class="avatar avatar-sm"
-                alt=""
-              />
-              <span v-else class="avatar avatar-sm avatar-fallback">{{ initials(proposerName) }}</span>
-              <div style="text-align: left">
-                <span class="reveal-label">Proposé par</span>
-                <p class="reveal-name">{{ proposerName }}</p>
+            <div v-if="proposerPlayer || showRevealVote" class="reveal-meta">
+              <div v-if="proposerPlayer" class="reveal-proposer">
+                <img
+                  v-if="proposerPlayer.avatar_seed"
+                  :src="avatarUrl(proposerPlayer.avatar_seed)"
+                  class="avatar avatar-sm"
+                  alt=""
+                />
+                <span v-else class="avatar avatar-sm avatar-fallback">{{ initials(proposerName) }}</span>
+                <div>
+                  <span class="reveal-label">Proposé par</span>
+                  <p class="reveal-name">{{ proposerName }}</p>
+                </div>
               </div>
-            </div>
 
-            <div v-if="!isObserver" class="result-tags">
-              <span v-if="store.session?.enable_blind_test && myBlindTestResult" :class="myBlindTestResult.statusClass">
-                Blind test : {{ myBlindTestResult.statusLabel.toLowerCase() }}
-              </span>
-              <span v-if="myVoteResult" :class="myVoteResult.statusClass">
-                Votre vote : {{ myVoteResult.statusLabel.toLowerCase() }}
-              </span>
+              <div v-if="showRevealVote" class="result-tags">
+                <span v-if="store.session?.enable_blind_test && myBlindTestResult" :class="myBlindTestResult.statusClass">
+                  Blind test : {{ myBlindTestResult.statusLabel.toLowerCase() }}
+                </span>
+                <span v-if="myVoteResult" :class="myVoteResult.statusClass">
+                  Votre vote : {{ myVoteResult.statusLabel.toLowerCase() }}
+                </span>
+              </div>
             </div>
           </template>
         </section>
@@ -614,6 +616,10 @@ const proposerName = computed(() => {
   const p = proposerPlayer.value;
   return p ? p.name : 'Inconnu';
 });
+
+const showRevealVote = computed(
+  () => !isObserver.value && Boolean(myVoteResult.value || myBlindTestResult.value)
+);
 
 const getPlayerName = (id) => {
   const p = store.players.find(player => player.id === id);
