@@ -3,6 +3,12 @@
 Toutes les évolutions notables de Cékikilami sont documentées ici.
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le versioning sémantique.
 
+## [1.0.0-beta.14] — 2026-11-25
+
+### Modifié
+
+- Les encadrés de la révélation (proposé par, statut du vote, blind test) reprennent la surface vitrée, la bordure et les pastilles du reste de l’interface : nom en clair, couleurs sémantiques conservées sans aplat, petit point d’état.
+
 ## [1.0.0-beta.13] — 2026-11-25
 
 ### Modifié
