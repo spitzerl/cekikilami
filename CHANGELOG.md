@@ -3,6 +3,14 @@
 Toutes les évolutions notables de Cékikilami sont documentées ici.
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le versioning sémantique.
 
+## [1.0.0-beta.12] — 2026-11-25
+
+### Modifié
+
+- L’en-tête des pages de partie (salon, sélection, écoute & vote, résultats) est plus compact et homogène : titre, sous-titre et actions partagent une même grille, et le chrono rejoint la barre d’état segmentée de la sélection.
+- Les actions de l’en-tête s’empilent en pleine largeur sur mobile ; le code du salon passe sur une ligne dédiée sur les très petits écrans.
+- Le sous-titre de la sélection est raccourci pour tenir sur une ligne.
+
 ## [1.0.0-beta.11] — 2026-11-25
 
 ### Modifié
