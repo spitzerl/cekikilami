@@ -3,6 +3,12 @@
 Toutes les évolutions notables de Cékikilami sont documentées ici.
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le versioning sémantique.
 
+## [1.0.0-beta.18] — 2026-11-25
+
+### Ajouté
+
+- Le carillon des dix dernières secondes retentit aussi sur le chrono de sélection, avec le même volume réglé, et reste absent pendant l’écoute des extraits.
+
 ## [1.0.0-beta.17] — 2026-11-25
 
 ### Ajouté
