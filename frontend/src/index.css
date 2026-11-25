@@ -2033,7 +2033,7 @@ img { display: block; }
 
 .status-bar {
   display: inline-flex;
-  align-items: center;
+  align-items: stretch;
   max-width: 100%;
   min-height: 40px;
   border: 1px solid var(--line);
@@ -2070,7 +2070,6 @@ img { display: block; }
 }
 .status-segment.is-timer { font-family: var(--font-mono); }
 .status-segment.is-urgent {
-  background: linear-gradient(90deg, var(--danger-soft), rgba(255, 120, 147, 0) 85%);
   color: var(--danger);
 }
 .status-segment.is-urgent > svg,
