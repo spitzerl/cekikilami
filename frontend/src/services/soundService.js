@@ -11,7 +11,7 @@ function getAudioContext() {
 }
 
 export default {
-  play(type) {
+  play(type, volume = 1) {
     try {
       const ctx = getAudioContext();
       const now = ctx.currentTime;
@@ -73,6 +73,30 @@ export default {
         
         osc.start(now);
         osc.stop(now + 0.2);
+      } else if (type === 'time_warning') {
+        // Soft two-note chime for the last seconds of the voting timer.
+        const level = Math.max(0, Math.min(1, volume));
+        if (level === 0) return;
+
+        const notes = [1046.50, 783.99]; // C6 -> G5
+        notes.forEach((freq, index) => {
+          const start = now + index * 0.22;
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, start);
+
+          gain.gain.setValueAtTime(0, start);
+          gain.gain.linearRampToValueAtTime(0.07 * level, start + 0.015);
+          gain.gain.exponentialRampToValueAtTime(0.001, start + 0.9);
+
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+
+          osc.start(start);
+          osc.stop(start + 0.92);
+        });
       } else if (type === 'game_ended') {
         // Celebratory fanfare (C4 -> G4 -> C5 -> E5 -> G5)
         const notes = [261.63, 392.00, 523.25, 659.25, 783.99];

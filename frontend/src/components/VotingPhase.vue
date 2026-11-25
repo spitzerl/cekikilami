@@ -337,6 +337,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useGameStore } from '../stores/gameStore';
+import soundService from '../services/soundService';
 import { avatarUrl } from '../utils/avatar';
 import GameHeader from './GameHeader.vue';
 import GamePlayersTracker from './GamePlayersTracker.vue';
@@ -350,6 +351,7 @@ const showScoreboard = computed(() => store.session?.show_scoreboard !== false);
 
 const remainingTime = ref(0);
 let timerInterval = null;
+let timeWarningPlayed = false;
 
 const selectedVoteId = ref(null);
 const audioError = ref(false);
@@ -738,11 +740,25 @@ const castVote = async (targetId) => {
 };
 
 const updateTimer = () => {
+  const previous = remainingTime.value;
   if (store.session?.timer_ends_at) {
     const end = new Date(store.session.timer_ends_at).getTime();
     remainingTime.value = Math.max(0, Math.round((end - store.correctedNow()) / 1000));
   } else {
     remainingTime.value = 0;
+  }
+
+  // Warn once when the vote countdown crosses ten seconds, never while
+  // listening to the extract.
+  if (
+    status.value === 'voting'
+    && !timeWarningPlayed
+    && previous > 10
+    && remainingTime.value <= 10
+    && remainingTime.value > 0
+  ) {
+    timeWarningPlayed = true;
+    soundService.play('time_warning', store.volume);
   }
 };
 
@@ -775,6 +791,7 @@ watch(() => store.currentMusic?.id, () => {
 });
 
 watch([status, () => store.currentMusic?.id], ([newStatus]) => {
+  timeWarningPlayed = false;
   if (newStatus === 'listening') {
     startAudio();
   } else {
