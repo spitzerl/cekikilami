@@ -3,6 +3,12 @@
 Toutes les évolutions notables de Cékikilami sont documentées ici.
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le versioning sémantique.
 
+## [1.0.0-beta.16] — 2026-11-25
+
+### Corrigé
+
+- Le chrono en urgence n’affiche plus de bande de fond décalée dans sa pilule : les segments occupent toute la hauteur de la barre d’état et le rouge reste porté par l’icône et le temps.
+
 ## [1.0.0-beta.15] — 2026-11-25
 
 ### Modifié
