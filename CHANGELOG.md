@@ -3,6 +3,52 @@
 Toutes les évolutions notables de Cékikilami sont documentées ici.
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le versioning sémantique.
 
+## [1.0.0-beta.18] — 2026-11-25
+
+### Ajouté
+
+- Le carillon des dix dernières secondes retentit aussi sur le chrono de sélection, avec le même volume réglé, et reste absent pendant l’écoute des extraits.
+
+## [1.0.0-beta.17] — 2026-11-25
+
+### Ajouté
+
+- Une sonnerie douce à deux notes retentit quand le chrono de vote atteint les 10 dernières secondes. Elle respecte le volume réglé (ou le mode muet) et ne joue jamais pendant l’écoute des extraits.
+
+## [1.0.0-beta.16] — 2026-11-25
+
+### Corrigé
+
+- Le chrono en urgence n’affiche plus de bande de fond décalée dans sa pilule : les segments occupent toute la hauteur de la barre d’état et le rouge reste porté par l’icône et le temps.
+
+## [1.0.0-beta.15] — 2026-11-25
+
+### Modifié
+
+- Les informations de révélation (proposé par, statut du vote et blind test) sont regroupées dans une seule carte meta avec filet interne, au lieu de deux encadrés séparés.
+
+## [1.0.0-beta.14] — 2026-11-25
+
+### Modifié
+
+- Les encadrés de la révélation (proposé par, statut du vote, blind test) reprennent la surface vitrée, la bordure et les pastilles du reste de l’interface : nom en clair, couleurs sémantiques conservées sans aplat, petit point d’état.
+
+## [1.0.0-beta.13] — 2026-11-25
+
+### Modifié
+
+- La barre de progression de l’en-tête occupe toute la largeur disponible et adopte un rendu néon : segments passés cyan, étape courante en dégradé cyan → violet avec halo.
+- L’état « prêts » de la barre d’état n’a plus de fond plein : la couleur verte reste portée par le texte et le point, sans bloc visuel dans la pilule.
+- La teinte rouge du chrono urgent se fond désormais en dégradé au lieu d’un aplat.
+
+## [1.0.0-beta.12] — 2026-11-25
+
+### Modifié
+
+- L’en-tête des pages de partie (salon, sélection, écoute & vote, résultats) est plus compact et homogène : titre, sous-titre et actions partagent une même grille, et le chrono rejoint la barre d’état segmentée de la sélection.
+- Les actions de l’en-tête s’empilent en pleine largeur sur mobile ; le code du salon passe sur une ligne dédiée sur les très petits écrans.
+- Le sous-titre de la sélection est raccourci pour tenir sur une ligne.
+
 ## [1.0.0-beta.11] — 2026-11-25
 
 ### Modifié

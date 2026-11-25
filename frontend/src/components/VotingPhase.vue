@@ -8,12 +8,14 @@
       <template #actions>
         <div
           v-if="showTimer"
-          :class="['timer', remainingTime < 10 ? 'is-urgent' : '']"
+          class="status-bar"
           role="timer"
           :aria-label="`Temps restant : ${remainingTime} secondes`"
         >
-          <AppIcon name="clock" :size="15" />
-          {{ remainingTime }} s
+          <span :class="['status-segment', 'is-timer', remainingTime < 10 ? 'is-urgent' : '']">
+            <AppIcon name="clock" :size="14" />
+            <span class="status-value">{{ remainingTime }} s</span>
+          </span>
         </div>
 
         <button
@@ -165,27 +167,29 @@
             <div v-else class="mystery-record" aria-hidden="true"></div>
             <p v-if="!hasTrackInfo" class="hint">Titre, artiste et pochette restent masqués jusqu’aux résultats.</p>
 
-            <div v-if="proposerPlayer" class="reveal-proposer">
-              <img
-                v-if="proposerPlayer.avatar_seed"
-                :src="avatarUrl(proposerPlayer.avatar_seed)"
-                class="avatar avatar-sm"
-                alt=""
-              />
-              <span v-else class="avatar avatar-sm avatar-fallback">{{ initials(proposerName) }}</span>
-              <div style="text-align: left">
-                <span class="reveal-label">Proposé par</span>
-                <p class="reveal-name">{{ proposerName }}</p>
+            <div v-if="proposerPlayer || showRevealVote" class="reveal-meta">
+              <div v-if="proposerPlayer" class="reveal-proposer">
+                <img
+                  v-if="proposerPlayer.avatar_seed"
+                  :src="avatarUrl(proposerPlayer.avatar_seed)"
+                  class="avatar avatar-sm"
+                  alt=""
+                />
+                <span v-else class="avatar avatar-sm avatar-fallback">{{ initials(proposerName) }}</span>
+                <div>
+                  <span class="reveal-label">Proposé par</span>
+                  <p class="reveal-name">{{ proposerName }}</p>
+                </div>
               </div>
-            </div>
 
-            <div v-if="!isObserver" class="result-tags">
-              <span v-if="store.session?.enable_blind_test && myBlindTestResult" :class="myBlindTestResult.statusClass">
-                Blind test : {{ myBlindTestResult.statusLabel.toLowerCase() }}
-              </span>
-              <span v-if="myVoteResult" :class="myVoteResult.statusClass">
-                Votre vote : {{ myVoteResult.statusLabel.toLowerCase() }}
-              </span>
+              <div v-if="showRevealVote" class="result-tags">
+                <span v-if="store.session?.enable_blind_test && myBlindTestResult" :class="myBlindTestResult.statusClass">
+                  Blind test : {{ myBlindTestResult.statusLabel.toLowerCase() }}
+                </span>
+                <span v-if="myVoteResult" :class="myVoteResult.statusClass">
+                  Votre vote : {{ myVoteResult.statusLabel.toLowerCase() }}
+                </span>
+              </div>
             </div>
           </template>
         </section>
@@ -333,6 +337,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useGameStore } from '../stores/gameStore';
+import soundService from '../services/soundService';
 import { avatarUrl } from '../utils/avatar';
 import GameHeader from './GameHeader.vue';
 import GamePlayersTracker from './GamePlayersTracker.vue';
@@ -346,6 +351,7 @@ const showScoreboard = computed(() => store.session?.show_scoreboard !== false);
 
 const remainingTime = ref(0);
 let timerInterval = null;
+let timeWarningPlayed = false;
 
 const selectedVoteId = ref(null);
 const audioError = ref(false);
@@ -613,6 +619,10 @@ const proposerName = computed(() => {
   return p ? p.name : 'Inconnu';
 });
 
+const showRevealVote = computed(
+  () => !isObserver.value && Boolean(myVoteResult.value || myBlindTestResult.value)
+);
+
 const getPlayerName = (id) => {
   const p = store.players.find(player => player.id === id);
   return p ? p.name : 'Inconnu';
@@ -730,11 +740,25 @@ const castVote = async (targetId) => {
 };
 
 const updateTimer = () => {
+  const previous = remainingTime.value;
   if (store.session?.timer_ends_at) {
     const end = new Date(store.session.timer_ends_at).getTime();
     remainingTime.value = Math.max(0, Math.round((end - store.correctedNow()) / 1000));
   } else {
     remainingTime.value = 0;
+  }
+
+  // Warn once when the vote countdown crosses ten seconds, never while
+  // listening to the extract.
+  if (
+    status.value === 'voting'
+    && !timeWarningPlayed
+    && previous > 10
+    && remainingTime.value <= 10
+    && remainingTime.value > 0
+  ) {
+    timeWarningPlayed = true;
+    soundService.play('time_warning', store.volume);
   }
 };
 
@@ -767,6 +791,7 @@ watch(() => store.currentMusic?.id, () => {
 });
 
 watch([status, () => store.currentMusic?.id], ([newStatus]) => {
+  timeWarningPlayed = false;
   if (newStatus === 'listening') {
     startAudio();
   } else {
