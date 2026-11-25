@@ -2940,21 +2940,37 @@ img { display: block; }
   justify-content: center;
   gap: 10px;
   width: 100%;
-  max-width: 380px;
-  margin-top: 18px;
-  padding: 10px 18px;
-  border: 1px solid var(--accent-line);
+  max-width: 360px;
+  margin-top: 20px;
+  padding: 9px 16px;
+  border: 1px solid var(--line);
   border-radius: var(--r-pill);
-  background: var(--accent-soft);
+  background: var(--surface-panel);
 }
 .reveal-label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
-  color: var(--accent-ink);
+  color: var(--ink-3);
 }
-.reveal-name { font-size: 16px; font-weight: 680; color: var(--accent-ink); }
+.reveal-name { font-size: 16px; font-weight: 650; color: var(--ink); }
 
-.result-tags { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 12px; }
+.result-tags { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 10px; }
+.result-tags .tag {
+  gap: 6px;
+  height: 28px;
+  padding: 0 12px;
+  background: var(--surface-panel);
+  font-size: 12px;
+}
+.result-tags .tag::before {
+  content: "";
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.9;
+}
 
 .vote-detail-row {
   display: flex;
