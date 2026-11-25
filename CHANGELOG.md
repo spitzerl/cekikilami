@@ -3,6 +3,14 @@
 Toutes les évolutions notables de Cékikilami sont documentées ici.
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le versioning sémantique.
 
+## [1.0.0-beta.13] — 2026-11-25
+
+### Modifié
+
+- La barre de progression de l’en-tête occupe toute la largeur disponible et adopte un rendu néon : segments passés cyan, étape courante en dégradé cyan → violet avec halo.
+- L’état « prêts » de la barre d’état n’a plus de fond plein : la couleur verte reste portée par le texte et le point, sans bloc visuel dans la pilule.
+- La teinte rouge du chrono urgent se fond désormais en dégradé au lieu d’un aplat.
+
 ## [1.0.0-beta.12] — 2026-11-25
 
 ### Modifié
