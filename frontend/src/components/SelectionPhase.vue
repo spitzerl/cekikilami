@@ -6,34 +6,34 @@
       :step="2"
     >
       <template #actions>
-        <div class="selection-status" role="group" aria-label="État de la sélection">
+        <div class="status-bar" role="group" aria-label="État de la sélection">
           <span
-            :class="['status-chip', 'is-timer', remainingTime < 20 ? 'is-urgent' : '']"
+            :class="['status-segment', 'is-timer', remainingTime < 20 ? 'is-urgent' : '']"
             role="timer"
             :aria-label="`Temps restant : ${formatTime(remainingTime)}`"
           >
             <AppIcon name="clock" :size="14" />
-            <span class="status-chip-value">{{ formatTime(remainingTime) }}</span>
+            <span class="status-value">{{ formatTime(remainingTime) }}</span>
           </span>
           <span
-            class="status-chip"
+            class="status-segment"
             :title="`${submittedTracks} morceaux envoyés sur ${expectedTracks} attendus`"
             :aria-label="`${submittedTracks} morceaux envoyés sur ${expectedTracks} attendus`"
           >
             <AppIcon name="music" :size="14" />
             <span>
-              <span class="status-chip-value">{{ submittedTracks }}/{{ expectedTracks }}</span>
+              <span class="status-value">{{ submittedTracks }}/{{ expectedTracks }}</span>
               morceaux
             </span>
           </span>
           <span
-            :class="['status-chip', allPlayersReady ? 'is-ready' : '']"
+            :class="['status-segment', allPlayersReady ? 'is-ready' : '']"
             :title="`${readyCount} joueurs prêts sur ${activeCount} connectés`"
             :aria-label="`${readyCount} joueurs prêts sur ${activeCount} connectés`"
           >
             <span :class="['status-dot', allPlayersReady ? 'is-online' : '']" aria-hidden="true"></span>
             <span>
-              <span class="status-chip-value">{{ readyCount }}/{{ activeCount }}</span>
+              <span class="status-value">{{ readyCount }}/{{ activeCount }}</span>
               prêts
             </span>
           </span>
@@ -312,7 +312,7 @@ const maxMusics = computed(() => store.session?.max_musics_per_player || 2);
 const remainingPicks = computed(() => Math.max(0, maxMusics.value - store.musics.length));
 
 const selectionSubtitle = computed(
-  () => `Choisissez jusqu’à ${maxMusics.value} morceau${maxMusics.value > 1 ? 'x' : ''}. Votre sélection reste secrète.`
+  () => `Choisissez jusqu’à ${maxMusics.value} morceau${maxMusics.value > 1 ? 'x' : ''}, en secret.`
 );
 
 const activePlayers = computed(() =>

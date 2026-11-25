@@ -8,12 +8,14 @@
       <template #actions>
         <div
           v-if="showTimer"
-          :class="['timer', remainingTime < 10 ? 'is-urgent' : '']"
+          class="status-bar"
           role="timer"
           :aria-label="`Temps restant : ${remainingTime} secondes`"
         >
-          <AppIcon name="clock" :size="15" />
-          {{ remainingTime }} s
+          <span :class="['status-segment', 'is-timer', remainingTime < 10 ? 'is-urgent' : '']">
+            <AppIcon name="clock" :size="14" />
+            <span class="status-value">{{ remainingTime }} s</span>
+          </span>
         </div>
 
         <button
