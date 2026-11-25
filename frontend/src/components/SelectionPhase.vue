@@ -249,6 +249,7 @@
 import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import apiService from '../services/apiService';
+import soundService from '../services/soundService';
 import { useGameStore } from '../stores/gameStore';
 import GameHeader from './GameHeader.vue';
 import GamePlayersTracker from './GamePlayersTracker.vue';
@@ -270,6 +271,7 @@ const trackListRef = ref(null);
 const canScrollUp = ref(false);
 const canScrollDown = ref(false);
 let timerInterval = null;
+let timeWarningPlayed = false;
 
 const previewUrl = ref(null);
 const isPlaying = ref(false);
@@ -286,12 +288,23 @@ const formatTime = (secs) => {
 };
 
 const updateTimer = () => {
+  const previous = remainingTime.value;
   if (store.session?.timer_ends_at) {
     remainingTime.value = Math.max(0, Math.round((new Date(store.session.timer_ends_at).getTime() - store.correctedNow()) / 1000));
   } else {
     remainingTime.value = 0;
   }
+
+  // Same gentle warning as the vote timer: once, on the last ten seconds.
+  if (!timeWarningPlayed && previous > 10 && remainingTime.value <= 10 && remainingTime.value > 0) {
+    timeWarningPlayed = true;
+    soundService.play('time_warning', store.volume);
+  }
 };
+
+watch(() => store.session?.timer_ends_at, () => {
+  timeWarningPlayed = false;
+});
 
 const updateTrackFades = () => {
   const el = trackListRef.value?.$el || trackListRef.value;
