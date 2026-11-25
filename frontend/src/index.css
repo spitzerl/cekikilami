@@ -843,20 +843,19 @@ img { display: block; }
 
 /* Progression */
 .stepper {
-  max-width: 420px;
+  width: 100%;
   margin-top: 12px;
   margin-bottom: clamp(16px, 2.4vw, 22px);
 }
 @media (max-width: 639px) {
   .stepper {
-    max-width: none;
     margin-top: 10px;
     margin-bottom: 14px;
   }
 }
 .stepper ol {
   display: flex;
-  gap: 6px;
+  gap: 5px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -868,13 +867,25 @@ img { display: block; }
 .step::before {
   content: "";
   display: block;
-  height: 4px;
+  height: 5px;
   border-radius: var(--r-pill);
-  background: var(--line-strong);
-  transition: background-color 0.2s ease;
+  background: var(--hover-strong);
+  box-shadow: inset 0 0 0 1px var(--line);
+  transition: background 0.25s ease, box-shadow 0.25s ease;
 }
-.step.is-past::before { background: var(--sun-line); }
-.step.is-current::before { background: var(--accent); }
+.step.is-past::before {
+  background: linear-gradient(90deg, rgba(94, 200, 255, 0.28), var(--sun-line));
+  box-shadow:
+    0 0 10px rgba(94, 200, 255, 0.22),
+    inset 0 0 0 1px rgba(94, 200, 255, 0.18);
+}
+.step.is-current::before {
+  background: linear-gradient(90deg, var(--sun), var(--accent));
+  box-shadow:
+    0 0 14px rgba(94, 200, 255, 0.55),
+    0 0 30px rgba(155, 108, 255, 0.50),
+    inset 0 1px 0 rgba(255, 255, 255, 0.36);
+}
 
 /* ============================================================
    HOME
@@ -2059,16 +2070,18 @@ img { display: block; }
 }
 .status-segment.is-timer { font-family: var(--font-mono); }
 .status-segment.is-urgent {
-  background: var(--danger-soft);
+  background: linear-gradient(90deg, var(--danger-soft), rgba(255, 120, 147, 0) 85%);
   color: var(--danger);
 }
 .status-segment.is-urgent > svg,
 .status-segment.is-urgent .status-value { color: var(--danger); }
 .status-segment.is-ready {
-  background: var(--success-soft);
   color: var(--success);
 }
 .status-segment.is-ready .status-value { color: var(--success); }
+.status-segment.is-ready .status-dot {
+  box-shadow: 0 0 8px var(--success-line);
+}
 
 @media (max-width: 359px) {
   .status-segment {
