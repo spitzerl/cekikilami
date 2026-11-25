@@ -3,6 +3,12 @@
 Toutes les évolutions notables de Cékikilami sont documentées ici.
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le versioning sémantique.
 
+## [1.0.0-beta.15] — 2026-11-25
+
+### Modifié
+
+- Les informations de révélation (proposé par, statut du vote et blind test) sont regroupées dans une seule carte meta avec filet interne, au lieu de deux encadrés séparés.
+
 ## [1.0.0-beta.14] — 2026-11-25
 
 ### Modifié
